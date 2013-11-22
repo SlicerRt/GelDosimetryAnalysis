@@ -1,38 +1,31 @@
 cmake_minimum_required(VERSION 2.8.9)
 
+#-----------------------------------------------------------------------------
+set(EXTENSION_NAME GelDosimetryAnalysis)
+
+# ------------------------------------------------------------------------
+set(GELDOSIMETRY_VERSION_MAJOR "0")
+set(GELDOSIMETRY_VERSION_MINOR "1")
+set(GELDOSIMETRY_VERSION_PATCH "0")
+set(GELDOSIMETRY_VERSION ${GELDOSIMETRY_VERSION_MAJOR}.${GELDOSIMETRY_VERSION_MINOR}.${GELDOSIMETRY_VERSION_PATCH})
+
+
+#-----------------------------------------------------------------------------
+set(EXTENSION_HOMEPAGE "TODO")
+set(EXTENSION_CATEGORY "Radiotherapy")
+set(EXTENSION_CONTRIBUTORS "Csaba Pinter (PerkLab, Queen's University), Jennifer Andrea (PerkLab, Queen's University), Mattea Welch (PerkLab, Queen's University)")
+set(EXTENSION_DESCRIPTION "Slicelet covering the gel dosimetry analysis workflow used in commissioning new radiation techniques and to validate the accuracy of radiation treatment by enabling visual comparison of the planned dose to the delivered dose, where correspondence between the two dose distributions is achieved using embedded landmarks. Gel dosimetry is based on imaging chemical systems spatially fixed in gelatin, which exhibit a detectable change upon irradiation.")
+set(EXTENSION_ICONURL "TODO")
+set(EXTENSION_SCREENSHOTURLS "TODO")
+
+#-----------------------------------------------------------------------------
 project(GelDosimetryAnalysis)
-
-#-----------------------------------------------------------------------------
-set(MODULE_NAME GelDosimetryAnalysis)
-
-#-----------------------------------------------------------------------------
 find_package(Slicer REQUIRED)
 include(${Slicer_USE_FILE})
 
 #-----------------------------------------------------------------------------
-set(MODULE_PYTHON_SCRIPTS
-  ${MODULE_NAME}.py
-  ${MODULE_NAME}Logic.py
-  )
-
-set(MODULE_PYTHON_RESOURCES
-  )
+add_subdirectory(ApplyPolynomialFunctionOnVolumeAlgo)
+add_subdirectory(GelDosimetryAnalysis)
 
 #-----------------------------------------------------------------------------
-slicerMacroBuildScriptedModule(
-  NAME ${MODULE_NAME}
-  SCRIPTS ${MODULE_PYTHON_SCRIPTS}
-  RESOURCES ${MODULE_PYTHON_RESOURCES}
-  WITH_GENERIC_TESTS
-  )
-
-#-----------------------------------------------------------------------------
-if(BUILD_TESTING)
-  # Register the unittest subclass in the main script as a ctest.
-  # Note that the test will also be available at runtime.
-  slicer_add_python_unittest(SCRIPT ${MODULE_NAME}.py)
-
-  # Additional build-time testing
-  add_subdirectory(Testing)
-endif()
-
+include(${Slicer_EXTENSION_CPACK})
