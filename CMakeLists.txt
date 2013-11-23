@@ -24,8 +24,8 @@ find_package(Slicer REQUIRED)
 include(${Slicer_USE_FILE})
 
 #-----------------------------------------------------------------------------
-add_subdirectory(ApplyPolynomialFunctionOnVolumeAlgo)
 add_subdirectory(GelDosimetryAnalysis)
+add_subdirectory(GelDosimetryAnalysisLib)
 
 #-----------------------------------------------------------------------------
 include(${Slicer_EXTENSION_CPACK})

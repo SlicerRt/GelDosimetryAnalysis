@@ -19,60 +19,50 @@
 
 ==============================================================================*/
 
-// .NAME vtkApplyPolynomialFunctionOnVolumeAlgo - Applies polynomial function on image data
+// .NAME vtkApplyPolynomialFunctionOnVolume - Applies polynomial function on image data
 // .SECTION Description
 
+#ifndef __vtkApplyPolynomialFunctionOnVolume_h
+#define __vtkApplyPolynomialFunctionOnVolume_h
 
-#ifndef __vtkApplyPolynomialFunctionOnVolumeAlgo_h
-#define __vtkApplyPolynomialFunctionOnVolumeAlgo_h
+#include "vtkSlicerGelDosimetryAnalysisLibModuleLogicExport.h"
 
 // VTK includes
-#include <vtkImageData.h>
+#include <vtkImageToImageFilter.h>
 #include <vtkDoubleArray.h>
 
+class vtkImageData;
+
 /// \ingroup GelDosimetryAnalysis
-class vtkApplyPolynomialFunctionOnVolumeAlgo : public vtkObject
+class VTK_SLICER_GELDOSIMETRYANALYSIS_MODULE_LOGIC_EXPORT vtkApplyPolynomialFunctionOnVolume : public vtkImageToImageFilter
 {
 public:
 
-  static vtkApplyPolynomialFunctionOnVolumeAlgo *New();
-  vtkTypeMacro(vtkApplyPolynomialFunctionOnVolumeAlgo, vtkObject );
-
-  /// Run algorithm
-  virtual void Update();
-
-  /// Set input image data
-  vtkSetObjectMacro(InputImageData, vtkImageData);
-  /// Get input image data
-  vtkGetObjectMacro(InputImageData, vtkImageData);
+  static vtkApplyPolynomialFunctionOnVolume *New();
+  vtkTypeMacro(vtkApplyPolynomialFunctionOnVolume, vtkObject );
+  void PrintSelf(ostream& os, vtkIndent indent);
 
   /// Set polynomial coefficients
   vtkSetObjectMacro(PolynomialCoefficients, vtkDoubleArray);
   /// Get polynomial coefficients
   vtkGetObjectMacro(PolynomialCoefficients, vtkDoubleArray);
 
-  /// Set output image data
-  vtkGetObjectMacro(OutputImageData, vtkImageData);
+protected:
+  /// Execute function applying the polynomial to the input image
+  void ThreadedExecute(vtkImageData *inData, vtkImageData *outData, int extent[6], int id);
 
 protected:
-  /// Set output image data
-  vtkSetObjectMacro(OutputImageData, vtkImageData);
-
-protected:
-  vtkImageData* InputImageData;
-  vtkImageData* OutputImageData;
-
   /// Coefficients of the polynomial to apply. They are expected to be in
-  /// decreasing order, see p(x) = p[0] * x**deg + ... + p[deg]
+  /// decreasing order, as in p(x) = p[0] * x**deg + ... + p[deg]
   vtkDoubleArray* PolynomialCoefficients;
 
 protected:
-  vtkApplyPolynomialFunctionOnVolumeAlgo();
-  virtual ~vtkApplyPolynomialFunctionOnVolumeAlgo();
+  vtkApplyPolynomialFunctionOnVolume();
+  virtual ~vtkApplyPolynomialFunctionOnVolume();
 
 private:
-  vtkApplyPolynomialFunctionOnVolumeAlgo(const vtkApplyPolynomialFunctionOnVolumeAlgo&); // Not implemented
-  void operator=(const vtkApplyPolynomialFunctionOnVolumeAlgo&);               // Not implemented
+  vtkApplyPolynomialFunctionOnVolume(const vtkApplyPolynomialFunctionOnVolume&); // Not implemented
+  void operator=(const vtkApplyPolynomialFunctionOnVolume&);               // Not implemented
 };
 
 #endif 

@@ -1,7 +1,8 @@
 import os
 import numpy
 from __main__ import vtk, qt, ctk, slicer
-import GelDosimetryAnalysisLogic
+# import GelDosimetryAnalysisLogic
+import GelDosimetryAnalysisLib
 
 #
 # GelDosimetryAnalysisSliceletWidget
@@ -81,7 +82,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step0_layoutSelectionCollapsibleButton.setProperty('collapsed', False)
     
     # Create module logic
-    self.logic = GelDosimetryAnalysisLogic.GelDosimetryAnalysisLogic()
+    self.logic = GelDosimetryAnalysisLib.GelDosimetryAnalysisLogic()
 
     # Set up constants
     self.obiMarkupsFiducialNodeName = "OBI fiducials"
@@ -1115,7 +1116,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.onFitPolynomialToOpticalDensityVsDoseCurve()
 
     slicer.app.processEvents()
-    # self.onApplyCalibration()
+    self.onApplyCalibration()
 
     self.step4_doseCalibrationCollapsibleButton.setChecked(True)
     self.step4C_polynomialFittingAndCalibrationCollapsibleButton.setChecked(True)
