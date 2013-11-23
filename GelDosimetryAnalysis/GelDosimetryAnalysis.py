@@ -34,6 +34,7 @@ class SliceletMainFrame(qt.QFrame):
     if len(refs) > 1:
       print('Stuck slicelet references (' + repr(len(refs)) + '):\n' + repr(refs))
 
+    slicer.gelDosimetrySliceletInstance = None
     self.slicelet.parent = None
     self.slicelet = None
     self.deleteLater()
@@ -952,10 +953,14 @@ class GelDosimetryAnalysisSlicelet(object):
       self.odVsDoseDataTable.SetValue(rowIndex, 0, self.logic.opticalDensityVsDoseFunction[rowIndex, 0])
       self.odVsDoseDataTable.SetValue(rowIndex, 1, self.logic.opticalDensityVsDoseFunction[rowIndex, 1])
 
-    odVsDoseLine = self.odVsDoseChart.AddPlot(vtk.vtkChart.POINTS)
-    odVsDoseLine.SetInput(self.odVsDoseDataTable, 0, 1)
-    odVsDoseLine.SetColor(0, 0, 255, 255)
-    odVsDoseLine.SetMarkerSize(10)
+    odVsDoseLinePoint = self.odVsDoseChart.AddPlot(vtk.vtkChart.POINTS)
+    odVsDoseLinePoint.SetInput(self.odVsDoseDataTable, 0, 1)
+    odVsDoseLinePoint.SetColor(0, 0, 255, 255)
+    odVsDoseLinePoint.SetMarkerSize(10)
+    odVsDoseLineInnerPoint = self.odVsDoseChart.AddPlot(vtk.vtkChart.POINTS)
+    odVsDoseLineInnerPoint.SetInput(self.odVsDoseDataTable, 0, 1)
+    odVsDoseLineInnerPoint.SetColor(255, 255, 255, 223)
+    odVsDoseLineInnerPoint.SetMarkerSize(8)
 
     # Show chart
     self.odVsDoseChart.GetAxis(1).SetTitle('Optical density')
@@ -974,6 +979,8 @@ class GelDosimetryAnalysisSlicelet(object):
     odVsDoseNumberOfRows = self.logic.opticalDensityVsDoseFunction.shape[0]
     minOd = self.logic.opticalDensityVsDoseFunction[0, 0]
     maxOd = self.logic.opticalDensityVsDoseFunction[odVsDoseNumberOfRows-1, 0]
+    minPolynomial = minOd - (maxOd-minOd)*0.2
+    maxPolynomial = maxOd + (maxOd-minOd)*0.2
 
     # Create table to display polynomial
     self.polynomialTable = vtk.vtkTable()
@@ -987,7 +994,7 @@ class GelDosimetryAnalysisSlicelet(object):
     polynomialNumberOfRows = odVsDoseNumberOfRows * 4
     self.polynomialTable.SetNumberOfRows(polynomialNumberOfRows)
     for rowIndex in xrange(0, polynomialNumberOfRows):
-      x = minOd + (maxOd-minOd)*rowIndex/polynomialNumberOfRows
+      x = minPolynomial + (maxPolynomial-minPolynomial)*rowIndex/polynomialNumberOfRows
       self.polynomialTable.SetValue(rowIndex, 0, x)
       y = 0
       for order in xrange(0,maxOrder+1):
@@ -1081,7 +1088,7 @@ class GelDosimetryAnalysisSlicelet(object):
     # Fit polynomial on OD VS dose curve
     self.onFitPolynomialToOpticalDensityVsDoseCurve()
     # Calibrate
-    # self.onApplyCalibration()
+    self.onApplyCalibration()
 
   def performSelfTestFromSavedScene(self):
     qt.QApplication.setOverrideCursor(qt.QCursor(qt.Qt.BusyCursor))
@@ -1224,7 +1231,7 @@ class GelDosimetryAnalysisWidget:
     # slicer.gelDosimetrySliceletInstance = slicelet
 
   def onSliceletClosed(self):
-    print('Slicelet closed') # For testing
+    print('Slicelet closed')
 
 #
 # Main

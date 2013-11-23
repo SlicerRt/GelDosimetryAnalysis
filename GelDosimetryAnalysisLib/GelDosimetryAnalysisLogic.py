@@ -419,22 +419,17 @@ class GelDosimetryAnalysisLogic:
 
     measuredVolume = slicer.util.getNode(measuredVolumeID)
     measuredVolumeImageData = measuredVolume.GetImageData()
+    
+    calibrator = slicer.vtkApplyPolynomialFunctionOnVolume()
+    calibrator.SetInput(measuredVolumeImageData)
+    
+    coefficients = vtk.vtkDoubleArray() # TODO: Remove if works without this
+    coefficients.DeepCopy( numpy_support.numpy_to_vtk(self.calibrationPolynomialCoeffitients) )
+    calibrator.SetPolynomialCoefficients(coefficients)
 
-    # Apply fitted polynomial to MEASURE volume voxel values
-    measuredVolumeImageDataAsScalars = measuredVolumeImageData.GetPointData().GetScalars()
-    numpyImageDataArray = numpy_support.vtk_to_numpy(measuredVolumeImageDataAsScalars)
-
-    maxOrder = len(self.calibrationPolynomialCoeffitients) - 1
-    for voxelIndex in xrange(0,len(numpyImageDataArray)):
-      voxelValue = numpyImageDataArray[voxelIndex]
-      calibratedValue = 0
-      for order in xrange(0,maxOrder+1):
-        calibratedValue += self.calibrationPolynomialCoeffitients[order] * voxelValue ** (maxOrder-order)
-      numpyImageDataArray[voxelIndex] = calibratedValue
-
+    calibrator.Update()
     newMeasuredVolumeImageData = vtk.vtkImageData()
-    newMeasuredVolumeImageData.DeepCopy(measuredVolumeImageData)
-    newMeasuredVolumeImageData.GetPointData().SetScalars(numpy_support.numpy_to_vtk(numpyImageDataArray))
+    newMeasuredVolumeImageData.DeepCopy(calibrator.GetOutput())
     measuredVolume.SetAndObserveImageData(newMeasuredVolumeImageData)
     measuredVolume.Modified()
 
