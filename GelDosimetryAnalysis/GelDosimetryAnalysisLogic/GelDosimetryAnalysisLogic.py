@@ -418,10 +418,8 @@ class GelDosimetryAnalysisLogic:
     start = time.time()
 
     measuredVolume = slicer.util.getNode(measuredVolumeID)
+    coefficients = numpy_support.numpy_to_vtk(self.calibrationPolynomialCoeffitients)
     
-    coefficients = vtk.vtkDoubleArray() # TODO: Remove if works without this
-    coefficients.DeepCopy( numpy_support.numpy_to_vtk(self.calibrationPolynomialCoeffitients) )
-
     import vtkSlicerGelDosimetryAnalysisAlgoModuleLogic
     if slicer.modules.geldosimetryanalysisalgo.logic().ApplyPolynomialFunctionOnVolume(measuredVolume, coefficients) == False:
       print('ERROR: Calibration failed!')

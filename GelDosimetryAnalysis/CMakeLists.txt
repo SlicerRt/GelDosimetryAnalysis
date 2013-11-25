@@ -10,6 +10,8 @@ include(${Slicer_USE_FILE})
 #-----------------------------------------------------------------------------
 set(MODULE_PYTHON_SCRIPTS
   ${MODULE_NAME}
+  ${MODULE_NAME}Logic/__init__
+  ${MODULE_NAME}Logic/${MODULE_NAME}Logic
   )
 
 set(MODULE_PYTHON_RESOURCES

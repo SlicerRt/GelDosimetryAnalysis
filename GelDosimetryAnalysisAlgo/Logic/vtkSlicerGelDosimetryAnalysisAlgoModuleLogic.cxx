@@ -56,9 +56,8 @@ void vtkSlicerGelDosimetryAnalysisAlgoModuleLogic::UpdateFromMRMLScene()
 {
   if (!this->GetMRMLScene())
   {
-    vtkErrorMacro("UpdateFromMRMLScene: Invalid MRML Scene!");
     return;
-   }
+  }
 }
 
 //---------------------------------------------------------------------------
