@@ -1,8 +1,7 @@
 import os
 import numpy
 from __main__ import vtk, qt, ctk, slicer
-# import GelDosimetryAnalysisLogic
-import GelDosimetryAnalysisLib
+import GelDosimetryAnalysisLogic
 
 #
 # GelDosimetryAnalysisSliceletWidget
@@ -83,7 +82,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step0_layoutSelectionCollapsibleButton.setProperty('collapsed', False)
     
     # Create module logic
-    self.logic = GelDosimetryAnalysisLib.GelDosimetryAnalysisLogic()
+    self.logic = GelDosimetryAnalysisLogic.GelDosimetryAnalysisLogic()
 
     # Set up constants
     self.obiMarkupsFiducialNodeName = "OBI fiducials"
@@ -1232,6 +1231,22 @@ class GelDosimetryAnalysisWidget:
 
   def onSliceletClosed(self):
     print('Slicelet closed')
+
+# ---------------------------------------------------------------------------
+class GelDosimetryAnalysisTest(unittest.TestCase):
+  """
+  This is the test case for your scripted module.
+  """
+
+  def setUp(self):
+    """ Do whatever is needed to reset the state - typically a scene clear will be enough.
+    """
+    slicer.mrmlScene.Clear(0)
+
+  def runTest(self):
+    """Run as few or as many tests as needed here.
+    """
+    self.setUp()
 
 #
 # Main

@@ -418,20 +418,14 @@ class GelDosimetryAnalysisLogic:
     start = time.time()
 
     measuredVolume = slicer.util.getNode(measuredVolumeID)
-    measuredVolumeImageData = measuredVolume.GetImageData()
-    
-    calibrator = slicer.vtkApplyPolynomialFunctionOnVolume()
-    calibrator.SetInput(measuredVolumeImageData)
     
     coefficients = vtk.vtkDoubleArray() # TODO: Remove if works without this
     coefficients.DeepCopy( numpy_support.numpy_to_vtk(self.calibrationPolynomialCoeffitients) )
-    calibrator.SetPolynomialCoefficients(coefficients)
 
-    calibrator.Update()
-    newMeasuredVolumeImageData = vtk.vtkImageData()
-    newMeasuredVolumeImageData.DeepCopy(calibrator.GetOutput())
-    measuredVolume.SetAndObserveImageData(newMeasuredVolumeImageData)
-    measuredVolume.Modified()
+    import vtkSlicerGelDosimetryAnalysisAlgoModuleLogic
+    if slicer.modules.geldosimetryanalysisalgo.logic().ApplyPolynomialFunctionOnVolume(measuredVolume, coefficients) == False:
+      print('ERROR: Calibration failed!')
+      return False
 
     end = time.time()
     qt.QApplication.restoreOverrideCursor()
@@ -490,24 +484,6 @@ def curveAlignmentCalibrationFunction():
 
 # Global variable holding the logic instance for the calibration curve minimizer function
 gelDosimetryLogicInstanceGlobal = None
-
-# ---------------------------------------------------------------------------
-# TODO: Move the test class back into the main python script
-class GelDosimetryAnalysisTest(unittest.TestCase):
-  """
-  This is the test case for your scripted module.
-  """
-
-  def setUp(self):
-    """ Do whatever is needed to reset the state - typically a scene clear will be enough.
-    """
-    slicer.mrmlScene.Clear(0)
-
-  def runTest(self):
-    """Run as few or as many tests as needed here.
-    """
-    self.setUp()
-
 
 # Notes:
 # Code snippet to reload logic

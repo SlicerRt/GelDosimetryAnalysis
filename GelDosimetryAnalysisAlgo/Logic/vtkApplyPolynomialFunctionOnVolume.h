@@ -25,7 +25,7 @@
 #ifndef __vtkApplyPolynomialFunctionOnVolume_h
 #define __vtkApplyPolynomialFunctionOnVolume_h
 
-#include "vtkSlicerGelDosimetryAnalysisLibModuleLogicExport.h"
+#include "vtkSlicerGelDosimetryAnalysisAlgoModuleLogicExport.h"
 
 // VTK includes
 #include <vtkImageToImageFilter.h>
@@ -34,7 +34,7 @@
 class vtkImageData;
 
 /// \ingroup GelDosimetryAnalysis
-class VTK_SLICER_GELDOSIMETRYANALYSIS_MODULE_LOGIC_EXPORT vtkApplyPolynomialFunctionOnVolume : public vtkImageToImageFilter
+class VTK_SLICER_GELDOSIMETRYANALYSISALGO_MODULE_LOGIC_EXPORT vtkApplyPolynomialFunctionOnVolume : public vtkImageToImageFilter
 {
 public:
 

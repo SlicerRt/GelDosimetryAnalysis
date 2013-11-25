@@ -2,13 +2,16 @@ project(vtkSlicer${MODULE_NAME}ModuleLogic)
 
 set(KIT ${PROJECT_NAME})
 
-set(${KIT}_EXPORT_DIRECTIVE "VTK_SLICER_GELDOSIMETRYANALYSIS_MODULE_LOGIC_EXPORT")
+set(${KIT}_EXPORT_DIRECTIVE "VTK_SLICER_GELDOSIMETRYANALYSISALGO_MODULE_LOGIC_EXPORT")
 
 set(${KIT}_INCLUDE_DIRECTORIES
   )
 
 set(${KIT}_SRCS
+  vtkSlicer${MODULE_NAME}ModuleLogic.cxx
+  vtkSlicer${MODULE_NAME}ModuleLogic.h 
   vtkApplyPolynomialFunctionOnVolume.cxx
+  vtkApplyPolynomialFunctionOnVolume.h
   )
 
 set(${KIT}_TARGET_LIBRARIES
