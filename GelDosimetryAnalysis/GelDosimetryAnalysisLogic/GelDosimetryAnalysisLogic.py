@@ -1,5 +1,4 @@
 import os
-import unittest
 import time
 from __main__ import vtk, qt, ctk, slicer
 from math import *
@@ -129,7 +128,7 @@ class GelDosimetryAnalysisLogic:
   # ---------------------------------------------------------------------------
   def loadPdd(self, fileName):
     if fileName == None or fileName == '':
-      print('Error: Empty PDD file name!')
+      print('ERROR: Empty PDD file name!')
       return False
 
     readFile = open(fileName, 'r')
@@ -140,13 +139,13 @@ class GelDosimetryAnalysisLogic:
     for line in lines:
       firstValue, endOfLine = line.partition(',')[::2]
       if endOfLine == '':
-        print "Error: File formatted incorrectly!"
+        print "ERROR: File formatted incorrectly!"
         return False
       valueOne = float(firstValue)
       doseTable[rowCounter, 1] = valueOne
       secondValue, lineEnd = endOfLine.partition('\n')[::2]
       if (secondValue == ''):
-        print "Error: Two values are required per line in the file!"
+        print "ERROR: Two values are required per line in the file!"
         return False
       valueTwo = float(secondValue)
       doseTable[rowCounter, 0] = secondValue
@@ -158,25 +157,38 @@ class GelDosimetryAnalysisLogic:
     return True
 
   # ---------------------------------------------------------------------------
-  def getMeanOpticalDensityOfCentralCylinder(self, calibrationVolumeNodeID, centralRadiusPixel):
-    qt.QApplication.setOverrideCursor(qt.QCursor(qt.Qt.BusyCursor))
-    # TODO: central radius is given in pixels. Expect mm instead! (#434)
+  def getMeanOpticalDensityOfCentralCylinder(self, calibrationVolumeNodeID, centralRadiusMm):
     # Format of output array: the following values are provided for each slice:
     #   depth (cm), mean optical density on the slice at depth, std.dev. of optical density
+    qt.QApplication.setOverrideCursor(qt.QCursor(qt.Qt.BusyCursor))
+
     calibrationVolume = slicer.util.getNode(calibrationVolumeNodeID)
     calibrationVolumeImageData = calibrationVolume.GetImageData()
+    
+    # Get image properties needed for the calculation
     calibrationVolumeSliceThicknessCm = calibrationVolume.GetSpacing()[2] / 10.0
+    if calibrationVolume.GetSpacing()[0] != calibrationVolume.GetSpacing()[1]:
+      print('WARNING! Image data X and Y spacing differ! This is not supported, the mean optical density data may be skewed!')
+    calibrationVolumeInPlaneSpacing = calibrationVolume.GetSpacing()[0]
+
+    centralRadiusPixel = int(numpy.ceil(centralRadiusMm / calibrationVolumeInPlaneSpacing))
+    if centralRadiusPixel != centralRadiusMm / calibrationVolumeInPlaneSpacing:
+      print('Central radius has been rounded up to {0} (original radius is {1}mm = {2}px)'.format(centralRadiusPixel, centralRadiusMm, centralRadiusMm / calibrationVolumeInPlaneSpacing))
+
     numberOfSlices = calibrationVolumeImageData.GetExtent()[5] - calibrationVolumeImageData.GetExtent()[4] + 1
-    opticalDensityOfCentralCylinderTable = numpy.zeros((numberOfSlices, 3))
     centerXCoordinate = (calibrationVolumeImageData.GetExtent()[1] - calibrationVolumeImageData.GetExtent()[0])/2
     centerYCoordinate = (calibrationVolumeImageData.GetExtent()[3] - calibrationVolumeImageData.GetExtent()[2])/2
+
+    # Get image data in numpy array
     calibrationVolumeImageDataAsScalars = calibrationVolumeImageData.GetPointData().GetScalars()
     numpyImageDataArray = numpy_support.vtk_to_numpy(calibrationVolumeImageDataAsScalars)
     numpyImageDataArray = numpy.reshape(numpyImageDataArray, (calibrationVolumeImageData.GetExtent()[1]+1, calibrationVolumeImageData.GetExtent()[3]+1, calibrationVolumeImageData.GetExtent()[5]+1), 'F')
     
+    opticalDensityOfCentralCylinderTable = numpy.zeros((numberOfSlices, 3))
     sliceNumber = 0
     z = calibrationVolumeImageData.GetExtent()[5]
-    while z  >= 0:
+    zMin = calibrationVolumeImageData.GetExtent()[4]
+    while z  >= zMin:
       totalPixels = 0
       totalOpticalDensity = 0
       listOfOpticalDensities = []
@@ -206,7 +218,7 @@ class GelDosimetryAnalysisLogic:
       z -= 1
 
     qt.QApplication.restoreOverrideCursor()
-    print('CALIBRATION data has been successfully parsed with averaging radius ' + repr(centralRadiusPixel))
+    print('CALIBRATION data has been successfully parsed with averaging radius {0}mm ({1}px)'.format(centralRadiusMm, centralRadiusPixel))
     self.calibrationDataArray = opticalDensityOfCentralCylinderTable
     return True
 
@@ -217,7 +229,7 @@ class GelDosimetryAnalysisLogic:
 
     # Check the input arrays
     if self.pddDataArray.size == 0 or self.calibrationDataArray.size == 0:
-      print('Error: Pdd or calibration data is empty!')
+      print('ERROR: Pdd or calibration data is empty!')
       return error
 
     # Discard values of 0 from both ends of the data (it is considered invalid)

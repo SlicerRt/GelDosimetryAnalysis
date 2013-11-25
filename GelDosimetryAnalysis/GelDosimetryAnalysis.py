@@ -1,4 +1,5 @@
 import os
+import unittest
 import numpy
 from __main__ import vtk, qt, ctk, slicer
 import GelDosimetryAnalysisLogic
@@ -15,7 +16,7 @@ class GelDosimetryAnalysisSliceletWidget:
     except Exception, e:
       import traceback
       traceback.print_exc()
-      print("Error: There is no parent to GelDosimetryAnalysisSliceletWidget!")
+      print("ERROR: There is no parent to GelDosimetryAnalysisSliceletWidget!")
 
 #
 # SliceletMainFrame
@@ -436,8 +437,8 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step4A_prepareCalibrationDataCollapsibleButtonLayout.addRow('CALIBRATION dose volume: ', self.step4A_calibrationVolumeSelector)
 
     # Input parameters used for finding mean and standard deviation of centre of experimental volume
-    self.step4A_radiusFromCentrePixelLineEdit = qt.QLineEdit()
-    self.step4A_prepareCalibrationDataCollapsibleButtonLayout.addRow('Averaging radius (pixels): ', self.step4A_radiusFromCentrePixelLineEdit)
+    self.step4A_radiusMmFromCentrePixelLineEdit = qt.QLineEdit()
+    self.step4A_prepareCalibrationDataCollapsibleButtonLayout.addRow('Averaging radius (mm): ', self.step4A_radiusMmFromCentrePixelLineEdit)
 
     # Parse/generate appropriate data arrays for analysis
     self.step4A_parseCalibrationVolumeButton = qt.QPushButton("Parse CALIBRATION dose volume")
@@ -822,11 +823,10 @@ class GelDosimetryAnalysisSlicelet(object):
       appLogic.PropagateVolumeSelection() 
 
   def onParseCalibrationVolume(self):
-    radiusOfCentreCircleText = self.step4A_radiusFromCentrePixelLineEdit.text
-    radiusOfCentreCircleInt = int(radiusOfCentreCircleText)
+    radiusOfCentreCircleText = self.step4A_radiusMmFromCentrePixelLineEdit.text
+    radiusOfCentreCircleFloat = float(radiusOfCentreCircleText)
 
-    # TODO: central radius is given in pixels. Expect mm instead! (#434)
-    success = self.logic.getMeanOpticalDensityOfCentralCylinder(self.calibrationVolumeNode.GetID(), radiusOfCentreCircleInt)
+    success = self.logic.getMeanOpticalDensityOfCentralCylinder(self.calibrationVolumeNode.GetID(), radiusOfCentreCircleFloat)
     if success == True:
       self.step4A_parseCalibrationVolumeStatusLabel.setText('Calibration volume parsed successfully')
       return
@@ -1073,7 +1073,7 @@ class GelDosimetryAnalysisSlicelet(object):
     slicer.util.loadNodeFromFile('d:/devel/_Images/RT/20130415_GelDosimetryData/Opt CT Data/051513-e_HR.vff', 'VffFile', {})
     slicer.app.ioManager().disconnect('newFileLoaded(qSlicerIO::IOProperties)', self.setCalibrationData)
     # Parse calibration volume
-    self.step4A_radiusFromCentrePixelLineEdit.setText('5')
+    self.step4A_radiusMmFromCentrePixelLineEdit.setText('2.5')
     self.onParseCalibrationVolume()
     # Align calibration curves
     self.onAlignCalibrationCurves()
@@ -1106,7 +1106,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step4A_calibrationVolumeSelector.setCurrentNode(self.calibrationVolumeNode)
     
     # Parse calibration volume
-    self.step4A_radiusFromCentrePixelLineEdit.setText('5')
+    self.step4A_radiusMmFromCentrePixelLineEdit.setText('2.5')
     self.onParseCalibrationVolume()
 
     # Calibration
