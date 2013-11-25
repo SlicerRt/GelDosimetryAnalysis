@@ -27,8 +27,6 @@ class SliceletMainFrame(qt.QFrame):
     self.slicelet = slicelet
 
   def hideEvent(self, event):
-    self.slicelet.disconnect()
-    
     import gc
     refs = gc.get_referrers(self.slicelet)
     if len(refs) > 1:
@@ -62,7 +60,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.selfTestButton = qt.QPushButton("Run self-test")
     self.sliceletPanelLayout.addWidget(self.selfTestButton)
     self.selfTestButton.connect('clicked()', self.onSelfTestButtonClicked)
-    # self.selfTestButton.setVisible(False) # Should be commented for testing so the button shows up
+    # self.selfTestButton.setVisible(False) # TODO: Should be commented for testing so the button shows up
 
     # Initiate and group together all panels
     self.step0_layoutSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
@@ -103,12 +101,11 @@ class GelDosimetryAnalysisSlicelet(object):
       slicer.modules.markups
       self.markupsWidget = slicer.modules.markups.widgetRepresentation()
       self.markupsWidgetLayout = self.markupsWidget.layout()
-      self.markupsWidget.setLayout(None) # TODO: May not be needed
       self.markupsLogic = slicer.modules.markups.logic()
     except Exception, e:
       import traceback
       traceback.print_exc()
-      print('Unable to find Markups module!')
+      print('ERROR: Unable to find Markups module!')
     # Build re-usable markups widget
     self.markupsWidgetClone = qt.QFrame()
     self.markupsWidgetClone.setLayout(self.markupsWidgetLayout)
@@ -132,7 +129,7 @@ class GelDosimetryAnalysisSlicelet(object):
     except Exception, e:
       import traceback
       traceback.print_exc()
-      print('Failed to correctly reparent the Markups widget!')
+      print('ERROR: Failed to correctly reparent the Markups widget!')
 
     # Create or get fiducial nodes
     self.obiMarkupsFiducialNode = slicer.util.getNode(self.obiMarkupsFiducialNodeName)
@@ -176,7 +173,7 @@ class GelDosimetryAnalysisSlicelet(object):
     except Exception, e:
       import traceback
       traceback.print_exc()
-      print('Cleaning up failed!')
+      print('ERROR: Cleaning up failed!')
 
   # Disconnect all connections made to the slicelet to enable the garbage collector to destruct the slicelet object on quit
   def disconnect(self):
@@ -190,16 +187,18 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step3C_measuredFiducialSelectionCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep3C_ObiFiducialCollectionSelected)
     self.step3B_loadMeasuredDataButton.disconnect('clicked()', self.onLoadMeasuredData)
     self.step3D_registerMeasuredToObiButton.disconnect('clicked()', self.onMeasuredToObiRegistration)
-    self.step4A_prepareCalibrationDataCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep4A_PrepareCalibrationDataSelected)
     self.step4A_pddLoadDataButton.disconnect('clicked()', self.onLoadPddDataRead)
     self.step4A_loadCalibrationDataButton.disconnect('clicked()', self.onLoadCalibrationData)
     self.step4A_parseCalibrationVolumeButton.disconnect('clicked()', self.onParseCalibrationVolume)
     self.step4B_alignCalibrationCurvesButton.disconnect('clicked()', self.onAlignCalibrationCurves)
-    self.step4B_generateDoseInformationButton.disconnect('clicked()', self.onGenerateDoseInformationForCalibrationData)
+    self.step4B_computeDoseFromPddButton.disconnect('clicked()', self.onComputeDoseFromPdd)
     self.step4C_polynomialFittingAndCalibrationCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep4C_PolynomialFittingAndCalibrationSelected)
     self.step4C_showOpticalDensityVsDoseCurveButton.disconnect('clicked()', self.onShowOpticalDensityVsDoseCurve)
     self.step4C_fitPolynomialToOpticalDensityVsDoseCurveButton.disconnect('clicked()', self.onFitPolynomialToOpticalDensityVsDoseCurve)
     self.step4C_applyCalibrationButton.disconnect('clicked()', self.onApplyCalibration)
+    self.step5_doseComparisonCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep5_DoseComparisonSelected)
+    self.step5A_referenceDoseUseMaximumDoseRadioButton.disconnect('toggled(bool)', self.onUseMaximumDoseRadioButtonToggled)
+    self.step5A_computeGammaButton.disconnect('clicked()', self.onGammaDoseComparison)
 
   def setup_Step0_LayoutSelection(self):
     # Layout selection step
@@ -413,7 +412,7 @@ class GelDosimetryAnalysisSlicelet(object):
 
     # Load Pdd data
     self.step4A_pddLoadDataButton = qt.QPushButton("Load file")
-    self.step4A_pddLoadDataButton.toolTip = "Load Pdd data"
+    self.step4A_pddLoadDataButton.toolTip = "Load PDD data"
     self.step4A_prepareCalibrationDataCollapsibleButtonLayout.addRow('Percent Depth Dose (PDD) data: ', self.step4A_pddLoadDataButton)
     # Add empty row
     self.step4A_pddLoadStatusLabel = qt.QLabel()
@@ -468,9 +467,12 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step4B_alignPddAndExperimentalDataCollapsibleButtonLayout.addRow("Electron MU's: ", self.step4B_monitorUnitsLineEdit)
 
     # Create dose information button
-    self.step4B_generateDoseInformationButton = qt.QPushButton("Generate dose information")
-    self.step4B_generateDoseInformationButton.toolTip = "Generate dose information for calibration data based on alignment with PDD data"
-    self.step4B_alignPddAndExperimentalDataCollapsibleButtonLayout.addRow(self.step4B_generateDoseInformationButton)
+    self.step4B_computeDoseFromPddButton = qt.QPushButton("Compute dose from percent depth dose")
+    self.step4B_computeDoseFromPddButton.toolTip = "Compute dose from PDD data based on RDF and MUs"
+    self.step4B_alignPddAndExperimentalDataCollapsibleButtonLayout.addRow(self.step4B_computeDoseFromPddButton)
+
+    self.step4B_computeDoseFromPddStatusLabel = qt.QLabel()
+    self.step4B_alignPddAndExperimentalDataCollapsibleButtonLayout.addRow(' ', self.step4B_computeDoseFromPddStatusLabel)
 
     # Step 4/C): Fit polynomial and apply calibration
     self.step4C_polynomialFittingAndCalibrationCollapsibleButton.text = "4/C) Fit polynomial and apply calibration"
@@ -510,12 +512,11 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step4C_polynomialFittingAndCalibrationCollapsibleButtonLayout.addRow(' ', self.step4C_applyCalibrationStatusLabel)
     
     # Connections
-    self.step4A_prepareCalibrationDataCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep4A_PrepareCalibrationDataSelected)
     self.step4A_pddLoadDataButton.connect('clicked()', self.onLoadPddDataRead)
     self.step4A_loadCalibrationDataButton.connect('clicked()', self.onLoadCalibrationData)
     self.step4A_parseCalibrationVolumeButton.connect('clicked()', self.onParseCalibrationVolume)
     self.step4B_alignCalibrationCurvesButton.connect('clicked()', self.onAlignCalibrationCurves)
-    self.step4B_generateDoseInformationButton.connect('clicked()', self.onGenerateDoseInformationForCalibrationData)
+    self.step4B_computeDoseFromPddButton.connect('clicked()', self.onComputeDoseFromPdd)
     self.step4C_polynomialFittingAndCalibrationCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep4C_PolynomialFittingAndCalibrationSelected)
     self.step4C_showOpticalDensityVsDoseCurveButton.connect('clicked()', self.onShowOpticalDensityVsDoseCurve)
     self.step4C_fitPolynomialToOpticalDensityVsDoseCurveButton.connect('clicked()', self.onFitPolynomialToOpticalDensityVsDoseCurve)
@@ -526,72 +527,123 @@ class GelDosimetryAnalysisSlicelet(object):
     
   def setup_Step5_DoseComparison(self):
     # Step 5: Dose comparison and analysis
-    # TODO: Not visible in slicelet yet
     self.step5_doseComparisonCollapsibleButton.setProperty('collapsedHeight', 4)
     self.step5_doseComparisonCollapsibleButton.text = "5. Perform dose comparison and analysis"
     self.sliceletPanelLayout.addWidget(self.step5_doseComparisonCollapsibleButton)
     self.step5_doseComparisonCollapsibleButtonLayout = qt.QFormLayout(self.step5_doseComparisonCollapsibleButton)
     self.step5_doseComparisonCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
     self.step5_doseComparisonCollapsibleButtonLayout.setSpacing(4)
-    self.step5_doseComparisonCollapsibleButton.setVisible(False)
 
     # Plan dose volume selector
-    self.planDoseVolumeSelector = slicer.qMRMLNodeComboBox()
-    self.planDoseVolumeSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
-    self.planDoseVolumeSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 0 )
-    self.planDoseVolumeSelector.addEnabled = False
-    self.planDoseVolumeSelector.removeEnabled = False
-    self.planDoseVolumeSelector.setMRMLScene( slicer.mrmlScene )
-    self.planDoseVolumeSelector.setToolTip( "Pick the previously loaded MEASURED CT volume for registration." )
-    self.step5_doseComparisonCollapsibleButtonLayout.addRow("Plan dose volume: ", self.planDoseVolumeSelector)
+    self.step5_planDoseSelector = slicer.qMRMLNodeComboBox()
+    self.step5_planDoseSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
+    self.step5_planDoseSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 0 )
+    self.step5_planDoseSelector.addEnabled = False
+    self.step5_planDoseSelector.removeEnabled = False
+    self.step5_planDoseSelector.setMRMLScene( slicer.mrmlScene )
+    self.step5_planDoseSelector.setToolTip( "Pick the PLANDOSE volume for comparison" )
+    self.step5_doseComparisonCollapsibleButtonLayout.addRow('PLANDOSE volume: ', self.step5_planDoseSelector)
 
     # MEASURED dose volume selector
-    self.measuredDoseVolumeSelector = slicer.qMRMLNodeComboBox()
-    self.measuredDoseVolumeSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
-    self.measuredDoseVolumeSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 0 )
-    self.measuredDoseVolumeSelector.addEnabled = False
-    self.measuredDoseVolumeSelector.removeEnabled = False
-    self.measuredDoseVolumeSelector.setMRMLScene( slicer.mrmlScene )
-    self.measuredDoseVolumeSelector.setToolTip( "Pick the previously loaded MEASURED CT volume for registration." )
-    self.step5_doseComparisonCollapsibleButtonLayout.addRow("MEASURED dose volume: ", self.measuredDoseVolumeSelector)
+    self.step5_measuredDoseSelector = slicer.qMRMLNodeComboBox()
+    self.step5_measuredDoseSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
+    self.step5_measuredDoseSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 0 )
+    self.step5_measuredDoseSelector.addEnabled = False
+    self.step5_measuredDoseSelector.removeEnabled = False
+    self.step5_measuredDoseSelector.setMRMLScene( slicer.mrmlScene )
+    self.step5_measuredDoseSelector.setToolTip( "Pick the calibrated MEASURED optical CT volume for comparison." )
+    self.step5_doseComparisonCollapsibleButtonLayout.addRow("MEASURED dose volume: ", self.step5_measuredDoseSelector)
 
     # Collapsible buttons for substeps
-    self.gammaDoseComparison = ctk.ctkCollapsibleButton()
-    self.gammaDoseComparison.setProperty('collapsedHeight', 4)
-    self.chiDoseComparison = ctk.ctkCollapsibleButton()
-    self.chiDoseComparison.setProperty('collapsedHeight', 4)
-    self.doseDifferenceComparison = ctk.ctkCollapsibleButton()
-    self.doseDifferenceComparison.setProperty('collapsedHeight', 4)
+    self.step5A_gammaDoseComparisonCollapsibleButton = ctk.ctkCollapsibleButton()
+    self.step5A_gammaDoseComparisonCollapsibleButton.setProperty('collapsedHeight', 4)
+    self.step5B_chiDoseComparisonCollapsibleButton = ctk.ctkCollapsibleButton() # TODO:
+    self.step5B_chiDoseComparisonCollapsibleButton.setProperty('collapsedHeight', 4)
+    self.step5B_chiDoseComparisonCollapsibleButton.setVisible(False)
+    self.step5C_doseDifferenceComparisonCollapsibleButton = ctk.ctkCollapsibleButton() # TODO:
+    self.step5C_doseDifferenceComparisonCollapsibleButton.setProperty('collapsedHeight', 4)
+    self.step5C_doseDifferenceComparisonCollapsibleButton.setVisible(False)
 
     self.collapsibleButtonsGroupForDoseComparisonAndAnalysis = qt.QButtonGroup()
-    self.collapsibleButtonsGroupForDoseComparisonAndAnalysis.addButton(self.gammaDoseComparison)
-    self.collapsibleButtonsGroupForDoseComparisonAndAnalysis.addButton(self.chiDoseComparison)
-    self.collapsibleButtonsGroupForDoseComparisonAndAnalysis.addButton(self.doseDifferenceComparison)
+    self.collapsibleButtonsGroupForDoseComparisonAndAnalysis.addButton(self.step5A_gammaDoseComparisonCollapsibleButton)
+    self.collapsibleButtonsGroupForDoseComparisonAndAnalysis.addButton(self.step5B_chiDoseComparisonCollapsibleButton)
+    self.collapsibleButtonsGroupForDoseComparisonAndAnalysis.addButton(self.step5C_doseDifferenceComparisonCollapsibleButton)
 
-    # A) Gamma dose comparison
-    self.gammaDoseComparison.text = "5/A) Gamma dose comparison"
-    self.gammaDoseComparisonLayout = qt.QFormLayout(self.gammaDoseComparison)
-    self.step5_doseComparisonCollapsibleButtonLayout.addRow(self.gammaDoseComparison)
-    self.gammaDoseComparisonLayout.setContentsMargins(12,4,4,4)
-    self.gammaDoseComparisonLayout.setSpacing(4)
+    # 5/A) Gamma dose comparison
+    self.step5A_gammaDoseComparisonCollapsibleButton.text = "5/A) Gamma dose comparison"
+    self.step5A_gammaDoseComparisonCollapsibleButtonLayout = qt.QFormLayout(self.step5A_gammaDoseComparisonCollapsibleButton)
+    self.step5_doseComparisonCollapsibleButtonLayout.addRow(self.step5A_gammaDoseComparisonCollapsibleButton)
+    self.step5A_gammaDoseComparisonCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
+    self.step5A_gammaDoseComparisonCollapsibleButtonLayout.setSpacing(4)
 
-    # B) Chi dose comparison
-    self.chiDoseComparison.text = "5/B) Chi dose comparison"
-    self.chiDoseComparisonLayout = qt.QFormLayout(self.chiDoseComparison)
-    self.step5_doseComparisonCollapsibleButtonLayout.addRow(self.chiDoseComparison)
-    self.chiDoseComparisonLayout.setContentsMargins(12,4,4,4)
-    self.chiDoseComparisonLayout.setSpacing(4)
+    self.step5A_dtaDistanceToleranceMmSpinBox = qt.QDoubleSpinBox()
+    self.step5A_dtaDistanceToleranceMmSpinBox.setValue(3.0)
+    self.step5A_gammaDoseComparisonCollapsibleButtonLayout.addRow('DTA distance tolerance (mm): ', self.step5A_dtaDistanceToleranceMmSpinBox)
+
+    self.step5A_doseDifferenceTolerancePercentSpinBox = qt.QDoubleSpinBox()
+    self.step5A_doseDifferenceTolerancePercentSpinBox.setValue(3.0)
+    self.step5A_gammaDoseComparisonCollapsibleButtonLayout.addRow('Dose difference tolerance (%): ', self.step5A_doseDifferenceTolerancePercentSpinBox)
+
+    self.step5A_referenceDoseLayout = qt.QGridLayout()
+    self.step5A_referenceDoseLabel = qt.QLabel('Reference dose: ')
+    self.step5A_referenceDoseLayout.addWidget(self.step5A_referenceDoseLabel, 0, 0, 2, 1)
+    self.step5A_referenceDoseUseMaximumDoseRadioButton = qt.QRadioButton('Use maximum dose')
+    self.step5A_referenceDoseLayout.addWidget(self.step5A_referenceDoseUseMaximumDoseRadioButton, 0, 1)
+    self.step5A_referenceDoseUseCustomValueGyRadioButton = qt.QRadioButton('Use custom value (Gy)')
+    self.step5A_referenceDoseLayout.addWidget(self.step5A_referenceDoseUseCustomValueGyRadioButton, 1, 1)
+    self.step5A_referenceDoseCustomValueGySpinBox = qt.QDoubleSpinBox()
+    self.step5A_referenceDoseCustomValueGySpinBox.setValue(5.0)
+    self.step5A_referenceDoseCustomValueGySpinBox.setEnabled(False)
+    self.step5A_referenceDoseLayout.addWidget(self.step5A_referenceDoseCustomValueGySpinBox, 1, 2)
+    self.step5A_gammaDoseComparisonCollapsibleButtonLayout.addRow(self.step5A_referenceDoseLayout)
+
+    self.step5A_analysisThresholdPercentSpinBox = qt.QDoubleSpinBox()
+    self.step5A_analysisThresholdPercentSpinBox.setValue(0.0)
+    self.step5A_gammaDoseComparisonCollapsibleButtonLayout.addRow('Analysis threshold (%): ', self.step5A_analysisThresholdPercentSpinBox)
+
+    self.step5A_maximumGammaSpinBox = qt.QDoubleSpinBox()
+    self.step5A_maximumGammaSpinBox.setValue(2.0)
+    self.step5A_gammaDoseComparisonCollapsibleButtonLayout.addRow('Maximum gamma: ', self.step5A_maximumGammaSpinBox)
+
+    self.step5_gammaVolumeSelector = slicer.qMRMLNodeComboBox()
+    self.step5_gammaVolumeSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
+    self.step5_gammaVolumeSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 0 )
+    self.step5_gammaVolumeSelector.addEnabled = True
+    self.step5_gammaVolumeSelector.removeEnabled = False
+    self.step5_gammaVolumeSelector.setMRMLScene( slicer.mrmlScene )
+    self.step5_gammaVolumeSelector.setToolTip( "Select output gamma volume" )
+    self.step5_gammaVolumeSelector.setProperty('baseName', 'GammaVolume')
+    self.step5A_gammaDoseComparisonCollapsibleButtonLayout.addRow("Gamma volume: ", self.step5_gammaVolumeSelector)
+
+    self.step5A_computeGammaButton = qt.QPushButton('Compute gamma')
+    self.step5A_gammaDoseComparisonCollapsibleButtonLayout.addRow(self.step5A_computeGammaButton)
+
+    self.step5A_gammaStatusLabel = qt.QLabel()
+    self.step5A_gammaDoseComparisonCollapsibleButtonLayout.addRow(self.step5A_gammaStatusLabel)
+
+    # 5/B) Chi dose comparison
+    self.step5B_chiDoseComparisonCollapsibleButton.text = "5/B) Chi dose comparison"
+    self.step5B_chiDoseComparisonCollapsibleButtonLayout = qt.QFormLayout(self.step5B_chiDoseComparisonCollapsibleButton)
+    self.step5_doseComparisonCollapsibleButtonLayout.addRow(self.step5B_chiDoseComparisonCollapsibleButton)
+    self.step5B_chiDoseComparisonCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
+    self.step5B_chiDoseComparisonCollapsibleButtonLayout.setSpacing(4)
 
     # C) Dose difference comparison
-    self.doseDifferenceComparison.text = "5/C) Dose difference comparison"
-    self.doseDifferenceComparisonLayout = qt.QFormLayout(self.doseDifferenceComparison)
-    self.step5_doseComparisonCollapsibleButtonLayout.addRow(self.doseDifferenceComparison)
-    self.doseDifferenceComparisonLayout.setContentsMargins(12,4,4,4)
-    self.doseDifferenceComparisonLayout.setSpacing(4)
+    self.step5C_doseDifferenceComparisonCollapsibleButton.text = "5/C) Dose difference comparison"
+    self.step5C_doseDifferenceComparisonCollapsibleButtonLayout = qt.QFormLayout(self.step5C_doseDifferenceComparisonCollapsibleButton)
+    self.step5_doseComparisonCollapsibleButtonLayout.addRow(self.step5C_doseDifferenceComparisonCollapsibleButton)
+    self.step5C_doseDifferenceComparisonCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
+    self.step5C_doseDifferenceComparisonCollapsibleButtonLayout.setSpacing(4)
+
+    # Connections
+    self.step5_doseComparisonCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep5_DoseComparisonSelected)
+    self.step5A_referenceDoseUseMaximumDoseRadioButton.connect('toggled(bool)', self.onUseMaximumDoseRadioButtonToggled)
+    self.step5A_computeGammaButton.connect('clicked()', self.onGammaDoseComparison)
 
     # Open gamma dose comparison panel when step is first opened
-    self.gammaDoseComparison.setProperty('collapsed',False)
-    
+    self.step5A_gammaDoseComparisonCollapsibleButton.setProperty('collapsed',False)
+    self.step5A_referenceDoseUseMaximumDoseRadioButton.setChecked(True)
+
   #
   # Event handler functions
   #
@@ -617,6 +669,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.measuredVolumeNode = slicer.mrmlScene.GetNthNode( slicer.mrmlScene.GetNumberOfNodes()-2 )
     self.step3D_measuredVolumeSelector.setCurrentNode(self.measuredVolumeNode)
     self.step4C_measuredVolumeSelector.setCurrentNode(self.measuredVolumeNode)
+    self.step5_measuredDoseSelector.setCurrentNode(self.measuredVolumeNode)
 
     self.step3B_loadMeasuredDataStatusLabel.setText('Volume loaded and set as MEASURED')
 
@@ -741,16 +794,14 @@ class GelDosimetryAnalysisSlicelet(object):
   def onObiToPlanCTRegistration(self):
     # Save selection for later
     self.planCtVolumeNode = self.planCTSelector.currentNode()
+    self.planDoseVolumeNode = self.planDoseSelector.currentNode()
     self.obiVolumeNode = self.obiSelector.currentNode()
 
     # Start registration
     obiVolumeID = self.obiSelector.currentNodeID
     planCTVolumeID = self.planCTSelector.currentNodeID
-    self.logic.registerObiToPlanCt(obiVolumeID, planCTVolumeID)
-
-    # TODO: Apply result transformation to PLANDOSE volume
-    # obiToPlanTransformNode = slicer.util.getNode(self.logic.obiToPlanTransformName)
-    # self.planDoseVolumeNode.SetAndObserveTransformNodeID(obiToPlanTransformNode.GetID())
+    planDoseVolumeID = self.planDoseSelector.currentNodeID
+    self.logic.registerObiToPlanCt(obiVolumeID, planCTVolumeID, planDoseVolumeID)
 
     # Show the two volumes for visual evaluation of the registration
     appLogic = slicer.app.applicationLogic()
@@ -785,19 +836,15 @@ class GelDosimetryAnalysisSlicelet(object):
     selectionNode.SetReferenceSecondaryVolumeID(self.measuredVolumeNode.GetID())
     appLogic.PropagateVolumeSelection() 
 
-  def onStep4A_PrepareCalibrationDataSelected(self):
-    # TODO: Is this necssary? setCalibrationData should be enough
-    self.step4A_calibrationVolumeSelector.setCurrentNode(self.calibrationVolumeNode)
-
   def onLoadPddDataRead(self):
     self.step4A_pddLoadStatusLabel.setText('')
-    fileName = qt.QFileDialog.getOpenFileName(0, 'Open Pdd data file', '', 'CSV with COMMA ( *.csv )')
+    fileName = qt.QFileDialog.getOpenFileName(0, 'Open PDD data file', '', 'CSV with COMMA ( *.csv )')
     if fileName != None and fileName != '':
       success = self.logic.loadPdd(fileName)
       if success == True:
-        self.step4A_pddLoadStatusLabel.setText('Pdd loaded successfully')
+        self.step4A_pddLoadStatusLabel.setText('PDD loaded successfully')
         return
-    self.step4A_pddLoadStatusLabel.setText('Pdd loading failed!')
+    self.step4A_pddLoadStatusLabel.setText('PDD loading failed!')
 
   def onLoadCalibrationData(self):
     slicer.app.ioManager().connect('newFileLoaded(qSlicerIO::IOProperties)', self.setCalibrationData)
@@ -868,7 +915,7 @@ class GelDosimetryAnalysisSlicelet(object):
     pddDepthArray.SetName("Depth (cm)")
     self.pddDataTable.AddColumn(pddDepthArray)
     pddValueArray = vtk.vtkDoubleArray()
-    pddValueArray.SetName("Pdd data (percentage of maximum dose)") # TODO: % of max dose? GY?
+    pddValueArray.SetName("PDD (percent depth dose)")
     self.pddDataTable.AddColumn(pddValueArray)
 
     self.pddDataTable.SetNumberOfRows(pddNumberOfRows)
@@ -888,7 +935,7 @@ class GelDosimetryAnalysisSlicelet(object):
     calibrationDataAlignedDepthArray.SetName("Depth (cm)")
     self.calibrationDataAlignedTable.AddColumn(calibrationDataAlignedDepthArray)
     calibrationDataAlignedValueArray = vtk.vtkDoubleArray()
-    calibrationDataAlignedValueArray.SetName("Aligned calibration data") # TODO
+    calibrationDataAlignedValueArray.SetName("Aligned calibration data")
     self.calibrationDataAlignedTable.AddColumn(calibrationDataAlignedValueArray)
 
     self.calibrationDataAlignedTable.SetNumberOfRows(calibrationDataAlignedNumberOfRows)
@@ -903,9 +950,9 @@ class GelDosimetryAnalysisSlicelet(object):
 
     # Show chart
     self.calibrationCurveChart.GetAxis(1).SetTitle('Depth (cm)')
-    self.calibrationCurveChart.GetAxis(0).SetTitle('Percentage of maximum dose')
+    self.calibrationCurveChart.GetAxis(0).SetTitle('Percent Depth Dose / Optical Density')
     self.calibrationCurveChart.SetShowLegend(True)
-    self.calibrationCurveChart.SetTitle('Pdd vs Calibration data')
+    self.calibrationCurveChart.SetTitle('PDD vs Calibration data')
     self.calibrationCurveChartView.GetInteractor().Initialize()
     self.calibrationCurveChartView.GetRenderWindow().SetSize(800,550)
     self.calibrationCurveChartView.GetRenderWindow().Start()
@@ -918,13 +965,17 @@ class GelDosimetryAnalysisSlicelet(object):
     # Show plots
     self.showCalibrationCurves()
     	
-  def onGenerateDoseInformationForCalibrationData(self):
+  def onComputeDoseFromPdd(self):
     rdfInputText = self.step4B_rdfLineEdit.text
     monitorUnitsInputText = self.step4B_monitorUnitsLineEdit.text
     rdfFloat = float(rdfInputText)
     monitorUnitsFloat = float(monitorUnitsInputText)
+
     # Calculate dose information: calculatedDose = (PddDose * MonitorUnits * RDF) / 10000
-    self.logic.doseGenerationForMeasuredData(rdfFloat, monitorUnitsFloat)
+    if self.logic.computeDoseForMeasuredData(rdfFloat, monitorUnitsFloat) == True:
+      self.step4B_computeDoseFromPddStatusLabel.setText('Dose successfully calculated from PDD')
+    else:
+      self.step4B_computeDoseFromPddStatusLabel.setText('Dose calculation from PDD failed!')
 
   def onShowOpticalDensityVsDoseCurve(self):
     # Create optical density vs dose function
@@ -1007,35 +1058,98 @@ class GelDosimetryAnalysisSlicelet(object):
 
   def onApplyCalibration(self):
     if self.logic.calibrate(self.measuredVolumeNode.GetID()) == True:
-      self.step4C_applyCalibrationStatusLabel.setText('Calibration successfully performed!')
+      self.step4C_applyCalibrationStatusLabel.setText('Calibration successfully performed')
     else:
       self.step4C_applyCalibrationStatusLabel.setText('Calibration failed!')
+
+    # Set window/level options for the calibrated dose
+    measuredVolumeDisplayNode = self.measuredVolumeNode.GetDisplayNode()
+    odVsDoseNumberOfRows = self.logic.opticalDensityVsDoseFunction.shape[0]
+    minDose = self.logic.opticalDensityVsDoseFunction[0, 1]
+    maxDose = self.logic.opticalDensityVsDoseFunction[odVsDoseNumberOfRows-1, 1]
+    minWindowLevel = minDose - (maxDose-minDose)*0.2
+    maxWindowLevel = maxDose + (maxDose-minDose)*0.2
+    measuredVolumeDisplayNode.AutoWindowLevelOff();
+    measuredVolumeDisplayNode.SetWindowLevelMinMax(minWindowLevel, maxWindowLevel);
+
+  def onStep5_DoseComparisonSelected(self, collapsed):
+    # Set plan dose volume to selector
+    if collapsed == False:
+      self.step5_planDoseSelector.setCurrentNode(self.planDoseVolumeNode)
+
+  def onUseMaximumDoseRadioButtonToggled(self, toggled):
+    self.step5A_referenceDoseCustomValueGySpinBox.setEnabled(not toggled)
+
+  def onGammaDoseComparison(self):
+    try:
+      slicer.modules.dosecomparison
+      import vtkSlicerDoseComparisonModuleLogic
+
+      self.gammaParameterSetNode = vtkSlicerDoseComparisonModuleLogic.vtkMRMLDoseComparisonNode()
+      slicer.mrmlScene.AddNode(self.gammaParameterSetNode)
+      self.gammaParameterSetNode.SetAndObserveReferenceDoseVolumeNode(self.step5_planDoseSelector.currentNode())
+      self.gammaParameterSetNode.SetAndObserveCompareDoseVolumeNode(self.step5_measuredDoseSelector.currentNode())
+      self.gammaParameterSetNode.SetAndObserveGammaVolumeNode(self.step5_gammaVolumeSelector.currentNode())
+      self.gammaParameterSetNode.SetDtaDistanceToleranceMm(self.step5A_dtaDistanceToleranceMmSpinBox.value)
+      self.gammaParameterSetNode.SetDoseDifferenceTolerancePercent(self.step5A_doseDifferenceTolerancePercentSpinBox.value)
+      self.gammaParameterSetNode.SetUseMaximumDose(self.step5A_referenceDoseUseMaximumDoseRadioButton.isChecked())
+      self.gammaParameterSetNode.SetReferenceDoseGy(self.step5A_referenceDoseCustomValueGySpinBox.value)
+      self.gammaParameterSetNode.SetAnalysisThresholdPercent(self.step5A_analysisThresholdPercentSpinBox.value)
+      self.gammaParameterSetNode.SetMaximumGamma(self.step5A_maximumGammaSpinBox.value)
+      
+      slicer.modules.dosecomparison.logic().SetAndObserveDoseComparisonNode(self.gammaParameterSetNode)
+      slicer.modules.dosecomparison.logic().ComputeGammaDoseDifference()
+      
+      if self.gammaParameterSetNode.GetResultsValid():
+        self.step5A_gammaStatusLabel.setText('Gamma dose comparison succeeded\nPass fraction: {0:.2f}%'.format(self.gammaParameterSetNode.GetPassFractionPercent()))
+      else:
+        self.step5A_gammaStatusLabel.setText('Gamma dose comparison failed!')
+
+      # Show gamma volume
+      appLogic = slicer.app.applicationLogic()
+      selectionNode = appLogic.GetSelectionNode()
+      selectionNode.SetReferenceActiveVolumeID(self.step5_gammaVolumeSelector.currentNodeID)
+      selectionNode.SetReferenceSecondaryVolumeID(None)
+      appLogic.PropagateVolumeSelection() 
+      
+    except Exception, e:
+      import traceback
+      traceback.print_exc()
+      print('ERROR: Failed to perform gamma dose comparison!')
 
   #
   # Testing related functions
   #
   def onSelfTestButtonClicked(self):
-    # self.performSelfTestFromScratch()
-    self.performSelfTestFromSavedScene()
+    self.performSelfTestFromScratch()
+    # self.performSelfTestFromSavedScene()
 
   def performSelfTestFromScratch(self):
     # 1. Load test data
     dicomWidget = slicer.modules.dicom.widgetRepresentation().self()
+    # Plan CT
     dicomWidget.detailsPopup.offerLoadables('1.2.246.352.71.2.1706542068.2765222.20130515154841', 'Series')
     dicomWidget.detailsPopup.examineForLoading()
     dicomWidget.detailsPopup.loadCheckedLoadables()
+    # OBI
     dicomWidget.detailsPopup.offerLoadables('1.2.246.352.61.2.5072632187121435903.9111181212989789573', 'Series')
+    dicomWidget.detailsPopup.examineForLoading()
+    dicomWidget.detailsPopup.loadCheckedLoadables()
+    # Plan dose
+    dicomWidget.detailsPopup.offerLoadables('1.2.246.352.71.2.1706542068.2765224.20130515154906', 'Series')
     dicomWidget.detailsPopup.examineForLoading()
     dicomWidget.detailsPopup.loadCheckedLoadables()
     slicer.app.processEvents()
     self.logic.delayDisplay('Wait for the slicelet to catch up', 300)
-    
+
     # 2. Register
     self.step2_obiToPlanCtRegistrationCollapsibleButton.setChecked(True)
     planCTVolumeID = 'vtkMRMLScalarVolumeNode1'
     self.planCTSelector.setCurrentNodeID(planCTVolumeID)
     obiVolumeID = 'vtkMRMLScalarVolumeNode2'
     self.obiSelector.setCurrentNodeID(obiVolumeID)
+    planDoseVolumeID = 'vtkMRMLScalarVolumeNode3'
+    self.planDoseSelector.setCurrentNodeID(planDoseVolumeID)
     self.onObiToPlanCTRegistration()
     slicer.app.processEvents()
 
@@ -1072,6 +1186,7 @@ class GelDosimetryAnalysisSlicelet(object):
     slicer.app.ioManager().connect('newFileLoaded(qSlicerIO::IOProperties)', self.setCalibrationData)
     slicer.util.loadNodeFromFile('d:/devel/_Images/RT/20130415_GelDosimetryData/Opt CT Data/051513-e_HR.vff', 'VffFile', {})
     slicer.app.ioManager().disconnect('newFileLoaded(qSlicerIO::IOProperties)', self.setCalibrationData)
+
     # Parse calibration volume
     self.step4A_radiusMmFromCentrePixelLineEdit.setText('2.5')
     self.onParseCalibrationVolume()
@@ -1080,7 +1195,7 @@ class GelDosimetryAnalysisSlicelet(object):
     # Generate dose information
     self.step4B_rdfLineEdit.setText('0.989')
     self.step4B_monitorUnitsLineEdit.setText('230')
-    self.onGenerateDoseInformationForCalibrationData()
+    self.onComputeDoseFromPdd()
     # Show optical density VS dose curve
     self.step4C_polynomialFittingAndCalibrationCollapsibleButton.setChecked(True)
     self.onShowOpticalDensityVsDoseCurve()
@@ -1089,18 +1204,27 @@ class GelDosimetryAnalysisSlicelet(object):
     # Calibrate
     self.onApplyCalibration()
 
+    # 5. Dose comparison
+    slicer.app.processEvents()
+    self.logic.delayDisplay('Wait for the slicelet to catch up', 300)
+    self.step5_doseComparisonCollapsibleButton.setChecked(True)
+    self.step5_gammaVolumeSelector.addNode()
+    self.onGammaDoseComparison()
+
   def performSelfTestFromSavedScene(self):
     qt.QApplication.setOverrideCursor(qt.QCursor(qt.Qt.BusyCursor))
     # Load scene
-    slicer.util.loadScene('c:/Slicer_Data/20131119_GelDosimetry_CurveAlignment/2013-11-19-Scene.mrml')
+    slicer.util.loadScene('c:/Slicer_Data/20131125_GelDosimetry_UpToStep_3D/2013-11-25-Scene.mrml')
 
     # Set member variables for the loaded scene
     self.planCtVolumeNode = slicer.util.getNode('7: ARIA RadOnc Images - Verification Plan Phantom')
     self.obiVolumeNode = slicer.util.getNode('0: Unknown')
+    self.planDoseVolumeNode = slicer.util.getNode('33: RTDOSE: Eclipse Doses')
 
     self.measuredVolumeNode = slicer.util.getNode('051513-01_hr.vff')
     self.step3D_measuredVolumeSelector.setCurrentNode(self.measuredVolumeNode)
     self.step4C_measuredVolumeSelector.setCurrentNode(self.measuredVolumeNode)
+    self.step5_measuredDoseSelector.setCurrentNode(self.measuredVolumeNode)
 
     self.calibrationVolumeNode = slicer.util.getNode('051513-02_hr.vff')
     self.step4A_calibrationVolumeSelector.setCurrentNode(self.calibrationVolumeNode)
@@ -1116,7 +1240,7 @@ class GelDosimetryAnalysisSlicelet(object):
 
     self.step4B_rdfLineEdit.setText('0.989')
     self.step4B_monitorUnitsLineEdit.setText('230')
-    self.onGenerateDoseInformationForCalibrationData()
+    self.onComputeDoseFromPdd()
 
     self.onShowOpticalDensityVsDoseCurve()
     self.onFitPolynomialToOpticalDensityVsDoseCurve()
@@ -1127,6 +1251,11 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step4_doseCalibrationCollapsibleButton.setChecked(True)
     self.step4C_polynomialFittingAndCalibrationCollapsibleButton.setChecked(True)
 
+    # Dose comparison
+    self.step5_doseComparisonCollapsibleButton.setChecked(True)
+    self.step5_gammaVolumeSelector.addNode()
+    self.onGammaDoseComparison()
+    
     qt.QApplication.restoreOverrideCursor()
 
 #
@@ -1136,7 +1265,7 @@ class GelDosimetryAnalysis:
   def __init__(self, parent):
     parent.title = "Gel Dosimetry Analysis"
     parent.categories = ["Slicelets"]
-    parent.dependencies = []
+    parent.dependencies = ["GelDosimetryAnalysisAlgo", "DicomRtImport", "BRAINSFit", "BRAINSResample", "DoseComparison"]
     parent.contributors = ["Mattea Welch (Queen's University), Jennifer Andrea (Queen's University), Csaba Pinter (Queen's University)"] # replace with "Firstname Lastname (Org)"
     parent.helpText = "Slicelet for gel dosimetry analysis"
     parent.acknowledgementText = """

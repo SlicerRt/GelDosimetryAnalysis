@@ -42,7 +42,8 @@ class GelDosimetryAnalysisLogic:
 
   # ---------------------------------------------------------------------------
   # Use BRAINS registration to register PlanCT to OBI volume
-  def registerObiToPlanCt(self, obiVolumeID, planCtVolumeID):
+  # and apply the result to the PlanCT and PlanDose
+  def registerObiToPlanCt(self, obiVolumeID, planCtVolumeID, planDoseVolumeID):
     try:
       qt.QApplication.setOverrideCursor(qt.QCursor(qt.Qt.BusyCursor))
       parametersRigid = {}
@@ -58,7 +59,6 @@ class GelDosimetryAnalysisLogic:
         obiToPlanTransformNode = slicer.vtkMRMLLinearTransformNode()
         slicer.mrmlScene.AddNode(obiToPlanTransformNode)
         obiToPlanTransformNode.SetName(self.obiToPlanTransformName)
-      # parametersRigid["outputTransform"] = obiToPlanTransformNode.GetID()
       parametersRigid["linearTransform"] = obiToPlanTransformNode.GetID()
 
       # Runs the brainsfit registration
@@ -76,9 +76,14 @@ class GelDosimetryAnalysisLogic:
       # Invert output transform (planToObi) to get the desired obiToPlan transform
       obiToPlanTransformNode.GetMatrixTransformToParent().Invert()
 
-      # Apply transform to plan CT
+      # Apply transform to plan CT and plan dose
       planCtVolumeNode = slicer.mrmlScene.GetNodeByID(planCtVolumeID)
       planCtVolumeNode.SetAndObserveTransformNodeID(obiToPlanTransformNode.GetID())
+      if planCtVolumeID != planDoseVolumeID:
+        planDoseVolumeNode = slicer.mrmlScene.GetNodeByID(planDoseVolumeID)
+        planDoseVolumeNode.SetAndObserveTransformNodeID(obiToPlanTransformNode.GetID())
+      else:
+        print('WARNING: The selected nodes are the same for plan CT and plan dose!')
       # The output transform was automatically applied to the moving image (the OBI), undo that
       obiVolumeNode = slicer.mrmlScene.GetNodeByID(obiVolumeID)
       obiVolumeNode.SetAndObserveTransformNodeID(None)
@@ -361,12 +366,13 @@ class GelDosimetryAnalysisLogic:
       interpolator.AddPoint(xTranslated, yScaled)
 
   # ---------------------------------------------------------------------------
-  def doseGenerationForMeasuredData(self, rdf, monitorUnits):
+  def computeDoseForMeasuredData(self, rdf, monitorUnits):
     self.calculatedDose = numpy.zeros(self.pddDataArray.shape)
     pddNumberOfRows = self.pddDataArray.shape[0]
     for pddRowIndex in xrange(0, pddNumberOfRows):
       self.calculatedDose[pddRowIndex, 0] = self.pddDataArray[pddRowIndex, 0]
       self.calculatedDose[pddRowIndex, 1] = self.pddDataArray[pddRowIndex, 1] * rdf * monitorUnits / 10000.0
+    return True
 
   # ---------------------------------------------------------------------------
   def createOpticalDensityVsDoseFunction(self):
