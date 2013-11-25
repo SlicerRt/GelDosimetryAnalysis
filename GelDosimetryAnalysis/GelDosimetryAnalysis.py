@@ -60,7 +60,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.selfTestButton = qt.QPushButton("Run self-test")
     self.sliceletPanelLayout.addWidget(self.selfTestButton)
     self.selfTestButton.connect('clicked()', self.onSelfTestButtonClicked)
-    # self.selfTestButton.setVisible(False) # TODO: Should be commented for testing so the button shows up
+    self.selfTestButton.setVisible(False) # TODO: Should be commented for testing so the button shows up
 
     # Initiate and group together all panels
     self.step0_layoutSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
@@ -1209,7 +1209,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.logic.delayDisplay('Wait for the slicelet to catch up', 300)
     self.step5_doseComparisonCollapsibleButton.setChecked(True)
     self.step5_gammaVolumeSelector.addNode()
-    self.onGammaDoseComparison()
+    # self.onGammaDoseComparison() # Uncomment if needed, takes a lot of time (~10s)
 
   def performSelfTestFromSavedScene(self):
     qt.QApplication.setOverrideCursor(qt.QCursor(qt.Qt.BusyCursor))
@@ -1254,7 +1254,7 @@ class GelDosimetryAnalysisSlicelet(object):
     # Dose comparison
     self.step5_doseComparisonCollapsibleButton.setChecked(True)
     self.step5_gammaVolumeSelector.addNode()
-    self.onGammaDoseComparison()
+    # self.onGammaDoseComparison() # Uncomment if needed, takes a lot of time (~10s)
     
     qt.QApplication.restoreOverrideCursor()
 

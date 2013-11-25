@@ -11,12 +11,12 @@ set(GELDOSIMETRY_VERSION ${GELDOSIMETRY_VERSION_MAJOR}.${GELDOSIMETRY_VERSION_MI
 
 
 #-----------------------------------------------------------------------------
-set(EXTENSION_HOMEPAGE "TODO")
+set(EXTENSION_HOMEPAGE "http://www.slicer.org/slicerWiki/index.php/Documentation/Nightly/Modules/GelDosimetry")
 set(EXTENSION_CATEGORY "Radiotherapy")
 set(EXTENSION_CONTRIBUTORS "Csaba Pinter (PerkLab, Queen's University), Jennifer Andrea (PerkLab, Queen's University), Mattea Welch (PerkLab, Queen's University)")
 set(EXTENSION_DESCRIPTION "Slicelet covering the gel dosimetry analysis workflow used in commissioning new radiation techniques and to validate the accuracy of radiation treatment by enabling visual comparison of the planned dose to the delivered dose, where correspondence between the two dose distributions is achieved using embedded landmarks. Gel dosimetry is based on imaging chemical systems spatially fixed in gelatin, which exhibit a detectable change upon irradiation.")
-set(EXTENSION_ICONURL "TODO")
-set(EXTENSION_SCREENSHOTURLS "TODO")
+set(EXTENSION_ICONURL "http://www.slicer.org/slicerWiki/images/f/f1/GelDosimetry_Logo_128x128.png")
+set(EXTENSION_SCREENSHOTURLS "http://www.slicer.org/slicerWiki/images/8/83/GelDosimetrySlicelet_0.1_LandmarkRegistrationStep.png http://www.slicer.org/slicerWiki/images/6/68/GelDosimetrySlicelet_0.1_CalibrationCurvesAligned.png http://www.slicer.org/slicerWiki/images/5/51/GelDosimetrySlicelet_0.1_OdVsDoseCurve.png")
 
 #-----------------------------------------------------------------------------
 project(GelDosimetryAnalysis)

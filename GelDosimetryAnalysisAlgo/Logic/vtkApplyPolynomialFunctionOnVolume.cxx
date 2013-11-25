@@ -25,7 +25,7 @@
 #include <vtkObjectFactory.h>
 #include <vtkSmartPointer.h>
 #include <vtkImageData.h>
-#include "vtkImageProgressIterator.h"
+#include <vtkImageProgressIterator.h>
 
 //----------------------------------------------------------------------------
 vtkStandardNewMacro(vtkApplyPolynomialFunctionOnVolume);
