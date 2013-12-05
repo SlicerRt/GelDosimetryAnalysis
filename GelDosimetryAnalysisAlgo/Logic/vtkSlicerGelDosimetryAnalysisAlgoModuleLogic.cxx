@@ -23,6 +23,7 @@
 #include <vtkSmartPointer.h>
 #include <vtkImageData.h>
 #include <vtkDoubleArray.h>
+#include <vtkObjectFactory.h>
 
 // MRML includes
 #include <vtkMRMLScalarVolumeNode.h>
