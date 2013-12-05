@@ -27,6 +27,8 @@ class SliceletMainFrame(qt.QFrame):
     self.slicelet = slicelet
 
   def hideEvent(self, event):
+    self.slicelet.disconnect()
+
     import gc
     refs = gc.get_referrers(self.slicelet)
     if len(refs) > 1:
@@ -490,6 +492,10 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step4C_fitPolynomialToOpticalDensityVsDoseCurveButton = qt.QPushButton("Fit polynomial")
     self.step4C_fitPolynomialToOpticalDensityVsDoseCurveButton.toolTip = "Finds the line of best fit based on the data and polynomial order provided"
     self.step4C_polynomialFittingAndCalibrationCollapsibleButtonLayout.addRow(self.step4C_fitPolynomialToOpticalDensityVsDoseCurveButton)
+
+    self.step4C_fitPolynomialStatusLabel = qt.QLabel()
+    self.step4C_polynomialFittingAndCalibrationCollapsibleButtonLayout.addRow(self.step4C_fitPolynomialStatusLabel)
+
     # Add empty row
     self.step4C_polynomialFittingAndCalibrationCollapsibleButtonLayout.addRow(' ', None)
 
@@ -1023,7 +1029,16 @@ class GelDosimetryAnalysisSlicelet(object):
   def onFitPolynomialToOpticalDensityVsDoseCurve(self):
     self.logic.fitCurveToOpticalDensityVsDoseFunctionArray()
     p = self.logic.calibrationPolynomialCoeffitients
+    
     maxOrder = len(p) - 1
+
+    # Show polynomial on GUI
+    polynomialText = ''
+    for order in xrange(0,maxOrder+1):
+      polynomialText = polynomialText + '{0:.6f} * x<span style=" font-size:8pt; vertical-align:super;">{1}</span>'.format(p[order],maxOrder-order)
+      if order != len(p)-1:
+        polynomialText = polynomialText + ' + '
+    self.step4C_fitPolynomialStatusLabel.setText(polynomialText)
 
     # Compute points to display for the fitted polynomial
     odVsDoseNumberOfRows = self.logic.opticalDensityVsDoseFunction.shape[0]

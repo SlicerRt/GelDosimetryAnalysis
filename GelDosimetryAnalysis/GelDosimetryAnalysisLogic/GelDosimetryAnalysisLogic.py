@@ -422,12 +422,6 @@ class GelDosimetryAnalysisLogic:
       doseData[rowIndex] = self.opticalDensityVsDoseFunction[rowIndex, 1]
     self.calibrationPolynomialCoeffitients = numpy.polyfit(opticalDensityData, doseData, self.orderOfFittedPolynomial)
     print('Coefficients of the fitted polynomial: ' + repr(self.calibrationPolynomialCoeffitients.tolist()))
-    
-    # Decrease max order if the coefficients are negligible (for faster calibration)
-    epsilon = 0.00001
-    while abs(self.calibrationPolynomialCoeffitients[0]) < epsilon:
-      self.calibrationPolynomialCoeffitients = numpy.delete(self.calibrationPolynomialCoeffitients, 0, 0)
-    print('Coefficients of the fitted polynomial after reduction: ' + repr(self.calibrationPolynomialCoeffitients.tolist()))
 
   # ---------------------------------------------------------------------------
   def calibrate(self, measuredVolumeID):
