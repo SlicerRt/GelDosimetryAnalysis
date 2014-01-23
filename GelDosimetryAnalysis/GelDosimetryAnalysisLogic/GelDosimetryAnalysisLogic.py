@@ -43,7 +43,7 @@ class GelDosimetryAnalysisLogic:
   # ---------------------------------------------------------------------------
   # Use BRAINS registration to register PlanCT to OBI volume
   # and apply the result to the PlanCT and PlanDose
-  def registerObiToPlanCt(self, obiVolumeID, planCtVolumeID, planDoseVolumeID):
+  def registerObiToPlanCt(self, obiVolumeID, planCtVolumeID, planDoseVolumeID, planStructuresID):
     try:
       qt.QApplication.setOverrideCursor(qt.QCursor(qt.Qt.BusyCursor))
       parametersRigid = {}
@@ -88,6 +88,15 @@ class GelDosimetryAnalysisLogic:
       obiVolumeNode = slicer.mrmlScene.GetNodeByID(obiVolumeID)
       obiVolumeNode.SetAndObserveTransformNodeID(None)
       
+      # Apply transform to plan structures
+      planStructuresNode = slicer.mrmlScene.GetNodeByID(planStructuresID)
+      childrenContours = vtk.vtkCollection()
+      planStructuresNode.GetAssociatedChildrenNodes(childrenContours)
+      for contourIndex in xrange(0, childrenContours.GetNumberOfItems()):
+        contour = childrenContours.GetItemAsObject(contourIndex)
+        if contour.IsA('vtkMRMLContourNode'): # There is one color table node in the collection, ignore it
+          contour.SetAndObserveTransformNodeID(obiToPlanTransformNode.GetID())
+
     except Exception, e:
       import traceback
       traceback.print_exc()
@@ -409,7 +418,7 @@ class GelDosimetryAnalysisLogic:
         self.opticalDensityVsDoseFunction = numpy.delete(self.opticalDensityVsDoseFunction, pointsToDelete[pointIndex], 0)
 
     # Remove outliers
-    self.opticalDensityVsDoseFunction = self.removeOutliersFromArray(self.opticalDensityVsDoseFunction, 3, 1, 0.005)
+    self.opticalDensityVsDoseFunction = self.removeOutliersFromArray(self.opticalDensityVsDoseFunction, 3, 2, 0.005)
 
   # ---------------------------------------------------------------------------
   def fitCurveToOpticalDensityVsDoseFunctionArray(self):

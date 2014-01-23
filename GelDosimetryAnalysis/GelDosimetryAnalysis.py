@@ -62,7 +62,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.selfTestButton = qt.QPushButton("Run self-test")
     self.sliceletPanelLayout.addWidget(self.selfTestButton)
     self.selfTestButton.connect('clicked()', self.onSelfTestButtonClicked)
-    self.selfTestButton.setVisible(False) # TODO: Should be commented for testing so the button shows up
+    self.selfTestButton.setVisible(False) # TODO: Should be commented out for testing so the button shows up
 
     # Initiate and group together all panels
     self.step0_layoutSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
@@ -119,6 +119,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.fiducialSelectionButton = slicer.qSlicerMouseModeToolBar()
     self.fiducialSelectionButton.setApplicationLogic(slicer.app.applicationLogic())
     self.fiducialSelectionButton.setMRMLScene(slicer.app.mrmlScene())
+    self.fiducialSelectionButton.setPersistence(1)
     self.fiducialSelectionLayout.addRow(self.markupsWidgetClone)
     self.fiducialSelectionLayout.addRow('Select fiducials: ', self.fiducialSelectionButton)
 
@@ -144,6 +145,12 @@ class GelDosimetryAnalysisSlicelet(object):
       self.measuredMarkupsFiducialNode = slicer.mrmlScene.GetNodeByID(measuredFiducialsNodeId)
     measuredFiducialsDisplayNode = self.measuredMarkupsFiducialNode.GetDisplayNode()
     measuredFiducialsDisplayNode.SetSelectedColor(0, 0.9, 0)
+
+    # Turn on slice intersections in 2D viewers
+    compositeNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
+    for name in compositeNodes:
+      if compositeNodes[name] != None:
+        compositeNodes[name].SetSliceIntersectionVisibility(1)
 
     # Set up step panels
     self.setup_Step0_LayoutSelection()
@@ -280,6 +287,16 @@ class GelDosimetryAnalysisSlicelet(object):
     self.planDoseSelector.setToolTip( "Pick the PLANDOSE volume for registration." )
     self.step2_obiToPlanCtRegistrationCollapsibleButtonLayout.addRow('PLANDOSE volume: ', self.planDoseSelector)
 
+    # PLANSTRUCTURES node selector
+    self.planStructuresSelector = slicer.qMRMLNodeComboBox()
+    self.planStructuresSelector.nodeTypes = ( ("vtkMRMLSubjectHierarchyNode"), "" )
+    self.planStructuresSelector.addAttribute( "vtkMRMLSubjectHierarchyNode", "DicomRtImport.ContourHierarchy", 1 )
+    self.planStructuresSelector.addEnabled = False
+    self.planStructuresSelector.removeEnabled = False
+    self.planStructuresSelector.setMRMLScene( slicer.mrmlScene )
+    self.planStructuresSelector.setToolTip( "Pick the PLANSTRUCTURES contour set for registration." )
+    self.step2_obiToPlanCtRegistrationCollapsibleButtonLayout.addRow('PLANSTRUCTURES contour set: ', self.planStructuresSelector)
+
     # OBI node selector
     self.obiSelector = slicer.qMRMLNodeComboBox()
     self.obiSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
@@ -395,18 +412,15 @@ class GelDosimetryAnalysisSlicelet(object):
     # Collapsible buttons for substeps
     self.step4A_prepareCalibrationDataCollapsibleButton = ctk.ctkCollapsibleButton()
     self.step4A_prepareCalibrationDataCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step4B_alignPddAndExperimentalDataCollapsibleButton = ctk.ctkCollapsibleButton()
-    self.step4B_alignPddAndExperimentalDataCollapsibleButton.setProperty('collapsedHeight', 4)
     self.step4C_polynomialFittingAndCalibrationCollapsibleButton = ctk.ctkCollapsibleButton()
     self.step4C_polynomialFittingAndCalibrationCollapsibleButton.setProperty('collapsedHeight', 4)
 
     self.collapsibleButtonsGroupForCurveCalibration = qt.QButtonGroup()
     self.collapsibleButtonsGroupForCurveCalibration.addButton(self.step4A_prepareCalibrationDataCollapsibleButton)
-    self.collapsibleButtonsGroupForCurveCalibration.addButton(self.step4B_alignPddAndExperimentalDataCollapsibleButton)
     self.collapsibleButtonsGroupForCurveCalibration.addButton(self.step4C_polynomialFittingAndCalibrationCollapsibleButton)
 
     # Step 4/A): prepare data for calibration
-    self.step4A_prepareCalibrationDataCollapsibleButton.text = "4/A) Prepare data for calibration"
+    self.step4A_prepareCalibrationDataCollapsibleButton.text = "4/A) Align CALIBRATION data to PDD data"
     self.step4A_prepareCalibrationDataCollapsibleButtonLayout = qt.QFormLayout(self.step4A_prepareCalibrationDataCollapsibleButton)
     self.step4_doseCalibrationCollapsibleButtonLayout.addWidget(self.step4A_prepareCalibrationDataCollapsibleButton)
     self.step4A_prepareCalibrationDataCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
@@ -447,37 +461,32 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step4A_prepareCalibrationDataCollapsibleButtonLayout.addRow(self.step4A_parseCalibrationVolumeButton)
     self.step4A_parseCalibrationVolumeStatusLabel = qt.QLabel()
     self.step4A_prepareCalibrationDataCollapsibleButtonLayout.addRow(' ', self.step4A_parseCalibrationVolumeStatusLabel)
-
-    # Step 4/B): Align Pdd data and CALIBRATION data
-    self.step4B_alignPddAndExperimentalDataCollapsibleButton.text = "4/B) Align CALIBRATION data to PDD data"
-    self.step4B_alignPddAndExperimentalDataCollapsibleButtonLayout = qt.QFormLayout(self.step4B_alignPddAndExperimentalDataCollapsibleButton)
-    self.step4_doseCalibrationCollapsibleButtonLayout.addWidget(self.step4B_alignPddAndExperimentalDataCollapsibleButton)
-    self.step4B_alignPddAndExperimentalDataCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
-    self.step4B_alignPddAndExperimentalDataCollapsibleButtonLayout.setSpacing(4)
+    # Add empty row
+    self.step4A_prepareCalibrationDataCollapsibleButtonLayout.addRow(' ', None)
 
     # Align Pdd data and CALIBRATION data based on region of interest selected
     self.step4B_alignCalibrationCurvesButton = qt.QPushButton("Align and show plots")
     self.step4B_alignCalibrationCurvesButton.toolTip = "Align PDD data optical density values with experimental optical density values (coming from CALIBRATION)"
-    self.step4B_alignPddAndExperimentalDataCollapsibleButtonLayout.addRow('Align curves: ', self.step4B_alignCalibrationCurvesButton)
+    self.step4A_prepareCalibrationDataCollapsibleButtonLayout.addRow('Align curves: ', self.step4B_alignCalibrationCurvesButton)
     # Add empty row
-    self.step4B_alignPddAndExperimentalDataCollapsibleButtonLayout.addRow(' ', None)
+    self.step4A_prepareCalibrationDataCollapsibleButtonLayout.addRow(' ', None)
 
     # Input parameters for calculating dose information of CALIBRATION data based on PDD data
     self.step4B_rdfLineEdit = qt.QLineEdit()
-    self.step4B_alignPddAndExperimentalDataCollapsibleButtonLayout.addRow('RDF: ', self.step4B_rdfLineEdit)
+    self.step4A_prepareCalibrationDataCollapsibleButtonLayout.addRow('RDF: ', self.step4B_rdfLineEdit)
     self.step4B_monitorUnitsLineEdit = qt.QLineEdit()
-    self.step4B_alignPddAndExperimentalDataCollapsibleButtonLayout.addRow("Electron MU's: ", self.step4B_monitorUnitsLineEdit)
+    self.step4A_prepareCalibrationDataCollapsibleButtonLayout.addRow("Electron MU's: ", self.step4B_monitorUnitsLineEdit)
 
     # Create dose information button
     self.step4B_computeDoseFromPddButton = qt.QPushButton("Compute dose from percent depth dose")
     self.step4B_computeDoseFromPddButton.toolTip = "Compute dose from PDD data based on RDF and MUs"
-    self.step4B_alignPddAndExperimentalDataCollapsibleButtonLayout.addRow(self.step4B_computeDoseFromPddButton)
+    self.step4A_prepareCalibrationDataCollapsibleButtonLayout.addRow(self.step4B_computeDoseFromPddButton)
 
     self.step4B_computeDoseFromPddStatusLabel = qt.QLabel()
-    self.step4B_alignPddAndExperimentalDataCollapsibleButtonLayout.addRow(' ', self.step4B_computeDoseFromPddStatusLabel)
+    self.step4A_prepareCalibrationDataCollapsibleButtonLayout.addRow(' ', self.step4B_computeDoseFromPddStatusLabel)
 
     # Step 4/C): Fit polynomial and apply calibration
-    self.step4C_polynomialFittingAndCalibrationCollapsibleButton.text = "4/C) Fit polynomial and apply calibration"
+    self.step4C_polynomialFittingAndCalibrationCollapsibleButton.text = "4/B) Fit polynomial and apply calibration"
     self.step4C_polynomialFittingAndCalibrationCollapsibleButtonLayout = qt.QFormLayout(self.step4C_polynomialFittingAndCalibrationCollapsibleButton)
     self.step4_doseCalibrationCollapsibleButtonLayout.addWidget(self.step4C_polynomialFittingAndCalibrationCollapsibleButton)
     self.step4C_polynomialFittingAndCalibrationCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
@@ -802,12 +811,14 @@ class GelDosimetryAnalysisSlicelet(object):
     self.planCtVolumeNode = self.planCTSelector.currentNode()
     self.planDoseVolumeNode = self.planDoseSelector.currentNode()
     self.obiVolumeNode = self.obiSelector.currentNode()
+    self.planStructuresNode = self.planStructuresSelector.currentNode()
 
     # Start registration
     obiVolumeID = self.obiSelector.currentNodeID
     planCTVolumeID = self.planCTSelector.currentNodeID
     planDoseVolumeID = self.planDoseSelector.currentNodeID
-    self.logic.registerObiToPlanCt(obiVolumeID, planCTVolumeID, planDoseVolumeID)
+    planStructuresID = self.planStructuresSelector.currentNodeID
+    self.logic.registerObiToPlanCt(obiVolumeID, planCTVolumeID, planDoseVolumeID, planStructuresID)
 
     # Show the two volumes for visual evaluation of the registration
     appLogic = slicer.app.applicationLogic()
@@ -817,13 +828,15 @@ class GelDosimetryAnalysisSlicelet(object):
     appLogic.PropagateVolumeSelection() 
     # Set color to the OBI volume
     obiVolumeDisplayNode = self.obiVolumeNode.GetDisplayNode()
-    colorNode = slicer.util.getNode('Iron')
+    colorNode = slicer.util.getNode('Green')
     obiVolumeDisplayNode.SetAndObserveColorNodeID(colorNode.GetID())
     # Set transparency to the OBI volume
     compositeNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
     for name in compositeNodes:
       if compositeNodes[name] != None:
         compositeNodes[name].SetForegroundOpacity(0.5)
+    # Hide structures for sake of speed
+    self.planStructuresNode.SetDisplayVisibilityForBranch(0)
 
   def onMeasuredToObiRegistration(self):
     errorRms = self.logic.registerObiToMeasured(self.obiMarkupsFiducialNode.GetID(), self.measuredMarkupsFiducialNode.GetID())
@@ -1112,8 +1125,10 @@ class GelDosimetryAnalysisSlicelet(object):
       self.gammaParameterSetNode.SetAnalysisThresholdPercent(self.step5A_analysisThresholdPercentSpinBox.value)
       self.gammaParameterSetNode.SetMaximumGamma(self.step5A_maximumGammaSpinBox.value)
       
+      qt.QApplication.setOverrideCursor(qt.QCursor(qt.Qt.BusyCursor))
       slicer.modules.dosecomparison.logic().SetAndObserveDoseComparisonNode(self.gammaParameterSetNode)
       slicer.modules.dosecomparison.logic().ComputeGammaDoseDifference()
+      qt.QApplication.restoreOverrideCursor()
       
       if self.gammaParameterSetNode.GetResultsValid():
         self.step5A_gammaStatusLabel.setText('Gamma dose comparison succeeded\nPass fraction: {0:.2f}%'.format(self.gammaParameterSetNode.GetPassFractionPercent()))
@@ -1143,17 +1158,22 @@ class GelDosimetryAnalysisSlicelet(object):
     # 1. Load test data
     dicomWidget = slicer.modules.dicom.widgetRepresentation().self()
     # Plan CT
-    dicomWidget.detailsPopup.offerLoadables('1.2.246.352.71.2.1706542068.2765222.20130515154841', 'Series')
+    dicomWidget.detailsPopup.offerLoadables('1.2.246.352.71.2.1706542068.3448830.20131009141316', 'Series')
     dicomWidget.detailsPopup.examineForLoading()
     dicomWidget.detailsPopup.loadCheckedLoadables()
     # OBI
-    dicomWidget.detailsPopup.offerLoadables('1.2.246.352.61.2.5072632187121435903.9111181212989789573', 'Series')
+    dicomWidget.detailsPopup.offerLoadables('1.2.246.352.61.2.5257103442752107062.11507227178299854732', 'Series')
     dicomWidget.detailsPopup.examineForLoading()
     dicomWidget.detailsPopup.loadCheckedLoadables()
     # Plan dose
-    dicomWidget.detailsPopup.offerLoadables('1.2.246.352.71.2.1706542068.2765224.20130515154906', 'Series')
+    dicomWidget.detailsPopup.offerLoadables('1.2.246.352.71.2.876365306.7756.20140123124241', 'Series')
     dicomWidget.detailsPopup.examineForLoading()
     dicomWidget.detailsPopup.loadCheckedLoadables()
+    # Structure set
+    dicomWidget.detailsPopup.offerLoadables('1.2.246.352.71.2.876365306.7755.20140122163851', 'Series')
+    dicomWidget.detailsPopup.examineForLoading()
+    dicomWidget.detailsPopup.loadCheckedLoadables()
+
     slicer.app.processEvents()
     self.logic.delayDisplay('Wait for the slicelet to catch up', 300)
 
@@ -1165,30 +1185,32 @@ class GelDosimetryAnalysisSlicelet(object):
     self.obiSelector.setCurrentNodeID(obiVolumeID)
     planDoseVolumeID = 'vtkMRMLScalarVolumeNode3'
     self.planDoseSelector.setCurrentNodeID(planDoseVolumeID)
+    structureSetID = 'vtkMRMLSubjectHierarchyNode6'
+    self.planStructuresSelector.setCurrentNodeID(structureSetID)
     self.onObiToPlanCTRegistration()
     slicer.app.processEvents()
 
     # 3. Select fiducials
     self.step3_measuredDoseToObiRegistrationCollapsibleButton.setChecked(True)
     obiFiducialsNode = slicer.util.getNode(self.obiMarkupsFiducialNodeName)
-    obiFiducialsNode.AddFiducial(90.1, 156.9, -23.7)
-    obiFiducialsNode.AddFiducial(130.6, 77, -23.7)
-    obiFiducialsNode.AddFiducial(162.45, 94.1, -23.7)
-    obiFiducialsNode.AddFiducial(89.6, 156.9, 51.5)
-    obiFiducialsNode.AddFiducial(114.9, 77.4, 51.5)
-    obiFiducialsNode.AddFiducial(161.4, 92.6, 51.5)
+    obiFiducialsNode.AddFiducial(76.4, 132.1, -44.8)
+    obiFiducialsNode.AddFiducial(173, 118.4, -44.8)
+    obiFiducialsNode.AddFiducial(154.9, 163.5, -44.8)
+    obiFiducialsNode.AddFiducial(77.4, 133.6, 23.9)
+    obiFiducialsNode.AddFiducial(172.6, 118.9, 23.9)
+    obiFiducialsNode.AddFiducial(166.5, 151.3, 23.9)
     self.step3C_measuredFiducialSelectionCollapsibleButton.setChecked(True)
     measuredFiducialsNode = slicer.util.getNode(self.measuredMarkupsFiducialNodeName)
-    measuredFiducialsNode.AddFiducial(-96.4, -29, 97.6)
-    measuredFiducialsNode.AddFiducial(-15.3, -66.6, 97.6)
-    measuredFiducialsNode.AddFiducial(-32.14, -98.73, 97.6)
-    measuredFiducialsNode.AddFiducial(-96.14, -29.55, 21.56)
-    measuredFiducialsNode.AddFiducial(-17.63, -51.3, 21.56)
-    measuredFiducialsNode.AddFiducial(-31.36, -98.73, 21.56)
+    measuredFiducialsNode.AddFiducial(-92.25, -25.9, 26.2)
+    measuredFiducialsNode.AddFiducial(-31.9, -100.8, 26.2)
+    measuredFiducialsNode.AddFiducial(-15, -55.2, 26.2)
+    measuredFiducialsNode.AddFiducial(-92, -26.7, 94)
+    measuredFiducialsNode.AddFiducial(-32.7, -101, 94)
+    measuredFiducialsNode.AddFiducial(-15, -73.6, 94)
 
     # Load MEASURE Vff
     slicer.app.ioManager().connect('newFileLoaded(qSlicerIO::IOProperties)', self.setMeasuredData)
-    slicer.util.loadNodeFromFile('d:/devel/_Images/RT/20130415_GelDosimetryData/Opt CT Data/051513-01_HR.vff', 'VffFile', {})
+    slicer.util.loadNodeFromFile('d:/devel/_Images/RT/20140123_GelDosimetry_StructureSetIncluded/VFFs/LCV01_HR_plan.vff', 'VffFile', {})
     slicer.app.ioManager().disconnect('newFileLoaded(qSlicerIO::IOProperties)', self.setMeasuredData)
     # Perform fiducial registration
     self.step3D_measuredToObiRegistrationCollapsibleButton.setChecked(True)
@@ -1196,20 +1218,20 @@ class GelDosimetryAnalysisSlicelet(object):
     
     # 4. Calibration
     self.step4_doseCalibrationCollapsibleButton.setChecked(True)
-    self.logic.loadPdd('d:/devel/_Images/RT/20130415_GelDosimetryData/12MeV_6x6.csv')
+    self.logic.loadPdd('d:/devel/_Images/RT/20140123_GelDosimetry_StructureSetIncluded/12MeV.csv')
     # Load CALIBRATION Vff
     slicer.app.ioManager().connect('newFileLoaded(qSlicerIO::IOProperties)', self.setCalibrationData)
-    slicer.util.loadNodeFromFile('d:/devel/_Images/RT/20130415_GelDosimetryData/Opt CT Data/051513-e_HR.vff', 'VffFile', {})
+    slicer.util.loadNodeFromFile('d:/devel/_Images/RT/20140123_GelDosimetry_StructureSetIncluded/VFFs/LCV02_HR_calib.vff', 'VffFile', {})
     slicer.app.ioManager().disconnect('newFileLoaded(qSlicerIO::IOProperties)', self.setCalibrationData)
 
     # Parse calibration volume
-    self.step4A_radiusMmFromCentrePixelLineEdit.setText('2.5')
+    self.step4A_radiusMmFromCentrePixelLineEdit.setText('10')
     self.onParseCalibrationVolume()
     # Align calibration curves
     self.onAlignCalibrationCurves()
     # Generate dose information
     self.step4B_rdfLineEdit.setText('0.989')
-    self.step4B_monitorUnitsLineEdit.setText('230')
+    self.step4B_monitorUnitsLineEdit.setText('1850')
     self.onComputeDoseFromPdd()
     # Show optical density VS dose curve
     self.step4C_polynomialFittingAndCalibrationCollapsibleButton.setChecked(True)
@@ -1328,40 +1350,7 @@ class GelDosimetryAnalysisWidget:
     """Generic reload method for any scripted module.
     ModuleWizard will subsitute correct default moduleName.
     """
-    import imp, sys, os, slicer
-
-    widgetName = moduleName + "Widget"
-
-    # Reload the source code
-    # - set source file path
-    # - load the module to the global space
-    filePath = eval('slicer.modules.%s.path' % moduleName.lower())
-    p = os.path.dirname(filePath)
-    if not sys.path.__contains__(p):
-      sys.path.insert(0,p)
-    fp = open(filePath, "r")
-    globals()[moduleName] = imp.load_module(
-        moduleName, fp, filePath, ('.py', 'r', imp.PY_SOURCE))
-    fp.close()
-
-    # Rebuild the widget
-    # - find and hide the existing widget
-    # - create a new widget in the existing parent
-    parent = slicer.util.findChildren(name='%s Reload' % moduleName)[0].parent().parent()
-    for child in parent.children():
-      try:
-        child.hide()
-      except AttributeError:
-        pass
-    # Remove spacer items
-    item = parent.layout().itemAt(0)
-    while item:
-      parent.layout().removeItem(item)
-      item = parent.layout().itemAt(0)
-    # Create new widget inside existing parent
-    globals()[widgetName.lower()] = eval(
-        'globals()["%s"].%s(parent)' % (moduleName, widgetName))
-    globals()[widgetName.lower()].setup()
+    slicer.util.reloadScriptedModule(moduleName)
 
   def onShowSliceletButtonClicked(self):
     mainFrame = SliceletMainFrame()
@@ -1371,6 +1360,7 @@ class GelDosimetryAnalysisWidget:
     mainFrame.setSlicelet(slicelet)
 
     # Make the slicelet reachable from the Slicer python interactor for testing
+    # TODO: Should be uncommented for testing
     # slicer.gelDosimetrySliceletInstance = slicelet
 
   def onSliceletClosed(self):
