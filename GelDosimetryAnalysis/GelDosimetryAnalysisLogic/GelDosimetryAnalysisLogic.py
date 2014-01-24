@@ -20,7 +20,6 @@ class GelDosimetryAnalysisLogic:
     # Define constants
     self.obiToPlanTransformName = 'obiToPlanTransform'
     self.obiToMeasuredTransformName = "obiToMeasuredTransform"
-    self.orderOfFittedPolynomial = 3
 
     # Declare member variables (mainly for documentation)
     self.pddDataArray = None
@@ -28,7 +27,7 @@ class GelDosimetryAnalysisLogic:
     self.calibrationDataArray = None
     self.calibrationDataAlignedArray = None # Calibration array registered (X shift and Y scale) to the Pdd curve
     self.opticalDensityVsDoseFunction = None
-    self.calibrationPolynomialCoeffitients = None
+    self.calibrationPolynomialCoefficients = None
 
     # Set logic instance to the global variable that supplies it to the calibration curve alignment minimizer function
     global gelDosimetryLogicInstanceGlobal
@@ -257,7 +256,7 @@ class GelDosimetryAnalysisLogic:
       calibrationCleanedNumberOfRows = self.calibrationDataCleanedArray.shape[0]
 
     # Remove outliers from calibration array
-    self.calibrationDataCleanedArray = self.removeOutliersFromArray(self.calibrationDataCleanedArray, 5, 10, 0.0075)
+    self.calibrationDataCleanedArray = self.removeOutliersFromArray(self.calibrationDataCleanedArray, 5, 10, 0.0075)[0]
 
     # Do initial scaling of the calibration array based on the maximum values
     maxPdd = self.findMaxValueInArray(self.pddDataArray)
@@ -347,7 +346,7 @@ class GelDosimetryAnalysisLogic:
       numberOfRows = arrayToClean.shape[0]
       numberOfIterations += 1
 
-    return arrayToClean
+    return [arrayToClean, numberOfFoundOutliers]
 
   # ---------------------------------------------------------------------------
   def computeMeanDifferenceOfNeighborsForArray(self, array):
@@ -418,10 +417,12 @@ class GelDosimetryAnalysisLogic:
         self.opticalDensityVsDoseFunction = numpy.delete(self.opticalDensityVsDoseFunction, pointsToDelete[pointIndex], 0)
 
     # Remove outliers
-    self.opticalDensityVsDoseFunction = self.removeOutliersFromArray(self.opticalDensityVsDoseFunction, 3, 2, 0.005)
+    outlierRemovalResult = self.removeOutliersFromArray(self.opticalDensityVsDoseFunction, 3, 2, 0.005)
+    self.opticalDensityVsDoseFunction = outlierRemovalResult[0]
+    return outlierRemovalResult[1]
 
   # ---------------------------------------------------------------------------
-  def fitCurveToOpticalDensityVsDoseFunctionArray(self):
+  def fitCurveToOpticalDensityVsDoseFunctionArray(self, orderOfFittedPolynomial):
     # Fit polynomial on the cleaned OD vs dose function array
     odVsDoseNumberOfRows = self.opticalDensityVsDoseFunction.shape[0]
     opticalDensityData = numpy.zeros((odVsDoseNumberOfRows))
@@ -429,8 +430,13 @@ class GelDosimetryAnalysisLogic:
     for rowIndex in xrange(0, odVsDoseNumberOfRows):
       opticalDensityData[rowIndex] = self.opticalDensityVsDoseFunction[rowIndex, 0]
       doseData[rowIndex] = self.opticalDensityVsDoseFunction[rowIndex, 1]
-    self.calibrationPolynomialCoeffitients = numpy.polyfit(opticalDensityData, doseData, self.orderOfFittedPolynomial)
-    print('Coefficients of the fitted polynomial: ' + repr(self.calibrationPolynomialCoeffitients.tolist()))
+    fittingResult = numpy.polyfit(opticalDensityData, doseData, orderOfFittedPolynomial, None, True)
+    print fittingResult
+    self.calibrationPolynomialCoefficients = fittingResult[0]
+    residuals = fittingResult[1]
+    print('Coefficients of the fitted polynomial: ' + repr(self.calibrationPolynomialCoefficients.tolist()))
+    print('  Fitting residuals: ' + repr(residuals[0]))
+    return residuals
 
   # ---------------------------------------------------------------------------
   def calibrate(self, measuredVolumeID):
@@ -439,17 +445,30 @@ class GelDosimetryAnalysisLogic:
     start = time.time()
 
     measuredVolume = slicer.util.getNode(measuredVolumeID)
-    coefficients = numpy_support.numpy_to_vtk(self.calibrationPolynomialCoeffitients)
+    calibratedVolume = slicer.vtkMRMLScalarVolumeNode()
+    calibratedVolumeName = measuredVolume.GetName() + '_Calibrated'
+    calibratedVolumeName = slicer.mrmlScene.GenerateUniqueName(calibratedVolumeName)
+    calibratedVolume.SetName(calibratedVolumeName)
+    slicer.mrmlScene.AddNode(calibratedVolume)
+    measuredImageDataCopy = vtk.vtkImageData()
+    measuredImageDataCopy.DeepCopy(measuredVolume.GetImageData())
+    calibratedVolume.SetAndObserveImageData(measuredImageDataCopy)
+    calibratedVolume.CopyOrientation(measuredVolume)
+    if measuredVolume.GetParentTransformNode() != None:
+      calibratedVolume.SetAndObserveTransformNodeID(measuredVolume.GetParentTransformNode().GetID())
+
+    coefficients = numpy_support.numpy_to_vtk(self.calibrationPolynomialCoefficients)
     
     import vtkSlicerGelDosimetryAnalysisAlgoModuleLogic
-    if slicer.modules.geldosimetryanalysisalgo.logic().ApplyPolynomialFunctionOnVolume(measuredVolume, coefficients) == False:
+    if slicer.modules.geldosimetryanalysisalgo.logic().ApplyPolynomialFunctionOnVolume(calibratedVolume, coefficients) == False:
       print('ERROR: Calibration failed!')
-      return False
+      slicer.mrmlScene.RemoveNode(calibratedVolume)
+      return None
 
     end = time.time()
     qt.QApplication.restoreOverrideCursor()
     print('Calibration of MEASURED volume is successful (time: {0})'.format(end - start))
-    return True
+    return calibratedVolume
 
   # ---------------------------------------------------------------------------
   # Utility functions

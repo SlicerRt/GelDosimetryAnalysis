@@ -203,6 +203,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step4B_computeDoseFromPddButton.disconnect('clicked()', self.onComputeDoseFromPdd)
     self.step4C_polynomialFittingAndCalibrationCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep4C_PolynomialFittingAndCalibrationSelected)
     self.step4C_showOpticalDensityVsDoseCurveButton.disconnect('clicked()', self.onShowOpticalDensityVsDoseCurve)
+    self.step4C_removeSelectedPointsFromOpticalDensityVsDoseCurveButton.disconnect('clicked()', self.onRemoveSelectedPointsFromOpticalDensityVsDoseCurve)
     self.step4C_fitPolynomialToOpticalDensityVsDoseCurveButton.disconnect('clicked()', self.onFitPolynomialToOpticalDensityVsDoseCurve)
     self.step4C_applyCalibrationButton.disconnect('clicked()', self.onApplyCalibration)
     self.step5_doseComparisonCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep5_DoseComparisonSelected)
@@ -461,7 +462,8 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step4A_prepareCalibrationDataCollapsibleButtonLayout.addRow(self.step4A_parseCalibrationVolumeButton)
     self.step4A_parseCalibrationVolumeStatusLabel = qt.QLabel()
     self.step4A_prepareCalibrationDataCollapsibleButtonLayout.addRow(' ', self.step4A_parseCalibrationVolumeStatusLabel)
-    # Add empty row
+    # Add empty rows
+    self.step4A_prepareCalibrationDataCollapsibleButtonLayout.addRow(' ', None)
     self.step4A_prepareCalibrationDataCollapsibleButtonLayout.addRow(' ', None)
 
     # Align Pdd data and CALIBRATION data based on region of interest selected
@@ -497,7 +499,24 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step4C_showOpticalDensityVsDoseCurveButton.toolTip = "Show optical density Vs. Dose curve to determine the order of polynomial to fit."
     self.step4C_polynomialFittingAndCalibrationCollapsibleButtonLayout.addRow('Show optical density Vs. Dose curve: ', self.step4C_showOpticalDensityVsDoseCurveButton)
 
+    self.step4C_removedOutliersLabel = qt.QLabel()
+    self.step4C_polynomialFittingAndCalibrationCollapsibleButtonLayout.addRow(' ', self.step4C_removedOutliersLabel)
+
+    # Remove selected points
+    self.step4C_removeSelectedPointsFromOpticalDensityVsDoseCurveButton = qt.QPushButton("Remove selected points")
+    self.step4C_removeSelectedPointsFromOpticalDensityVsDoseCurveButton.toolTip = "Removes the selected points (typically outliers) from the OD vd Dose curve so that they are omitted during polynomial fitting. To select points, hold down the right mouse button and draw a selection rectangle in the chart view."
+    self.step4C_polynomialFittingAndCalibrationCollapsibleButtonLayout.addRow(self.step4C_removeSelectedPointsFromOpticalDensityVsDoseCurveButton)
+    # Add empty row
+    self.step4C_polynomialFittingAndCalibrationCollapsibleButtonLayout.addRow(' ', None)
+
     # Find polynomial fit
+    self.step4C_selectOrderOfPolynomialFitButton = qt.QComboBox()
+    self.step4C_selectOrderOfPolynomialFitButton.addItem('1')
+    self.step4C_selectOrderOfPolynomialFitButton.addItem('2')
+    self.step4C_selectOrderOfPolynomialFitButton.addItem('3')
+    self.step4C_selectOrderOfPolynomialFitButton.addItem('4')
+    self.step4C_polynomialFittingAndCalibrationCollapsibleButtonLayout.addRow('Order of polynomial fitting:', self.step4C_selectOrderOfPolynomialFitButton)
+    
     self.step4C_fitPolynomialToOpticalDensityVsDoseCurveButton = qt.QPushButton("Fit polynomial")
     self.step4C_fitPolynomialToOpticalDensityVsDoseCurveButton.toolTip = "Finds the line of best fit based on the data and polynomial order provided"
     self.step4C_polynomialFittingAndCalibrationCollapsibleButtonLayout.addRow(self.step4C_fitPolynomialToOpticalDensityVsDoseCurveButton)
@@ -534,6 +553,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step4B_computeDoseFromPddButton.connect('clicked()', self.onComputeDoseFromPdd)
     self.step4C_polynomialFittingAndCalibrationCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep4C_PolynomialFittingAndCalibrationSelected)
     self.step4C_showOpticalDensityVsDoseCurveButton.connect('clicked()', self.onShowOpticalDensityVsDoseCurve)
+    self.step4C_removeSelectedPointsFromOpticalDensityVsDoseCurveButton.connect('clicked()', self.onRemoveSelectedPointsFromOpticalDensityVsDoseCurve)
     self.step4C_fitPolynomialToOpticalDensityVsDoseCurveButton.connect('clicked()', self.onFitPolynomialToOpticalDensityVsDoseCurve)
     self.step4C_applyCalibrationButton.connect('clicked()', self.onApplyCalibration)
 
@@ -998,9 +1018,9 @@ class GelDosimetryAnalysisSlicelet(object):
 
   def onShowOpticalDensityVsDoseCurve(self):
     # Create optical density vs dose function
-    self.logic.createOpticalDensityVsDoseFunction()
+    numberOfAutomaticallyRemovedOutliers = self.logic.createOpticalDensityVsDoseFunction()
+    self.step4C_removedOutliersLabel.setText('Number of outliers automatically removed: {0}'.format(numberOfAutomaticallyRemovedOutliers))
 
-    # Set up window to be used for displaying data
     self.odVsDoseChartView = vtk.vtkContextView()
     self.odVsDoseChartView.GetRenderer().SetBackground(1,1,1)
     self.odVsDoseChart = vtk.vtkChartXY()
@@ -1022,14 +1042,14 @@ class GelDosimetryAnalysisSlicelet(object):
       self.odVsDoseDataTable.SetValue(rowIndex, 0, self.logic.opticalDensityVsDoseFunction[rowIndex, 0])
       self.odVsDoseDataTable.SetValue(rowIndex, 1, self.logic.opticalDensityVsDoseFunction[rowIndex, 1])
 
-    odVsDoseLinePoint = self.odVsDoseChart.AddPlot(vtk.vtkChart.POINTS)
-    odVsDoseLinePoint.SetInput(self.odVsDoseDataTable, 0, 1)
-    odVsDoseLinePoint.SetColor(0, 0, 255, 255)
-    odVsDoseLinePoint.SetMarkerSize(10)
-    odVsDoseLineInnerPoint = self.odVsDoseChart.AddPlot(vtk.vtkChart.POINTS)
-    odVsDoseLineInnerPoint.SetInput(self.odVsDoseDataTable, 0, 1)
-    odVsDoseLineInnerPoint.SetColor(255, 255, 255, 223)
-    odVsDoseLineInnerPoint.SetMarkerSize(8)
+    self.odVsDoseLinePoint = self.odVsDoseChart.AddPlot(vtk.vtkChart.POINTS)
+    self.odVsDoseLinePoint.SetInput(self.odVsDoseDataTable, 0, 1)
+    self.odVsDoseLinePoint.SetColor(0, 0, 255, 255)
+    self.odVsDoseLinePoint.SetMarkerSize(10)
+    self.odVsDoseLineInnerPoint = self.odVsDoseChart.AddPlot(vtk.vtkChart.POINTS)
+    self.odVsDoseLineInnerPoint.SetInput(self.odVsDoseDataTable, 0, 1)
+    self.odVsDoseLineInnerPoint.SetColor(255, 255, 255, 223)
+    self.odVsDoseLineInnerPoint.SetMarkerSize(8)
 
     # Show chart
     self.odVsDoseChart.GetAxis(1).SetTitle('Optical density')
@@ -1039,11 +1059,31 @@ class GelDosimetryAnalysisSlicelet(object):
     self.odVsDoseChartView.GetRenderWindow().SetSize(800,550)
     self.odVsDoseChartView.GetRenderWindow().Start()
 
-  def onFitPolynomialToOpticalDensityVsDoseCurve(self):
-    self.logic.fitCurveToOpticalDensityVsDoseFunctionArray()
-    p = self.logic.calibrationPolynomialCoeffitients
+  def onRemoveSelectedPointsFromOpticalDensityVsDoseCurve(self):
+    outlierSelection = self.odVsDoseLineInnerPoint.GetSelection()
+    if outlierSelection == None:
+      outlierSelection = self.odVsDoseLinePoint.GetSelection()
+    if outlierSelection != None:
+      for outlierSelectionIndex in xrange(0, outlierSelection.GetNumberOfTuples()):
+        outlierIndex = outlierSelection.GetValue(outlierSelectionIndex)
+        self.odVsDoseDataTable.RemoveRow(outlierIndex)
+        self.logic.opticalDensityVsDoseFunction = numpy.delete(self.logic.opticalDensityVsDoseFunction, outlierIndex, 0)
+
+      # De-select former points
+      emptySelectionArray = vtk.vtkIdTypeArray()
+      self.odVsDoseLinePoint.SetSelection(emptySelectionArray)
+      self.odVsDoseLineInnerPoint.SetSelection(emptySelectionArray)
+      if hasattr(self, 'polynomialLine') and self.polynomialLine != None:
+        self.polynomialLine.SetSelection(emptySelectionArray)
+      # Update chart view
+      self.odVsDoseDataTable.Modified()
+      self.odVsDoseChartView.Render()
     
-    maxOrder = len(p) - 1
+  def onFitPolynomialToOpticalDensityVsDoseCurve(self):
+    orderSelectionComboboxCurrentIndex = self.step4C_selectOrderOfPolynomialFitButton.currentIndex
+    maxOrder = int(self.step4C_selectOrderOfPolynomialFitButton.itemText(orderSelectionComboboxCurrentIndex))
+    residuals = self.logic.fitCurveToOpticalDensityVsDoseFunctionArray(maxOrder)
+    p = self.logic.calibrationPolynomialCoefficients
 
     # Show polynomial on GUI
     polynomialText = ''
@@ -1051,6 +1091,7 @@ class GelDosimetryAnalysisSlicelet(object):
       polynomialText = polynomialText + '{0:.6f} * x<span style=" font-size:8pt; vertical-align:super;">{1}</span>'.format(p[order],maxOrder-order)
       if order != len(p)-1:
         polynomialText = polynomialText + ' + '
+    polynomialText = polynomialText + '  (residuals: {0:.3f})'.format(residuals[0])
     self.step4C_fitPolynomialStatusLabel.setText(polynomialText)
 
     # Compute points to display for the fitted polynomial
@@ -1079,26 +1120,38 @@ class GelDosimetryAnalysisSlicelet(object):
         y += p[order] * x ** (maxOrder-order)
       self.polynomialTable.SetValue(rowIndex, 1, y)
 
-    polynomialLine = self.odVsDoseChart.AddPlot(vtk.vtkChart.LINE)
-    polynomialLine.SetInput(self.polynomialTable, 0, 1)
-    polynomialLine.SetColor(192, 0, 0, 255)
-    polynomialLine.SetWidth(2)
+    if hasattr(self, 'polynomialLine') and self.polynomialLine != None:
+      self.odVsDoseChart.RemovePlotInstance(self.polynomialLine)
+      
+    self.polynomialLine = self.odVsDoseChart.AddPlot(vtk.vtkChart.LINE)
+    self.polynomialLine.SetInput(self.polynomialTable, 0, 1)
+    self.polynomialLine.SetColor(192, 0, 0, 255)
+    self.polynomialLine.SetWidth(2)
 
   def onApplyCalibration(self):
-    if self.logic.calibrate(self.measuredVolumeNode.GetID()) == True:
+    calibratedVolume = self.logic.calibrate(self.measuredVolumeNode.GetID())
+    if calibratedVolume != None:
       self.step4C_applyCalibrationStatusLabel.setText('Calibration successfully performed')
     else:
       self.step4C_applyCalibrationStatusLabel.setText('Calibration failed!')
+      return
+
+    # Show calibrated volume
+    appLogic = slicer.app.applicationLogic()
+    selectionNode = appLogic.GetSelectionNode()
+    selectionNode.SetReferenceActiveVolumeID(calibratedVolume.GetID())
+    selectionNode.SetReferenceSecondaryVolumeID(self.planDoseVolumeNode.GetID())
+    appLogic.PropagateVolumeSelection() 
 
     # Set window/level options for the calibrated dose
-    measuredVolumeDisplayNode = self.measuredVolumeNode.GetDisplayNode()
+    calibratedVolumeDisplayNode = calibratedVolume.GetDisplayNode()
     odVsDoseNumberOfRows = self.logic.opticalDensityVsDoseFunction.shape[0]
     minDose = self.logic.opticalDensityVsDoseFunction[0, 1]
     maxDose = self.logic.opticalDensityVsDoseFunction[odVsDoseNumberOfRows-1, 1]
     minWindowLevel = minDose - (maxDose-minDose)*0.2
     maxWindowLevel = maxDose + (maxDose-minDose)*0.2
-    measuredVolumeDisplayNode.AutoWindowLevelOff();
-    measuredVolumeDisplayNode.SetWindowLevelMinMax(minWindowLevel, maxWindowLevel);
+    calibratedVolumeDisplayNode.AutoWindowLevelOff();
+    calibratedVolumeDisplayNode.SetWindowLevelMinMax(minWindowLevel, maxWindowLevel);
 
   def onStep5_DoseComparisonSelected(self, collapsed):
     # Set plan dose volume to selector
@@ -1112,6 +1165,10 @@ class GelDosimetryAnalysisSlicelet(object):
     try:
       slicer.modules.dosecomparison
       import vtkSlicerDoseComparisonModuleLogic
+
+      if self.step5_gammaVolumeSelector.currentNode() == None:
+        qt.QMessageBox.warning(None, 'Warning', 'Gamma volume not selected. If there is no suitable output gamma volume, create one.')
+        return
 
       self.gammaParameterSetNode = vtkSlicerDoseComparisonModuleLogic.vtkMRMLDoseComparisonNode()
       slicer.mrmlScene.AddNode(self.gammaParameterSetNode)
@@ -1215,7 +1272,7 @@ class GelDosimetryAnalysisSlicelet(object):
     # Perform fiducial registration
     self.step3D_measuredToObiRegistrationCollapsibleButton.setChecked(True)
     self.onMeasuredToObiRegistration()
-    
+
     # 4. Calibration
     self.step4_doseCalibrationCollapsibleButton.setChecked(True)
     self.logic.loadPdd('d:/devel/_Images/RT/20140123_GelDosimetry_StructureSetIncluded/12MeV.csv')
@@ -1249,37 +1306,54 @@ class GelDosimetryAnalysisSlicelet(object):
     # self.onGammaDoseComparison() # Uncomment if needed, takes a lot of time (~10s)
 
   def performSelfTestFromSavedScene(self):
+    # Set variables. Only this section needs to be changed when testing new dataset
+    scenePath = 'c:/Slicer_Data/20140124_GelDosimetry_Scene/2014-01-24-Scene.mrml'
+    planCtVolumeNodeName = '*ARIA RadOnc Images - Verification Plan Phantom'
+    obiVolumeNodeName = '0: Unknown'
+    planDoseVolumeNodeName = '53: RTDOSE: Eclipse Doses: '
+    planStructuresNodeName = '52: RTSTRUCT: CT_1_AllStructures_SubjectHierarchy'
+    measuredVolumeNodeName = 'lcv01_hr.vff'
+    calibrationVolumeNodeName = 'lcv02_hr.vff'
+    radiusMmFromCentrePixelMm = '10'
+    pddFileName = 'd:/devel/_Images/RT/20130415_GelDosimetryData/12MeV_6x6.csv'
+    rdf = '0.989'
+    monitorUnits = '1850'
+    
     qt.QApplication.setOverrideCursor(qt.QCursor(qt.Qt.BusyCursor))
+
     # Load scene
-    slicer.util.loadScene('c:/Slicer_Data/20131125_GelDosimetry_UpToStep_3D/2013-11-25-Scene.mrml')
+    slicer.util.loadScene(scenePath)
 
     # Set member variables for the loaded scene
-    self.planCtVolumeNode = slicer.util.getNode('7: ARIA RadOnc Images - Verification Plan Phantom')
-    self.obiVolumeNode = slicer.util.getNode('0: Unknown')
-    self.planDoseVolumeNode = slicer.util.getNode('33: RTDOSE: Eclipse Doses')
+    self.planCtVolumeNode = slicer.util.getNode(planCtVolumeNodeName)
+    self.obiVolumeNode = slicer.util.getNode(obiVolumeNodeName)
+    self.planDoseVolumeNode = slicer.util.getNode(planDoseVolumeNodeName)
+    self.planStructuresNode = slicer.util.getNode(planStructuresNodeName)
+    self.planStructuresNode.SetDisplayVisibilityForBranch(0)
 
-    self.measuredVolumeNode = slicer.util.getNode('051513-01_hr.vff')
+    self.measuredVolumeNode = slicer.util.getNode(measuredVolumeNodeName)
     self.step3D_measuredVolumeSelector.setCurrentNode(self.measuredVolumeNode)
     self.step4C_measuredVolumeSelector.setCurrentNode(self.measuredVolumeNode)
     self.step5_measuredDoseSelector.setCurrentNode(self.measuredVolumeNode)
 
-    self.calibrationVolumeNode = slicer.util.getNode('051513-02_hr.vff')
+    self.calibrationVolumeNode = slicer.util.getNode(calibrationVolumeNodeName)
     self.step4A_calibrationVolumeSelector.setCurrentNode(self.calibrationVolumeNode)
     
     # Parse calibration volume
-    self.step4A_radiusMmFromCentrePixelLineEdit.setText('2.5')
+    self.step4A_radiusMmFromCentrePixelLineEdit.setText(radiusMmFromCentrePixelMm)
     self.onParseCalibrationVolume()
 
     # Calibration
-    self.logic.loadPdd('d:/devel/_Images/RT/20130415_GelDosimetryData/12MeV_6x6.csv')
+    self.logic.loadPdd(pddFileName)
 
     self.onAlignCalibrationCurves()
 
-    self.step4B_rdfLineEdit.setText('0.989')
-    self.step4B_monitorUnitsLineEdit.setText('230')
+    self.step4B_rdfLineEdit.setText(rdf)
+    self.step4B_monitorUnitsLineEdit.setText(monitorUnits)
     self.onComputeDoseFromPdd()
 
     self.onShowOpticalDensityVsDoseCurve()
+    
     self.onFitPolynomialToOpticalDensityVsDoseCurve()
 
     slicer.app.processEvents()
@@ -1350,7 +1424,7 @@ class GelDosimetryAnalysisWidget:
     """Generic reload method for any scripted module.
     ModuleWizard will subsitute correct default moduleName.
     """
-    slicer.util.reloadScriptedModule(moduleName)
+    globals()[moduleName] = slicer.util.reloadScriptedModule(moduleName)
 
   def onShowSliceletButtonClicked(self):
     mainFrame = SliceletMainFrame()
