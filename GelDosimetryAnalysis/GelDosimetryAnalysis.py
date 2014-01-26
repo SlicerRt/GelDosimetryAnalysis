@@ -97,6 +97,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.measuredMarkupsFiducialNode = None
     self.measuredVolumeNode = None
     self.calibrationVolumeNode = None
+    self.maskContourNode = None
     
     # Get markups widget and logic
     try:
@@ -207,6 +208,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step4C_fitPolynomialToOpticalDensityVsDoseCurveButton.disconnect('clicked()', self.onFitPolynomialToOpticalDensityVsDoseCurve)
     self.step4C_applyCalibrationButton.disconnect('clicked()', self.onApplyCalibration)
     self.step5_doseComparisonCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep5_DoseComparisonSelected)
+    self.step5_maskContourSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onStep5_MaskContourSelectionChanged)
     self.step5A_referenceDoseUseMaximumDoseRadioButton.disconnect('toggled(bool)', self.onUseMaximumDoseRadioButtonToggled)
     self.step5A_computeGammaButton.disconnect('clicked()', self.onGammaDoseComparison)
 
@@ -589,6 +591,16 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step5_measuredDoseSelector.setToolTip( "Pick the calibrated MEASURED optical CT volume for comparison." )
     self.step5_doseComparisonCollapsibleButtonLayout.addRow("MEASURED dose volume: ", self.step5_measuredDoseSelector)
 
+    # Mask contour selector
+    self.step5_maskContourSelector = slicer.qMRMLNodeComboBox()
+    self.step5_maskContourSelector.nodeTypes = ( ("vtkMRMLContourNode"), "" )
+    self.step5_maskContourSelector.addEnabled = False
+    self.step5_maskContourSelector.removeEnabled = False
+    self.step5_maskContourSelector.noneEnabled = True
+    self.step5_maskContourSelector.setMRMLScene( slicer.mrmlScene )
+    self.step5_maskContourSelector.setToolTip( "Pick the mask contour that determines the considered region for comparison." )
+    self.step5_doseComparisonCollapsibleButtonLayout.addRow("Mask contour: ", self.step5_maskContourSelector)
+
     # Collapsible buttons for substeps
     self.step5A_gammaDoseComparisonCollapsibleButton = ctk.ctkCollapsibleButton()
     self.step5A_gammaDoseComparisonCollapsibleButton.setProperty('collapsedHeight', 4)
@@ -672,6 +684,7 @@ class GelDosimetryAnalysisSlicelet(object):
 
     # Connections
     self.step5_doseComparisonCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep5_DoseComparisonSelected)
+    self.step5_maskContourSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onStep5_MaskContourSelectionChanged)
     self.step5A_referenceDoseUseMaximumDoseRadioButton.connect('toggled(bool)', self.onUseMaximumDoseRadioButtonToggled)
     self.step5A_computeGammaButton.connect('clicked()', self.onGammaDoseComparison)
 
@@ -1158,6 +1171,16 @@ class GelDosimetryAnalysisSlicelet(object):
     if collapsed == False:
       self.step5_planDoseSelector.setCurrentNode(self.planDoseVolumeNode)
 
+  def onStep5_MaskContourSelectionChanged(self, node):
+    # Hide previously selected mask contour
+    if self.maskContourNode != None:
+      self.maskContourNode.SetDisplayVisibility(0)
+    # Set new mask contour
+    self.maskContourNode = node
+    # Show new mask contour
+    if self.maskContourNode != None:
+      self.maskContourNode.SetDisplayVisibility(1)
+
   def onUseMaximumDoseRadioButtonToggled(self, toggled):
     self.step5A_referenceDoseCustomValueGySpinBox.setEnabled(not toggled)
 
@@ -1174,6 +1197,7 @@ class GelDosimetryAnalysisSlicelet(object):
       slicer.mrmlScene.AddNode(self.gammaParameterSetNode)
       self.gammaParameterSetNode.SetAndObserveReferenceDoseVolumeNode(self.step5_planDoseSelector.currentNode())
       self.gammaParameterSetNode.SetAndObserveCompareDoseVolumeNode(self.step5_measuredDoseSelector.currentNode())
+      self.gammaParameterSetNode.SetAndObserveMaskContourNode(self.step5_maskContourSelector.currentNode())
       self.gammaParameterSetNode.SetAndObserveGammaVolumeNode(self.step5_gammaVolumeSelector.currentNode())
       self.gammaParameterSetNode.SetDtaDistanceToleranceMm(self.step5A_dtaDistanceToleranceMmSpinBox.value)
       self.gammaParameterSetNode.SetDoseDifferenceTolerancePercent(self.step5A_doseDifferenceTolerancePercentSpinBox.value)
@@ -1318,6 +1342,7 @@ class GelDosimetryAnalysisSlicelet(object):
     pddFileName = 'd:/devel/_Images/RT/20130415_GelDosimetryData/12MeV_6x6.csv'
     rdf = '0.989'
     monitorUnits = '1850'
+    maskContourNodeID = 'vtkMRMLContourNode7'
     
     qt.QApplication.setOverrideCursor(qt.QCursor(qt.Qt.BusyCursor))
 
@@ -1353,7 +1378,6 @@ class GelDosimetryAnalysisSlicelet(object):
     self.onComputeDoseFromPdd()
 
     self.onShowOpticalDensityVsDoseCurve()
-    
     self.onFitPolynomialToOpticalDensityVsDoseCurve()
 
     slicer.app.processEvents()
@@ -1365,6 +1389,7 @@ class GelDosimetryAnalysisSlicelet(object):
     # Dose comparison
     self.step5_doseComparisonCollapsibleButton.setChecked(True)
     self.step5_gammaVolumeSelector.addNode()
+    self.step5_maskContourSelector.setCurrentNodeID(maskContourNodeID)
     # self.onGammaDoseComparison() # Uncomment if needed, takes a lot of time (~10s)
     
     qt.QApplication.restoreOverrideCursor()
