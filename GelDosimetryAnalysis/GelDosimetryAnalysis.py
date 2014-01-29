@@ -62,7 +62,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.selfTestButton = qt.QPushButton("Run self-test")
     self.sliceletPanelLayout.addWidget(self.selfTestButton)
     self.selfTestButton.connect('clicked()', self.onSelfTestButtonClicked)
-    self.selfTestButton.setVisible(False) # TODO: Should be commented out for testing so the button shows up
+    self.selfTestButton.setVisible(False) # TODO_ForTesting: Should be commented out for testing so the button shows up
 
     # Initiate and group together all panels
     self.step0_layoutSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
@@ -201,6 +201,9 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step4A_loadCalibrationDataButton.disconnect('clicked()', self.onLoadCalibrationData)
     self.step4A_parseCalibrationVolumeButton.disconnect('clicked()', self.onParseCalibrationVolume)
     self.step4B_alignCalibrationCurvesButton.disconnect('clicked()', self.onAlignCalibrationCurves)
+    # self.step4B_recomputeUsingSelectedRegionButton.disconnect('clicked()', self.onRecomputeUsingSelectedRegion)
+    self.step4B_xTranslationSpinBox.disconnect('valueChanged(double)', self.onAdjustAlignmentValueChanged)
+    self.step4B_yScaleSpinBox.disconnect('valueChanged(double)', self.onAdjustAlignmentValueChanged)
     self.step4B_computeDoseFromPddButton.disconnect('clicked()', self.onComputeDoseFromPdd)
     self.step4C_polynomialFittingAndCalibrationCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep4C_PolynomialFittingAndCalibrationSelected)
     self.step4C_showOpticalDensityVsDoseCurveButton.disconnect('clicked()', self.onShowOpticalDensityVsDoseCurve)
@@ -472,6 +475,30 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step4B_alignCalibrationCurvesButton = qt.QPushButton("Align and show plots")
     self.step4B_alignCalibrationCurvesButton.toolTip = "Align PDD data optical density values with experimental optical density values (coming from CALIBRATION)"
     self.step4A_prepareCalibrationDataCollapsibleButtonLayout.addRow('Align curves: ', self.step4B_alignCalibrationCurvesButton)
+    # self.step4B_recomputeUsingSelectedRegionButton = qt.QPushButton("Recompute using selected region")
+    # self.step4B_recomputeUsingSelectedRegionButton.toolTip = "Recompute alignment using selection. HOld down right mouse button and set selection that is considered for alignment. Selection on the red curve is considered"
+    # self.step4A_prepareCalibrationDataCollapsibleButtonLayout.addRow(' ', self.step4B_recomputeUsingSelectedRegionButton)
+
+    # Controls to adjust alignment
+    self.step4B_adjustAlignmentControlsLayout = qt.QHBoxLayout(self.step4A_prepareCalibrationDataCollapsibleButton)
+    self.step4B_adjustAlignmentLabel = qt.QLabel('Manually adjust alignment: ')
+    self.step4B_xTranslationLabel = qt.QLabel('  X translation:')
+    self.step4B_xTranslationSpinBox = qt.QDoubleSpinBox()
+    self.step4B_xTranslationSpinBox.setDecimals(2)
+    self.step4B_xTranslationSpinBox.setSingleStep(0.01)
+    self.step4B_xTranslationSpinBox.setValue(0)
+    self.step4B_yScaleLabel = qt.QLabel('  Y scale:')
+    self.step4B_yScaleSpinBox = qt.QDoubleSpinBox()
+    self.step4B_yScaleSpinBox.setDecimals(2)
+    self.step4B_yScaleSpinBox.setSingleStep(0.01)
+    self.step4B_yScaleSpinBox.setValue(1)
+    self.step4B_adjustAlignmentControlsLayout.addWidget(self.step4B_adjustAlignmentLabel)
+    self.step4B_adjustAlignmentControlsLayout.addWidget(self.step4B_xTranslationLabel)
+    self.step4B_adjustAlignmentControlsLayout.addWidget(self.step4B_xTranslationSpinBox)
+    self.step4B_adjustAlignmentControlsLayout.addWidget(self.step4B_yScaleLabel)
+    self.step4B_adjustAlignmentControlsLayout.addWidget(self.step4B_yScaleSpinBox)
+    self.step4A_prepareCalibrationDataCollapsibleButtonLayout.addRow(self.step4B_adjustAlignmentControlsLayout)
+
     # Add empty row
     self.step4A_prepareCalibrationDataCollapsibleButtonLayout.addRow(' ', None)
 
@@ -502,12 +529,13 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step4C_polynomialFittingAndCalibrationCollapsibleButtonLayout.addRow('Show optical density Vs. Dose curve: ', self.step4C_showOpticalDensityVsDoseCurveButton)
 
     self.step4C_removedOutliersLabel = qt.QLabel()
-    self.step4C_polynomialFittingAndCalibrationCollapsibleButtonLayout.addRow(' ', self.step4C_removedOutliersLabel)
+    # self.step4C_polynomialFittingAndCalibrationCollapsibleButtonLayout.addRow(' ', self.step4C_removedOutliersLabel)
 
     # Remove selected points
     self.step4C_removeSelectedPointsFromOpticalDensityVsDoseCurveButton = qt.QPushButton("Remove selected points")
     self.step4C_removeSelectedPointsFromOpticalDensityVsDoseCurveButton.toolTip = "Removes the selected points (typically outliers) from the OD vd Dose curve so that they are omitted during polynomial fitting. To select points, hold down the right mouse button and draw a selection rectangle in the chart view."
-    self.step4C_polynomialFittingAndCalibrationCollapsibleButtonLayout.addRow(self.step4C_removeSelectedPointsFromOpticalDensityVsDoseCurveButton)
+    self.step4C_polynomialFittingAndCalibrationCollapsibleButtonLayout.addRow(' ',self.step4C_removeSelectedPointsFromOpticalDensityVsDoseCurveButton)
+
     # Add empty row
     self.step4C_polynomialFittingAndCalibrationCollapsibleButtonLayout.addRow(' ', None)
 
@@ -552,6 +580,9 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step4A_loadCalibrationDataButton.connect('clicked()', self.onLoadCalibrationData)
     self.step4A_parseCalibrationVolumeButton.connect('clicked()', self.onParseCalibrationVolume)
     self.step4B_alignCalibrationCurvesButton.connect('clicked()', self.onAlignCalibrationCurves)
+    # self.step4B_recomputeUsingSelectedRegionButton.connect('clicked()', self.onRecomputeUsingSelectedRegion)
+    self.step4B_xTranslationSpinBox.connect('valueChanged(double)', self.onAdjustAlignmentValueChanged)
+    self.step4B_yScaleSpinBox.connect('valueChanged(double)', self.onAdjustAlignmentValueChanged)
     self.step4B_computeDoseFromPddButton.connect('clicked()', self.onComputeDoseFromPdd)
     self.step4C_polynomialFittingAndCalibrationCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep4C_PolynomialFittingAndCalibrationSelected)
     self.step4C_showOpticalDensityVsDoseCurveButton.connect('clicked()', self.onShowOpticalDensityVsDoseCurve)
@@ -955,10 +986,10 @@ class GelDosimetryAnalysisSlicelet(object):
       self.calibrationCurveDataTable.SetValue(rowIndex, 1, self.logic.calibrationDataArray[rowIndex, 1])
       # self.calibrationCurveDataTable.SetValue(rowIndex, 2, self.logic.calibrationDataArray[rowIndex, 2])
 
-    calibrationMeanOpticalDensityLine = self.calibrationCurveChart.AddPlot(vtk.vtkChart.LINE)
-    calibrationMeanOpticalDensityLine.SetInput(self.calibrationCurveDataTable, 0, 1)
-    calibrationMeanOpticalDensityLine.SetColor(255, 0, 0, 255)
-    calibrationMeanOpticalDensityLine.SetWidth(2.0)
+    self.calibrationMeanOpticalDensityLine = self.calibrationCurveChart.AddPlot(vtk.vtkChart.LINE)
+    self.calibrationMeanOpticalDensityLine.SetInput(self.calibrationCurveDataTable, 0, 1)
+    self.calibrationMeanOpticalDensityLine.SetColor(255, 0, 0, 255)
+    self.calibrationMeanOpticalDensityLine.SetWidth(2.0)
 
     # Create Pdd plot
     self.pddDataTable = vtk.vtkTable()
@@ -975,10 +1006,10 @@ class GelDosimetryAnalysisSlicelet(object):
       self.pddDataTable.SetValue(pddDepthCounter, 0, self.logic.pddDataArray[pddDepthCounter, 0])
       self.pddDataTable.SetValue(pddDepthCounter, 1, self.logic.pddDataArray[pddDepthCounter, 1])
 
-    pddLine = self.calibrationCurveChart.AddPlot(vtk.vtkChart.LINE)
-    pddLine.SetInput(self.pddDataTable, 0, 1)
-    pddLine.SetColor(0, 0, 255, 255)
-    pddLine.SetWidth(2.0)
+    self.pddLine = self.calibrationCurveChart.AddPlot(vtk.vtkChart.LINE)
+    self.pddLine.SetInput(self.pddDataTable, 0, 1)
+    self.pddLine.SetColor(0, 0, 255, 255)
+    self.pddLine.SetWidth(2.0)
 
     # Add aligned curve to the graph
     self.calibrationDataAlignedTable = vtk.vtkTable()
@@ -995,10 +1026,10 @@ class GelDosimetryAnalysisSlicelet(object):
       self.calibrationDataAlignedTable.SetValue(calibrationDataAlignedDepthCounter, 0, self.logic.calibrationDataAlignedArray[calibrationDataAlignedDepthCounter, 0])
       self.calibrationDataAlignedTable.SetValue(calibrationDataAlignedDepthCounter, 1, self.logic.calibrationDataAlignedArray[calibrationDataAlignedDepthCounter, 1])
 
-    calibrationDataAlignedLine = self.calibrationCurveChart.AddPlot(vtk.vtkChart.LINE)
-    calibrationDataAlignedLine.SetInput(self.calibrationDataAlignedTable, 0, 1)
-    calibrationDataAlignedLine.SetColor(0, 212, 0, 255)
-    calibrationDataAlignedLine.SetWidth(2.0)
+    self.calibrationDataAlignedLine = self.calibrationCurveChart.AddPlot(vtk.vtkChart.LINE)
+    self.calibrationDataAlignedLine.SetInput(self.calibrationDataAlignedTable, 0, 1)
+    self.calibrationDataAlignedLine.SetColor(0, 212, 0, 255)
+    self.calibrationDataAlignedLine.SetWidth(2.0)
 
     # Show chart
     self.calibrationCurveChart.GetAxis(1).SetTitle('Depth (cm)')
@@ -1012,11 +1043,56 @@ class GelDosimetryAnalysisSlicelet(object):
   def onAlignCalibrationCurves(self):
     # Align PDD data and "experimental" (CALIBRATION) data. Allow for horizontal shift
     # and vertical scale (max PDD Y value/max CALIBRATION Y value).
-    self.logic.alignPddToCalibration()
+    result = self.logic.alignPddToCalibration()
+    
+    # Set alignment results to manual controls
+    self.step4B_xTranslationSpinBox.blockSignals(True)
+    self.step4B_xTranslationSpinBox.setValue(result[1])
+    self.step4B_xTranslationSpinBox.blockSignals(False)
+    self.step4B_yScaleSpinBox.blockSignals(True)
+    self.step4B_yScaleSpinBox.setValue(result[2])
+    self.step4B_yScaleSpinBox.blockSignals(False)
 
     # Show plots
     self.showCalibrationCurves()
-    	
+
+  def onRecomputeUsingSelectedRegion(self):
+    print('onRecomputeUsingSelectedRegion')
+    selection = self.calibrationMeanOpticalDensityLine.GetSelection()
+    if selection != None and selection.GetNumberOfTuples() > 0:
+      for selectionIndex in reversed(xrange(selection.GetValue(selection.GetNumberOfTuples()-1), self.calibrationCurveDataTable.GetNumberOfRows())):
+        self.calibrationCurveDataTable.RemoveRow(selectionIndex)
+        self.logic.calibrationDataArray = numpy.delete(self.logic.calibrationDataArray, selectionIndex, 0)
+      for selectionIndex in reversed(xrange(0, selection.GetValue(0))):
+        self.calibrationCurveDataTable.RemoveRow(selectionIndex)
+        self.logic.calibrationDataArray = numpy.delete(self.logic.calibrationDataArray, selectionIndex, 0)
+
+      # Align PDD data and "experimental" (CALIBRATION) data. Allow for horizontal shift
+      # and vertical scale (max PDD Y value/max CALIBRATION Y value).
+      self.logic.alignPddToCalibration()
+
+      # Re-populate aligned plot
+      calibrationDataAlignedNumberOfRows = self.logic.calibrationDataAlignedArray.shape[0]
+      self.calibrationDataAlignedTable.SetNumberOfRows(calibrationDataAlignedNumberOfRows)
+      for calibrationDataAlignedDepthCounter in xrange(0, calibrationDataAlignedNumberOfRows):
+        self.calibrationDataAlignedTable.SetValue(calibrationDataAlignedDepthCounter, 0, self.logic.calibrationDataAlignedArray[calibrationDataAlignedDepthCounter, 0])
+        self.calibrationDataAlignedTable.SetValue(calibrationDataAlignedDepthCounter, 1, self.logic.calibrationDataAlignedArray[calibrationDataAlignedDepthCounter, 1])
+
+      # De-select former points
+      emptySelectionArray = vtk.vtkIdTypeArray()
+      self.calibrationMeanOpticalDensityLine.SetSelection(emptySelectionArray)
+      self.pddLine.SetSelection(emptySelectionArray)
+      self.calibrationDataAlignedLine.SetSelection(emptySelectionArray)
+      # Update chart view
+      self.calibrationCurveDataTable.Modified()
+      self.calibrationDataAlignedTable.Modified()
+      self.calibrationCurveChartView.Render()
+
+  def onAdjustAlignmentValueChanged(self, value):
+    self.logic.createAlignedCalibrationArray(self.step4B_xTranslationSpinBox.value, self.step4B_yScaleSpinBox.value)
+    self.showCalibrationCurves()
+    self.step4B_computeDoseFromPddStatusLabel.setText('')
+
   def onComputeDoseFromPdd(self):
     rdfInputText = self.step4B_rdfLineEdit.text
     monitorUnitsInputText = self.step4B_monitorUnitsLineEdit.text
@@ -1031,8 +1107,9 @@ class GelDosimetryAnalysisSlicelet(object):
 
   def onShowOpticalDensityVsDoseCurve(self):
     # Create optical density vs dose function
-    numberOfAutomaticallyRemovedOutliers = self.logic.createOpticalDensityVsDoseFunction()
-    self.step4C_removedOutliersLabel.setText('Number of outliers automatically removed: {0}'.format(numberOfAutomaticallyRemovedOutliers))
+    self.logic.createOpticalDensityVsDoseFunction()
+    # numberOfAutomaticallyRemovedOutliers = self.logic.createOpticalDensityVsDoseFunction()
+    # self.step4C_removedOutliersLabel.setText('Number of outliers automatically removed: {0}'.format(numberOfAutomaticallyRemovedOutliers))
 
     self.odVsDoseChartView = vtk.vtkContextView()
     self.odVsDoseChartView.GetRenderer().SetBackground(1,1,1)
@@ -1076,8 +1153,8 @@ class GelDosimetryAnalysisSlicelet(object):
     outlierSelection = self.odVsDoseLineInnerPoint.GetSelection()
     if outlierSelection == None:
       outlierSelection = self.odVsDoseLinePoint.GetSelection()
-    if outlierSelection != None:
-      for outlierSelectionIndex in xrange(0, outlierSelection.GetNumberOfTuples()):
+    if outlierSelection != None and outlierSelection.GetNumberOfTuples() > 0:
+      for outlierSelectionIndex in reversed(xrange(0, outlierSelection.GetNumberOfTuples())):
         outlierIndex = outlierSelection.GetValue(outlierSelectionIndex)
         self.odVsDoseDataTable.RemoveRow(outlierIndex)
         self.logic.opticalDensityVsDoseFunction = numpy.delete(self.logic.opticalDensityVsDoseFunction, outlierIndex, 0)
@@ -1232,8 +1309,9 @@ class GelDosimetryAnalysisSlicelet(object):
   # Testing related functions
   #
   def onSelfTestButtonClicked(self):
-    self.performSelfTestFromScratch()
-    # self.performSelfTestFromSavedScene()
+    # TODO_ForTesting: Choose the testing method here
+    # self.performSelfTestFromScratch()
+    self.performSelfTestFromSavedScene()
 
   def performSelfTestFromScratch(self):
     # 1. Load test data
@@ -1327,6 +1405,8 @@ class GelDosimetryAnalysisSlicelet(object):
     self.logic.delayDisplay('Wait for the slicelet to catch up', 300)
     self.step5_doseComparisonCollapsibleButton.setChecked(True)
     self.step5_gammaVolumeSelector.addNode()
+    maskContourNodeID = 'vtkMRMLContourNode7'
+    self.step5_maskContourSelector.setCurrentNodeID(maskContourNodeID)
     # self.onGammaDoseComparison() # Uncomment if needed, takes a lot of time (~10s)
 
   def performSelfTestFromSavedScene(self):
@@ -1459,7 +1539,7 @@ class GelDosimetryAnalysisWidget:
     mainFrame.setSlicelet(slicelet)
 
     # Make the slicelet reachable from the Slicer python interactor for testing
-    # TODO: Should be uncommented for testing
+    # TODO_ForTesting: Should be uncommented for testing
     # slicer.gelDosimetrySliceletInstance = slicelet
 
   def onSliceletClosed(self):
