@@ -25,7 +25,8 @@ class GelDosimetryAnalysisLogic:
     self.pddDataArray = None
     self.calculatedDose = None # Computed from Pdd usinf RDF and Electron MUs
     self.calibrationDataArray = None
-    self.calibrationDataAlignedArray = None # Calibration array registered (X shift and Y scale) to the Pdd curve
+    self.calibrationDataAlignedArray = None # Calibration array registered (X shift) to the Pdd curve (for computation)
+    self.calibrationDataAlignedToDisplayArray = None # Calibration array registered (X shift, Y scale, Y shift) to the Pdd curve (for visual alignment)
     self.opticalDensityVsDoseFunction = None
     self.calibrationPolynomialCoefficients = None
 
@@ -262,39 +263,38 @@ class GelDosimetryAnalysisLogic:
     maxPdd = self.findMaxValueInArray(self.pddDataArray)
     maxCalibration = self.findMaxValueInArray(self.calibrationDataCleanedArray)
     initialScaling = maxPdd / maxCalibration
-    calibrationCleanedNumberOfRows = self.calibrationDataCleanedArray.shape[0]
-    self.calibrationDataInitiallyScaledArray = numpy.zeros(self.calibrationDataCleanedArray.shape)
-    for calibrationRowIndex in xrange(0, calibrationCleanedNumberOfRows):
-      self.calibrationDataInitiallyScaledArray[calibrationRowIndex, 0] = self.calibrationDataCleanedArray[calibrationRowIndex, 0]
-      self.calibrationDataInitiallyScaledArray[calibrationRowIndex, 1] = self.calibrationDataCleanedArray[calibrationRowIndex, 1] * initialScaling
-    # print('Initial scaling was performed with scaling factor {0:.4f}'.format(initialScaling))
+    # print('Initial scaling factor {0:.4f}'.format(initialScaling))
 
     # Create the working structures
     self.minimizer = vtk.vtkAmoebaMinimizer()
     self.minimizer.SetFunction(curveAlignmentCalibrationFunction)
     self.minimizer.SetParameterValue("xTrans",0)
     self.minimizer.SetParameterScale("xTrans",2)
-    self.minimizer.SetParameterValue("yScale",1)
+    self.minimizer.SetParameterValue("yScale",initialScaling)
     self.minimizer.SetParameterScale("yScale",0.1)
-    self.minimizer.SetMaxIterations(20)
+    self.minimizer.SetParameterValue("yTrans",0)
+    self.minimizer.SetParameterScale("yTrans",0.2)
+    self.minimizer.SetMaxIterations(50)
 
     self.minimizer.Minimize()
     error = self.minimizer.GetFunctionValue()
     xTrans = self.minimizer.GetParameterValue("xTrans")
     yScale = self.minimizer.GetParameterValue("yScale")
+    yTrans = self.minimizer.GetParameterValue("yTrans")
 
     # Create aligned array
-    self.createAlignedCalibrationArray(xTrans, yScale)
+    self.createAlignedCalibrationArray(xTrans, yScale, yTrans)
 
     qt.QApplication.restoreOverrideCursor()
-    print('CALIBRATION successfully aligned with PDD with error={0:.2f} and parameters xTrans={1:.2f}, yScale={2:.2f}'.format(error, xTrans, yScale))
-    return [error, xTrans, yScale]
+    print('CALIBRATION successfully aligned with PDD with error={0:.2f} and parameters xTrans={1:.2f}, yScale={2:.2f}, yTrans={3:.2f}'.format(error, xTrans, yScale, yTrans))
+    return [error, xTrans, yScale, yTrans]
 
   # ---------------------------------------------------------------------------
-  def createAlignedCalibrationArray(self, xTrans, yScale):
+  def createAlignedCalibrationArray(self, xTrans, yScale, yTrans):
+    # Create aligned array used for computation
     self.calibrationDataAlignedArray = numpy.zeros([self.pddDataArray.shape[0], 2])
     interpolator = vtk.vtkPiecewiseFunction()
-    self.populateInterpolatorForParameters(interpolator, xTrans, yScale)
+    self.populateInterpolatorForParameters(interpolator, xTrans, 1, 0)
     range = interpolator.GetRange()
     sumSquaredDifference = 0.0
     calibrationAlignedRowIndex = -1
@@ -309,6 +309,24 @@ class GelDosimetryAnalysisLogic:
         # If the Pdd depth value is out of range then delete the last row (it will never be set, but we need to remove the zeros from the end)
         self.calibrationDataAlignedArray = numpy.delete(self.calibrationDataAlignedArray, self.calibrationDataAlignedArray.shape[0]-1, 0)
   
+    # Create aligned array used for display (visual alignment)
+    self.calibrationDataAlignedToDisplayArray = numpy.zeros([self.pddDataArray.shape[0], 2])
+    interpolator = vtk.vtkPiecewiseFunction()
+    self.populateInterpolatorForParameters(interpolator, xTrans, yScale, yTrans)
+    range = interpolator.GetRange()
+    sumSquaredDifference = 0.0
+    calibrationAlignedRowIndex = -1
+    pddNumberOfRows = self.pddDataArray.shape[0]
+    for pddRowIndex in xrange(0, pddNumberOfRows):
+      pddCurrentDepth = self.pddDataArray[pddRowIndex, 0]
+      if pddCurrentDepth >= range[0] and pddCurrentDepth <= range[1]:
+        calibrationAlignedRowIndex += 1
+        self.calibrationDataAlignedToDisplayArray[calibrationAlignedRowIndex, 0] = pddCurrentDepth
+        self.calibrationDataAlignedToDisplayArray[calibrationAlignedRowIndex, 1] = interpolator.GetValue(pddCurrentDepth)
+      else:
+        # If the Pdd depth value is out of range then delete the last row (it will never be set, but we need to remove the zeros from the end)
+        self.calibrationDataAlignedToDisplayArray = numpy.delete(self.calibrationDataAlignedToDisplayArray, self.calibrationDataAlignedToDisplayArray.shape[0]-1, 0)
+
   # ---------------------------------------------------------------------------
   def removeOutliersFromArray(self, arrayToClean, outlierThreshold, maxNumberOfOutlierIterations, minimumMeanDifferenceInFractionOfMaxValueThreshold):
     # Removes outliers starting from the two ends of a function stored in an array
@@ -370,12 +388,13 @@ class GelDosimetryAnalysisLogic:
     return maximumValue
 
   # ---------------------------------------------------------------------------
-  def populateInterpolatorForParameters(self, interpolator, xTrans, yScale):
-    calibrationNumberOfRows = self.calibrationDataInitiallyScaledArray.shape[0]
+  def populateInterpolatorForParameters(self, interpolator, xTrans, yScale, yTrans):
+    calibrationNumberOfRows = self.calibrationDataCleanedArray.shape[0]
     for calibrationRowIndex in xrange(0, calibrationNumberOfRows):
-      xTranslated = self.calibrationDataInitiallyScaledArray[calibrationRowIndex, 0] + xTrans
-      yScaled = self.calibrationDataInitiallyScaledArray[calibrationRowIndex, 1] * yScale
-      interpolator.AddPoint(xTranslated, yScaled)
+      xTranslated = self.calibrationDataCleanedArray[calibrationRowIndex, 0] + xTrans
+      yScaled = self.calibrationDataCleanedArray[calibrationRowIndex, 1] * yScale
+      yStretched = yScaled + yTrans
+      interpolator.AddPoint(xTranslated, yStretched)
 
   # ---------------------------------------------------------------------------
   def computeDoseForMeasuredData(self, rdf, monitorUnits):
@@ -387,7 +406,7 @@ class GelDosimetryAnalysisLogic:
     return True
 
   # ---------------------------------------------------------------------------
-  def createOpticalDensityVsDoseFunction(self):
+  def createOpticalDensityVsDoseFunction(self, pddRangeMin=-1000, pddRangeMax=1000):
     # Create interpolator for aligned calibration function to allow getting the values for the
     # depths present in the calculated dose function
     interpolator = vtk.vtkPiecewiseFunction()
@@ -396,7 +415,7 @@ class GelDosimetryAnalysisLogic:
       currentDose = self.calibrationDataAlignedArray[calibrationRowIndex, 0]
       currentOpticalDensity = self.calibrationDataAlignedArray[calibrationRowIndex, 1]
       interpolator.AddPoint(currentDose, currentOpticalDensity)
-    range = interpolator.GetRange()
+    interpolatorRange = interpolator.GetRange()
 
     # Get the optical density and the dose values from the aligned calibration function and the calculated dose
     self.opticalDensityVsDoseFunction = numpy.zeros(self.calculatedDose.shape)
@@ -404,31 +423,12 @@ class GelDosimetryAnalysisLogic:
     for doseRowIndex in xrange(0, doseNumberOfRows):
       # Reverse the function so that smallest dose comes first (which decreases with depth)
       currentDepth = self.calculatedDose[doseRowIndex, 0]
-      if currentDepth >= range[0] and currentDepth <= range[1]:
+      if currentDepth >= interpolatorRange[0] and currentDepth <= interpolatorRange[1] and currentDepth >= pddRangeMin and currentDepth <= pddRangeMax:
         self.opticalDensityVsDoseFunction[doseNumberOfRows-doseRowIndex-1, 0] = interpolator.GetValue(currentDepth)
         self.opticalDensityVsDoseFunction[doseNumberOfRows-doseRowIndex-1, 1] = self.calculatedDose[doseRowIndex, 1]
       else:
         # If the depth value is out of range then delete the last row (it will never be set, but we need to remove the zeros from the end)
         self.opticalDensityVsDoseFunction = numpy.delete(self.opticalDensityVsDoseFunction, self.opticalDensityVsDoseFunction.shape[0]-1, 0)
-
-    # Make sure it is a function - remove points where the optical density (the X axis values) does not increase
-    # while True:
-      # pointsToDelete = []
-      # numberOfRows = self.opticalDensityVsDoseFunction.shape[0]
-      # for rowIndex in xrange(0, numberOfRows-1):
-        # if self.opticalDensityVsDoseFunction[rowIndex, 0] >= self.opticalDensityVsDoseFunction[rowIndex+1, 0]:
-          # pointsToDelete.append(rowIndex)
-          # # print('n={0:3} P(n)={1:6.2f} <= P(n+1)={2:6.2f}'.format(rowIndex,self.opticalDensityVsDoseFunction[rowIndex, 0],self.opticalDensityVsDoseFunction[rowIndex+1, 0]))
-      # if len(pointsToDelete) == 0:
-        # break
-      # pointsToDelete.reverse() # It's easier to delete the point with the biggest index first so the other indices remain valid
-      # for pointIndex in xrange(0, len(pointsToDelete)):
-        # self.opticalDensityVsDoseFunction = numpy.delete(self.opticalDensityVsDoseFunction, pointsToDelete[pointIndex], 0)
-
-    # Remove outliers
-    # outlierRemovalResult = self.removeOutliersFromArray(self.opticalDensityVsDoseFunction, 3, 2, 0.005)
-    # self.opticalDensityVsDoseFunction = outlierRemovalResult[0]
-    # return outlierRemovalResult[1]
 
   # ---------------------------------------------------------------------------
   def fitCurveToOpticalDensityVsDoseFunctionArray(self, orderOfFittedPolynomial):
@@ -511,8 +511,9 @@ def curveAlignmentCalibrationFunction():
   # create piecewise function from the transformed calibration curve to be able to compare with the Pdd
   xTrans = logic.minimizer.GetParameterValue("xTrans")
   yScale = logic.minimizer.GetParameterValue("yScale")
+  yTrans = logic.minimizer.GetParameterValue("yTrans")
   interpolator = vtk.vtkPiecewiseFunction()
-  logic.populateInterpolatorForParameters(interpolator, xTrans, yScale)
+  logic.populateInterpolatorForParameters(interpolator, xTrans, yScale, yTrans)
   interpolatorRange = interpolator.GetRange()
   # Compute similarity between the Pdd and the transformed calibration curve
   pddNumberOfRows = logic.pddDataArray.shape[0]
@@ -526,7 +527,7 @@ def curveAlignmentCalibrationFunction():
     else:
       sumSquaredDifference += difference ** 2
 
-  # print('Iteration: {0:2}  xTrans: {1:6.2f}  yScale: {2:6.2f}  error: {3:.2f}'.format(logic.minimizer.GetIterations(), xTrans, yScale, sumSquaredDifference))
+  # print('Iteration: {0:2}  xTrans: {1:6.2f}  yScale: {2:6.2f}  yTrans: {3:6.2f}    error: {4:.2f}'.format(logic.minimizer.GetIterations(), xTrans, yScale, yTrans, sumSquaredDifference))
   logic.minimizer.SetFunctionValue(sumSquaredDifference)
 
 # Global variable holding the logic instance for the calibration curve minimizer function
