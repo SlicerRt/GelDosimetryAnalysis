@@ -1095,7 +1095,7 @@ class GelDosimetryAnalysisSlicelet(object):
   def onShowOpticalDensityVsDoseCurve(self):
     # Get selection from PDD vs Calibration chart
     selection = self.pddLine.GetSelection()
-    if selection.GetNumberOfTuples() > 0:
+    if selection != None and selection.GetNumberOfTuples() > 0:
       pddRangeMin = self.pddDataTable.GetValue(selection.GetValue(0), 0)
       pddRangeMax = self.pddDataTable.GetValue(selection.GetValue(selection.GetNumberOfTuples()-1), 0)
     else:
