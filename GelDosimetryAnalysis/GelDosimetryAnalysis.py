@@ -1382,21 +1382,25 @@ class GelDosimetryAnalysisSlicelet(object):
 
   def performSelfTestFromScratch(self):
     # 1. Load test data
+    planCtSeriesInstanceUid = '1.2.246.352.71.2.1706542068.3448830.20131009141316'
+    obiSeriesInstanceUid = '1.2.246.352.61.2.5257103442752107062.11507227178299854732'
+    planDoseSeriesInstanceUid = '1.2.246.352.71.2.876365306.7756.20140123124241'
+    structureSetSeriesInstanceUid = '1.2.246.352.71.2.876365306.7755.20140122163851'
     dicomWidget = slicer.modules.dicom.widgetRepresentation().self()
     # Plan CT
-    dicomWidget.detailsPopup.offerLoadables('1.2.246.352.71.2.1706542068.3448830.20131009141316', 'Series')
+    dicomWidget.detailsPopup.offerLoadables(planCtSeriesUid, 'Series')
     dicomWidget.detailsPopup.examineForLoading()
     dicomWidget.detailsPopup.loadCheckedLoadables()
     # OBI
-    dicomWidget.detailsPopup.offerLoadables('1.2.246.352.61.2.5257103442752107062.11507227178299854732', 'Series')
+    dicomWidget.detailsPopup.offerLoadables(obiSeriesInstanceUid, 'Series')
     dicomWidget.detailsPopup.examineForLoading()
     dicomWidget.detailsPopup.loadCheckedLoadables()
     # Plan dose
-    dicomWidget.detailsPopup.offerLoadables('1.2.246.352.71.2.876365306.7756.20140123124241', 'Series')
+    dicomWidget.detailsPopup.offerLoadables(planDoseSeriesInstanceUid, 'Series')
     dicomWidget.detailsPopup.examineForLoading()
     dicomWidget.detailsPopup.loadCheckedLoadables()
     # Structure set
-    dicomWidget.detailsPopup.offerLoadables('1.2.246.352.71.2.876365306.7755.20140122163851', 'Series')
+    dicomWidget.detailsPopup.offerLoadables(structureSetSeriesInstanceUid, 'Series')
     dicomWidget.detailsPopup.examineForLoading()
     dicomWidget.detailsPopup.loadCheckedLoadables()
 
@@ -1495,7 +1499,11 @@ class GelDosimetryAnalysisSlicelet(object):
     rdf = '0.989'
     monitorUnits = '1850'
     maskContourNodeID = 'vtkMRMLContourNode7'
+    xTranslationSpinBoxValue = 1
+    yScaleSpinBoxValue = 1.162
+    yTranslationSpinBoxValue = 1.28
     
+    # Start test
     qt.QApplication.setOverrideCursor(qt.QCursor(qt.Qt.BusyCursor))
 
     # Load scene
@@ -1524,9 +1532,9 @@ class GelDosimetryAnalysisSlicelet(object):
     self.logic.loadPdd(pddFileName)
 
     self.onAlignCalibrationCurves()
-    self.step4B_xTranslationSpinBox.setValue(1)
-    self.step4B_yScaleSpinBox.setValue(1.162)
-    self.step4B_yTranslationSpinBox.setValue(1.28)
+    self.step4B_xTranslationSpinBox.setValue(xTranslationSpinBoxValue)
+    self.step4B_yScaleSpinBox.setValue(yScaleSpinBoxValue)
+    self.step4B_yTranslationSpinBox.setValue(yTranslationSpinBoxValue)
 
     self.step4B_rdfLineEdit.setText(rdf)
     self.step4B_monitorUnitsLineEdit.setText(monitorUnits)
