@@ -88,6 +88,8 @@ class GelDosimetryAnalysisSlicelet(object):
     # Set up constants
     self.obiMarkupsFiducialNodeName = "OBI fiducials"
     self.measuredMarkupsFiducialNodeName = "MEASURED fiducials"
+    self.gammaScalarBarColorTableName = "GammaScalarBarColorTable"
+    self.numberOfGammaLabels = 9
     
     # Declare member variables (mainly for documentation)
     self.planCtVolumeNode = None
@@ -100,6 +102,8 @@ class GelDosimetryAnalysisSlicelet(object):
     self.calibratedMeasuredVolumeNode = None
     self.maskContourNode = None
     self.gammaVolumeNode = None
+    
+    self.gammaScalarBarWidget = None
     
     # Get markups widget and logic
     try:
@@ -672,12 +676,12 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step5A_referenceDoseLayout.addWidget(self.step5A_referenceDoseLabel, 0, 0, 2, 1)
     self.step5A_referenceDoseUseMaximumDoseRadioButton = qt.QRadioButton('Use maximum dose')
     self.step5A_referenceDoseLayout.addWidget(self.step5A_referenceDoseUseMaximumDoseRadioButton, 0, 1)
-    self.step5A_referenceDoseUseCustomValueGyRadioButton = qt.QRadioButton('Use custom value (Gy)')
-    self.step5A_referenceDoseLayout.addWidget(self.step5A_referenceDoseUseCustomValueGyRadioButton, 1, 1)
-    self.step5A_referenceDoseCustomValueGySpinBox = qt.QDoubleSpinBox()
-    self.step5A_referenceDoseCustomValueGySpinBox.setValue(5.0)
-    self.step5A_referenceDoseCustomValueGySpinBox.setEnabled(False)
-    self.step5A_referenceDoseLayout.addWidget(self.step5A_referenceDoseCustomValueGySpinBox, 1, 2)
+    self.step5A_referenceDoseUseCustomValuecGyRadioButton = qt.QRadioButton('Use custom value (cGy)')
+    self.step5A_referenceDoseLayout.addWidget(self.step5A_referenceDoseUseCustomValuecGyRadioButton, 1, 1)
+    self.step5A_referenceDoseCustomValuecGySpinBox = qt.QDoubleSpinBox()
+    self.step5A_referenceDoseCustomValuecGySpinBox.setValue(5.0)
+    self.step5A_referenceDoseCustomValuecGySpinBox.setEnabled(False)
+    self.step5A_referenceDoseLayout.addWidget(self.step5A_referenceDoseCustomValuecGySpinBox, 1, 2)
     self.step5A_gammaDoseComparisonCollapsibleButtonLayout.addRow(self.step5A_referenceDoseLayout)
 
     self.step5A_analysisThresholdPercentSpinBox = qt.QDoubleSpinBox()
@@ -717,6 +721,24 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step5_doseComparisonCollapsibleButtonLayout.addRow(self.step5C_doseDifferenceComparisonCollapsibleButton)
     self.step5C_doseDifferenceComparisonCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
     self.step5C_doseDifferenceComparisonCollapsibleButtonLayout.setSpacing(4)
+
+    # Scalar bar
+    from vtkSlicerIsodoseModuleWidgets import vtkSlicerRTScalarBarActor
+    self.gammaScalarBarWidget = vtk.vtkScalarBarWidget()
+    gammaScalarBarActor = vtkSlicerRTScalarBarActor()
+    self.gammaScalarBarWidget.SetScalarBarActor(gammaScalarBarActor)
+    gammaScalarBarActor.SetNumberOfLabels(self.numberOfGammaLabels)
+    gammaScalarBarActor.SetTitle('gamma')
+    gammaScalarBarActor.SetLabelFormat(' %.2f')
+    gammaScalarBarActor.SetPosition(0.1, 0.1)
+    gammaScalarBarActor.SetWidth(0.1)
+    gammaScalarBarActor.SetHeight(0.5)
+    layoutManager = self.layoutWidget.layoutManager() #slicer.app.layoutManager() #TODO remove
+    sliceViewerNames = layoutManager.sliceViewNames()
+    sliceViewerWidgetRed = layoutManager.sliceWidget(sliceViewerNames[0])
+    sliceViewRed = sliceViewerWidgetRed.sliceView()
+    sliceViewerWidgetRedInteractorStyle = sliceViewerWidgetRed.interactorStyle()
+    self.gammaScalarBarWidget.SetInteractor(sliceViewerWidgetRedInteractorStyle.GetInteractor())
 
     # Connections
     self.step5_doseComparisonCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep5_DoseComparisonSelected)
@@ -1101,7 +1123,7 @@ class GelDosimetryAnalysisSlicelet(object):
     else:
       pddRangeMin = -1000
       pddRangeMax = 1000
-    print('Pdd range: {0} - {1}'.format(pddRangeMin,pddRangeMax))
+    print('Selected Pdd range: {0} - {1}'.format(pddRangeMin,pddRangeMax))
 
     # Create optical density vs dose function
     self.logic.createOpticalDensityVsDoseFunction(pddRangeMin, pddRangeMax)
@@ -1245,6 +1267,13 @@ class GelDosimetryAnalysisSlicelet(object):
     # Set plan dose volume to selector
     if collapsed == False:
       self.step5_planDoseSelector.setCurrentNode(self.planDoseVolumeNode)
+      gammaScalarBarColorTable = slicer.util.getNode(self.gammaScalarBarColorTableName)
+      if gammaScalarBarColorTable != None:
+        self.gammaScalarBarWidget.SetEnabled(1)
+        self.gammaScalarBarWidget.Render()
+    else:
+      self.gammaScalarBarWidget.SetEnabled(0)
+      self.gammaScalarBarWidget.Render()
 
   def onStep5_MaskContourSelectionChanged(self, node):
     # Hide previously selected mask contour
@@ -1257,7 +1286,7 @@ class GelDosimetryAnalysisSlicelet(object):
       self.maskContourNode.SetDisplayVisibility(1)
 
   def onUseMaximumDoseRadioButtonToggled(self, toggled):
-    self.step5A_referenceDoseCustomValueGySpinBox.setEnabled(not toggled)
+    self.step5A_referenceDoseCustomValuecGySpinBox.setEnabled(not toggled)
 
   def onGammaDoseComparison(self):
     try:
@@ -1279,7 +1308,7 @@ class GelDosimetryAnalysisSlicelet(object):
       self.gammaParameterSetNode.SetDtaDistanceToleranceMm(self.step5A_dtaDistanceToleranceMmSpinBox.value)
       self.gammaParameterSetNode.SetDoseDifferenceTolerancePercent(self.step5A_doseDifferenceTolerancePercentSpinBox.value)
       self.gammaParameterSetNode.SetUseMaximumDose(self.step5A_referenceDoseUseMaximumDoseRadioButton.isChecked())
-      self.gammaParameterSetNode.SetReferenceDoseGy(self.step5A_referenceDoseCustomValueGySpinBox.value)
+      self.gammaParameterSetNode.SetReferenceDoseGy(self.step5A_referenceDoseCustomValuecGySpinBox.value)
       self.gammaParameterSetNode.SetAnalysisThresholdPercent(self.step5A_analysisThresholdPercentSpinBox.value)
       self.gammaParameterSetNode.SetMaximumGamma(self.step5A_maximumGammaSpinBox.value)
       
@@ -1299,14 +1328,44 @@ class GelDosimetryAnalysisSlicelet(object):
       selectionNode.SetReferenceActiveVolumeID(self.step5_gammaVolumeSelector.currentNodeID)
       selectionNode.SetReferenceSecondaryVolumeID(None)
       appLogic.PropagateVolumeSelection()
-      
-      # Set gamma window/level #TODO: Remove this when scalar bar is added (https://www.assembla.com/spaces/slicerrt/tickets/542)
+
+      # Set gamma window/level
+      maximumGamma = self.step5A_maximumGammaSpinBox.value
       gammaDisplayNode = self.gammaVolumeNode.GetDisplayNode()
       gammaDisplayNode.AutoWindowLevelOff()
-      gammaDisplayNode.SetWindowLevel(0.001, 1.0)
+      gammaDisplayNode.SetWindowLevel(maximumGamma/2, maximumGamma/2)
       gammaDisplayNode.ApplyThresholdOn()
       gammaDisplayNode.AutoThresholdOff()
       gammaDisplayNode.SetLowerThreshold(0.001)
+      # Add scalar bar
+      gammaColorTable = slicer.util.getNode('Gamma_Color*')
+      if gammaColorTable != None:
+        gammaScalarBarColorTable = slicer.util.getNode(self.gammaScalarBarColorTableName)
+        if gammaScalarBarColorTable == None:
+          gammaScalarBarColorTable = slicer.vtkMRMLColorTableNode()
+          gammaScalarBarColorTable.SetName(self.gammaScalarBarColorTableName)
+          gammaScalarBarColorTable.SetTypeToUser()
+          gammaScalarBarColorTable.SetAttribute('Category','GelDosimetry')
+          gammaScalarBarColorTable.HideFromEditorsOn()
+          slicer.mrmlScene.AddNode(gammaScalarBarColorTable)
+        gammaScalarBarColorTable.SetNumberOfColors(self.numberOfGammaLabels)
+        gammaScalarBarColorTableLookupTable = gammaScalarBarColorTable.GetLookupTable()
+        gammaScalarBarColorTableLookupTable.SetTableRange(0,self.numberOfGammaLabels-1)
+        gammaLookupTable = gammaColorTable.GetLookupTable()
+        gammaScalarBarActor = self.gammaScalarBarWidget.GetScalarBarActor()
+        gammaScalarBarActor.SetLookupTable(gammaScalarBarColorTableLookupTable)
+        for colorIndex in xrange(0,self.numberOfGammaLabels):
+          interpolatedColor = [0]*3
+          gammaLookupTable.GetColor(256*colorIndex/(self.numberOfGammaLabels-1), interpolatedColor)
+          colorName = '{0:.2f}'.format(maximumGamma*colorIndex/(self.numberOfGammaLabels-1))
+          gammaScalarBarActor.SetColorName(colorIndex, colorName)
+          gammaScalarBarColorTable.AddColor(colorName, interpolatedColor[0], interpolatedColor[1], interpolatedColor[2])
+          # print('Name: ' + colorName + '  Color' + repr(interpolatedColor)) #TODO remove
+        gammaScalarBarActor.UseColorNameAsLabelOn()
+        self.gammaScalarBarWidget.SetEnabled(1)
+        self.gammaScalarBarWidget.Render()
+      else:
+        print('ERROR: Unable to find gamma color table!')
       
     except Exception, e:
       import traceback
