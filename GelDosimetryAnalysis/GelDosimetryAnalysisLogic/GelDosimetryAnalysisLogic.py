@@ -50,7 +50,7 @@ class GelDosimetryAnalysisLogic:
       parametersRigid["fixedVolume"] = planCtVolumeID
       parametersRigid["movingVolume"] = obiVolumeID
       parametersRigid["useRigid"] = True
-      parametersRigid["initializeTransformMode"] = "useMomentsAlign"
+      parametersRigid["initializeTransformMode"] = "useGeometryAlign"
       #parametersRigid["backgroundFillValue"] = -1000.0
 
       # Set output transform
