@@ -47,8 +47,8 @@ class GelDosimetryAnalysisLogic:
     try:
       qt.QApplication.setOverrideCursor(qt.QCursor(qt.Qt.BusyCursor))
       parametersRigid = {}
-      parametersRigid["fixedVolume"] = planCtVolumeID
-      parametersRigid["movingVolume"] = obiVolumeID
+      parametersRigid["fixedVolume"] = obiVolumeID
+      parametersRigid["movingVolume"] = planCtVolumeID
       parametersRigid["useRigid"] = True
       parametersRigid["initializeTransformMode"] = "useGeometryAlign"
       #parametersRigid["backgroundFillValue"] = -1000.0
