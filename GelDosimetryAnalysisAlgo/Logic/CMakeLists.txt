@@ -15,8 +15,7 @@ set(${KIT}_SRCS
   )
 
 set(${KIT}_TARGET_LIBRARIES
-  vtkCommon
-  vtkFiltering
+  ${VTK_LIBRARIES}
   )
 
 #-----------------------------------------------------------------------------

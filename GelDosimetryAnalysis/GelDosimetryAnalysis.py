@@ -353,7 +353,7 @@ class GelDosimetryAnalysisSlicelet(object):
     loadMeasuredDataCollapsibleButtonLayout.setSpacing(4)
     self.step3_measuredDoseToObiRegistrationLayout.addWidget(self.step3B_loadMeasuredDataCollapsibleButton)
 
-    self.step3B_loadMeasuredDataButton = qt.QPushButton("Load .vff File")
+    self.step3B_loadMeasuredDataButton = qt.QPushButton("Load .vff file")
     self.step3B_loadMeasuredDataButton.toolTip = "Select CT scan of gel if not already loaded."
     self.step3B_loadMeasuredDataButton.name = "loadMeasuredDataButton"
     loadMeasuredDataCollapsibleButtonLayout.addRow('Load MEASURED dose volume: ', self.step3B_loadMeasuredDataButton)
@@ -601,7 +601,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step4C_fitPolynomialToOpticalDensityVsDoseCurveButton.connect('clicked()', self.onFitPolynomialToOpticalDensityVsDoseCurve)
     self.step4C_applyCalibrationButton.connect('clicked()', self.onApplyCalibration)
 
-    # Open prepare calibratio data panel when step is first opened
+    # Open prepare calibration data panel when step is first opened
     self.step4A_prepareCalibrationDataCollapsibleButton.setProperty('collapsed', False)
     
   def setup_Step5_DoseComparison(self):

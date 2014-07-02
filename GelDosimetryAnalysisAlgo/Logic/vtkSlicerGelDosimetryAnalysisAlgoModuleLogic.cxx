@@ -76,7 +76,7 @@ bool vtkSlicerGelDosimetryAnalysisAlgoModuleLogic::ApplyPolynomialFunctionOnVolu
   }
 
   vtkSmartPointer<vtkApplyPolynomialFunctionOnVolume> calibrator = vtkSmartPointer<vtkApplyPolynomialFunctionOnVolume>::New();
-  calibrator->SetInput(volumeNode->GetImageData());
+  calibrator->SetInputData(volumeNode->GetImageData());
   calibrator->SetPolynomialCoefficients(polynomialCoefficients);
   calibrator->Update();
 

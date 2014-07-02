@@ -28,18 +28,17 @@
 #include "vtkSlicerGelDosimetryAnalysisAlgoModuleLogicExport.h"
 
 // VTK includes
-#include <vtkImageToImageFilter.h>
+#include <vtkSimpleImageToImageFilter.h>
 #include <vtkDoubleArray.h>
 
 class vtkImageData;
 
 /// \ingroup GelDosimetryAnalysis
-class VTK_SLICER_GELDOSIMETRYANALYSISALGO_MODULE_LOGIC_EXPORT vtkApplyPolynomialFunctionOnVolume : public vtkImageToImageFilter
+class VTK_SLICER_GELDOSIMETRYANALYSISALGO_MODULE_LOGIC_EXPORT vtkApplyPolynomialFunctionOnVolume : public vtkSimpleImageToImageFilter
 {
 public:
-
   static vtkApplyPolynomialFunctionOnVolume *New();
-  vtkTypeMacro(vtkApplyPolynomialFunctionOnVolume, vtkObject );
+  vtkTypeMacro(vtkApplyPolynomialFunctionOnVolume, vtkSimpleImageToImageFilter);
   void PrintSelf(ostream& os, vtkIndent indent);
 
   /// Set polynomial coefficients
@@ -49,7 +48,7 @@ public:
 
 protected:
   /// Execute function applying the polynomial to the input image
-  void ThreadedExecute(vtkImageData *inData, vtkImageData *outData, int extent[6], int id);
+  virtual void SimpleExecute(vtkImageData *inData, vtkImageData *outData);
 
 protected:
   /// Coefficients of the polynomial to apply. They are expected to be in

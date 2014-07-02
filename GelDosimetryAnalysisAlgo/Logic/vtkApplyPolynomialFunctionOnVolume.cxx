@@ -25,7 +25,6 @@
 #include <vtkObjectFactory.h>
 #include <vtkSmartPointer.h>
 #include <vtkImageData.h>
-#include <vtkImageProgressIterator.h>
 
 //----------------------------------------------------------------------------
 vtkStandardNewMacro(vtkApplyPolynomialFunctionOnVolume);
@@ -51,22 +50,49 @@ void vtkApplyPolynomialFunctionOnVolume::PrintSelf(ostream& os, vtkIndent indent
 }
 
 //----------------------------------------------------------------------------
-template <class T>
-void vtkApplyPolynomialFunctionOnVolumeExecute1(vtkApplyPolynomialFunctionOnVolume *self,
-                               vtkImageData *inData,
-                               vtkImageData *outData,
-                               int outExt[6], int id, T *)
+// The switch statement in Execute will call this method with
+// the appropriate input type (IT). Note that this example assumes
+// that the output data type is the same as the input data type.
+// This is not always the case.
+template <class IT>
+void vtkApplyPolynomialFunctionOnVolumeExecute(vtkApplyPolynomialFunctionOnVolume *self,
+                                               vtkImageData* input,
+                                               vtkImageData* output,
+                                               IT* inPtr, IT* outPtr)
 {
-  switch (outData->GetScalarType())
+  int dims[3];
+  input->GetDimensions(dims);
+  if (input->GetScalarType() != output->GetScalarType())
   {
-    vtkTemplateMacro(
-      vtkApplyPolynomialFunctionOnVolumeExecute(self, inData,
-      outData, outExt, id, 
-      static_cast<T *>(0), 
-      static_cast<VTK_TT *>(0)));
-  default:
-    vtkGenericWarningMacro("Execute: Unknown input ScalarType");
+    vtkGenericWarningMacro(<< "Execute: input ScalarType, " << input->GetScalarType()
+      << ", must match out ScalarType " << output->GetScalarType());
     return;
+  }
+
+  int size = dims[0]*dims[1]*dims[2];
+
+  double inValue = 0;
+
+  // Convert input coefficients into vector for faster access
+  std::vector<double> coefficients;
+  coefficients.resize(self->GetPolynomialCoefficients()->GetNumberOfTuples());
+  for (int coeffIndex = 0; coeffIndex < self->GetPolynomialCoefficients()->GetNumberOfTuples(); ++coeffIndex)
+  {
+    coefficients[coeffIndex] = self->GetPolynomialCoefficients()->GetValue(coeffIndex);
+  }
+
+  // Apply polynomial on volume voxels
+  for(int i=0; i<size; i++)
+  {
+    inValue = inPtr[i];
+
+    int maxOrder = coefficients.size() - 1;
+    IT calibratedValue = 0;
+    for (int order=0; order < maxOrder+1; ++order)
+    {
+      calibratedValue += coefficients[order] * pow(inValue, maxOrder-order);
+    }
+    outPtr[i] = calibratedValue;
   }
 }
 
@@ -75,9 +101,7 @@ void vtkApplyPolynomialFunctionOnVolumeExecute1(vtkApplyPolynomialFunctionOnVolu
 // algorithm to fill the output from the input.
 // It just executes a switch statement to call the correct function for
 // the datas data types.
-void vtkApplyPolynomialFunctionOnVolume::ThreadedExecute(vtkImageData *inData, 
-                                          vtkImageData *outData,
-                                          int outExt[6], int id)
+void vtkApplyPolynomialFunctionOnVolume::SimpleExecute(vtkImageData *inData, vtkImageData *outData)
 {
   // Check Single component
   int numberOfScalarComponents;
@@ -95,63 +119,20 @@ void vtkApplyPolynomialFunctionOnVolume::ThreadedExecute(vtkImageData *inData,
     return;
   }
 
-  switch (inData->GetScalarType())
+  void* inPtr = inData->GetScalarPointer();
+  void* outPtr = outData->GetScalarPointer();
+
+  switch(outData->GetScalarType())
   {
+    // This is simply a #define for a big case list. It handles all
+    // data types VTK supports.
     vtkTemplateMacro(
-      vtkApplyPolynomialFunctionOnVolumeExecute1(this, 
-      inData, 
-      outData, 
-      outExt, 
-      id,
-      static_cast<VTK_TT *>(0)));
-    default:
-      vtkErrorMacro("ThreadedExecute: Unknown input ScalarType");
-      return;
-  }
-}
-
-//----------------------------------------------------------------------------
-// This templated function executes the filter for any type of data.
-template <class IT, class OT>
-void vtkApplyPolynomialFunctionOnVolumeExecute(vtkApplyPolynomialFunctionOnVolume *self,
-                              vtkImageData *inData,
-                              vtkImageData *outData, 
-                              int outExt[6], int id, IT *, OT *)
-{
-  vtkImageIterator<IT> inIt(inData, outExt);
-  vtkImageProgressIterator<OT> outIt(outData, outExt, self, id);
-  double inValue = 0;
-
-  // Convert input coefficients into vector for faster access
-  std::vector<double> coefficients;
-  coefficients.resize(self->GetPolynomialCoefficients()->GetNumberOfTuples());
-  for (int coeffIndex = 0; coeffIndex < self->GetPolynomialCoefficients()->GetNumberOfTuples(); ++coeffIndex)
-  {
-    coefficients[coeffIndex] = self->GetPolynomialCoefficients()->GetValue(coeffIndex);
-  }
-
-  // Loop through output pixels
-  while (!outIt.IsAtEnd())
-  {
-    IT* inSI = inIt.BeginSpan();
-    OT* outSI = outIt.BeginSpan();
-    OT* outSIEnd = outIt.EndSpan();
-    while (outSI != outSIEnd)
-    {
-      // Apply polynomial on voxel
-      inValue = (double)(*inSI);
-
-      int maxOrder = coefficients.size() - 1;
-      OT calibratedValue = 0;
-      for (int order=0; order < maxOrder+1; ++order)
-      {
-        calibratedValue += coefficients[order] * pow(inValue, maxOrder-order);
-        *outSI = static_cast<OT>(calibratedValue);
-      }
-      ++inSI;
-      ++outSI;
-    }
-    inIt.NextSpan();
-    outIt.NextSpan();
+      vtkApplyPolynomialFunctionOnVolumeExecute(this,
+      inData, outData,
+      static_cast<VTK_TT *>(inPtr),
+      static_cast<VTK_TT *>(outPtr)));
+  default:
+    vtkGenericWarningMacro("Execute: Unknown input ScalarType");
+    return;
   }
 }
