@@ -90,8 +90,9 @@ class GelDosimetryAnalysisSlicelet(object):
     self.measuredMarkupsFiducialNodeName = "MEASURED fiducials"
     self.gammaScalarBarColorTableName = "GammaScalarBarColorTable"
     self.numberOfGammaLabels = 9
-    
-    # Declare member variables (mainly for documentation)
+	
+	# Declare member variables (mainly for documentation)
+    self.mode = None
     self.planCtVolumeNode = None
     self.planDoseVolumeNode = None
     self.obiVolumeNode = None
@@ -160,7 +161,7 @@ class GelDosimetryAnalysisSlicelet(object):
         compositeNodes[name].SetSliceIntersectionVisibility(1)
 
     # Set up step panels
-    self.setup_Step0_LayoutSelection()
+    self.setup_Step0_LayoutSelection()    
     self.setup_Step1_LoadPlanningData()
     self.setup_Step2_ObiToPlanCtRegistration()
     self.setup_Step3_MeasuredToObiRegistration()
@@ -195,6 +196,8 @@ class GelDosimetryAnalysisSlicelet(object):
   def disconnect(self):
     self.selfTestButton.disconnect('clicked()', self.onSelfTestButtonClicked)
     self.step0_viewSelectorComboBox.disconnect('activated(int)', self.onViewSelect)
+    self.step0_clinicalModeRadioButton.disconnect('toggled(bool)', self.onClinicalModeSelect)
+    self.step0_preclinicalModeRadioButton.disconnect('toggled(bool)', self.onPreclinicalModeSelect)
     self.step1_showDicomBrowserButton.disconnect('clicked()', self.logic.onDicomLoad)
     self.obiAdditionalLoadDataButton.disconnect('clicked()', self.logic.onDicomLoad)
     self.registerObiToPlanCtButton.disconnect('clicked()', self.onObiToPlanCTRegistration)
@@ -224,7 +227,7 @@ class GelDosimetryAnalysisSlicelet(object):
   def setup_Step0_LayoutSelection(self):
     # Layout selection step
     self.step0_layoutSelectionCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step0_layoutSelectionCollapsibleButton.text = "Layout Selector"
+    self.step0_layoutSelectionCollapsibleButton.text = "Layout and Mode Selector"
     self.sliceletPanelLayout.addWidget(self.step0_layoutSelectionCollapsibleButton)
     self.step0_layoutSelectionCollapsibleButtonLayout = qt.QFormLayout(self.step0_layoutSelectionCollapsibleButton)
     self.step0_layoutSelectionCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
@@ -238,8 +241,21 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step0_viewSelectorComboBox.addItem("Double 3D view")
     self.step0_layoutSelectionCollapsibleButtonLayout.addRow("Layout: ", self.step0_viewSelectorComboBox)
     self.step0_viewSelectorComboBox.connect('activated(int)', self.onViewSelect)
-
-    # Add layout widget
+    
+	#Mode Selector: Radio-buttons
+    self.step0_modeSelectorLayout = qt.QGridLayout()
+    self.step0_modeSelectorLabel = qt.QLabel('Select Mode: ')
+    self.step0_modeSelectorLayout.addWidget(self.step0_modeSelectorLabel, 0, 0, 1, 1)
+    self.step0_clinicalModeRadioButton = qt.QRadioButton('Clinical Optical Readout')
+    self.step0_clinicalModeRadioButton.setChecked(True)
+    self.step0_modeSelectorLayout.addWidget(self.step0_clinicalModeRadioButton, 0, 1)
+    self.step0_preclinicalModeRadioButton = qt.QRadioButton('Preclinical MRI Readout')
+    self.step0_modeSelectorLayout.addWidget(self.step0_preclinicalModeRadioButton, 0, 2)
+    self.step0_layoutSelectionCollapsibleButtonLayout.addRow(self.step0_modeSelectorLayout)
+    self.step0_clinicalModeRadioButton.connect('toggled(bool)', self.onClinicalModeSelect)
+    self.step0_preclinicalModeRadioButton.connect('toggled(bool)', self.onPreclinicalModeSelect)
+    
+	# Add layout widget
     self.layoutWidget = slicer.qMRMLLayoutWidget()
     self.layoutWidget.setMRMLScene(slicer.mrmlScene)
     self.parent.layout().addWidget(self.layoutWidget,2)
@@ -347,12 +363,12 @@ class GelDosimetryAnalysisSlicelet(object):
     # Step 3/B): Load MEASURED dose CT scan
     self.step3B_loadMeasuredDataCollapsibleButton = ctk.ctkCollapsibleButton()
     self.step3B_loadMeasuredDataCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step3B_loadMeasuredDataCollapsibleButton.text = "3/B) Load MEASURED dose CT scan"
     loadMeasuredDataCollapsibleButtonLayout = qt.QFormLayout(self.step3B_loadMeasuredDataCollapsibleButton)
     loadMeasuredDataCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
     loadMeasuredDataCollapsibleButtonLayout.setSpacing(4)
     self.step3_measuredDoseToObiRegistrationLayout.addWidget(self.step3B_loadMeasuredDataCollapsibleButton)
 
+    self.step3B_loadMeasuredDataCollapsibleButton.text = "3/B) Load MEASURED dose CT scan" 
     self.step3B_loadMeasuredDataButton = qt.QPushButton("Load .vff file")
     self.step3B_loadMeasuredDataButton.toolTip = "Select CT scan of gel if not already loaded."
     self.step3B_loadMeasuredDataButton.name = "loadMeasuredDataButton"
@@ -401,7 +417,6 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step3D_measuredToObiRegistrationCollapsibleButtonGroup.addButton(self.step3B_loadMeasuredDataCollapsibleButton)
     self.step3D_measuredToObiRegistrationCollapsibleButtonGroup.addButton(self.step3C_measuredFiducialSelectionCollapsibleButton)
     self.step3D_measuredToObiRegistrationCollapsibleButtonGroup.addButton(self.step3D_measuredToObiRegistrationCollapsibleButton)
-    
     # Connections
     self.step3_measuredDoseToObiRegistrationCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep3_MeasuredDoseToObiRegistrationSelected)
     self.step3A_obiFiducialSelectionCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep3A_ObiFiducialCollectionSelected)
@@ -538,9 +553,10 @@ class GelDosimetryAnalysisSlicelet(object):
     # Show chart of optical density vs. dose curve.
     self.step4C_polynomialFittingHintLabel = qt.QLabel("Hint: Select region in 'PDD vs Calibration' chart to be considered in this step")
     self.step4C_polynomialFittingAndCalibrationCollapsibleButtonLayout.addRow(self.step4C_polynomialFittingHintLabel)
+    self.step4C_showOpticalDensityVsDoseCurveLabel = qt.QLabel("Show optical density Vs. Dose curve: ")
     self.step4C_showOpticalDensityVsDoseCurveButton = qt.QPushButton("Show")
     self.step4C_showOpticalDensityVsDoseCurveButton.toolTip = "Show optical density Vs. Dose curve to determine the order of polynomial to fit."
-    self.step4C_polynomialFittingAndCalibrationCollapsibleButtonLayout.addRow('Show optical density Vs. Dose curve: ', self.step4C_showOpticalDensityVsDoseCurveButton)
+    self.step4C_polynomialFittingAndCalibrationCollapsibleButtonLayout.addRow(self.step4C_showOpticalDensityVsDoseCurveLabel, self.step4C_showOpticalDensityVsDoseCurveButton)
 
     # Remove selected points
     self.step4C_removeSelectedPointsFromOpticalDensityVsDoseCurveButton = qt.QPushButton("Remove selected points")
@@ -767,10 +783,57 @@ class GelDosimetryAnalysisSlicelet(object):
     elif layoutIndex == 4:
        self.layoutWidget.setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutDual3DView)
 
+  def onClinicalModeSelect(self, toggled):
+    if self.step0_clinicalModeRadioButton.isChecked() == True:
+      self.mode = 'Clinical'
+      
+      #Step 3/B) loads VFF file for MEASURED volume
+      self.step3B_loadMeasuredDataCollapsibleButton.text = "3/B) Load MEASURED dose CT scan" 
+      self.step3B_loadMeasuredDataButton.setText("Load .vff file")
+      self.step3B_loadMeasuredDataButton.toolTip = "Select CT scan of gel if not already loaded."
+      self.step3B_loadMeasuredDataButton.name = "loadMeasuredDataButton"
+      
+      #Step 4/A) Loads VFF file for CALIBRATION volume
+      self.step4A_loadCalibrationDataButton.setText("Load .vff File")
+      self.step4A_loadCalibrationDataButton.toolTip = "Select calibration CT scan of gel if not already loaded."
+      self.step4A_loadCalibrationDataButton.name = "loadCalibrationDataButton"
+      
+      #Step 4/B) Label for plot visibility
+      self.step4C_showOpticalDensityVsDoseCurveLabel.setText("Show optical density Vs. Dose curve: ")
+      self.step4C_showOpticalDensityVsDoseCurveButton.setText("Show")
+      self.step4C_showOpticalDensityVsDoseCurveButton.toolTip = "Show optical density Vs. Dose curve to determine the order of polynomial to fit."
+  
+  def onPreclinicalModeSelect(self, toggled):
+    if self.step0_preclinicalModeRadioButton.isChecked() == True:
+      self.mode = 'Preclinical'
+      
+      #Step 3/B) loads DICOM file for MEASURED volume
+      self.step3B_loadMeasuredDataCollapsibleButton.text = "3/B) Load MEASURED dose MRI scan" 
+      self.step3B_loadMeasuredDataButton.setText("Load DICOM file")
+      self.step3B_loadMeasuredDataButton.toolTip = "Select MRI scan of gel if not already loaded."
+      self.step3B_loadMeasuredDataButton.name = "loadMeasuredDataButton"
+      
+      #Step 4/A) Loads DICOM file for CALIBRATION volume
+      self.step4A_loadCalibrationDataButton.setText("Load DICOM file")
+      self.step4A_loadCalibrationDataButton.toolTip = "Select calibration MRI scan of gel if not already loaded."
+      self.step4A_loadCalibrationDataButton.name = "loadCalibrationDataButton"
+      
+      #Step 4/B) Label for plot visibility
+      self.step4C_showOpticalDensityVsDoseCurveLabel.setText("Show R1 Vs. Dose curve: ")
+      self.step4C_showOpticalDensityVsDoseCurveButton.setText("Show")
+      self.step4C_showOpticalDensityVsDoseCurveButton.toolTip = "Show Relaxation Rates Vs. Dose curve to determine the order of polynomial to fit."
+    
   def onLoadMeasuredData(self):
-    slicer.app.ioManager().connect('newFileLoaded(qSlicerIO::IOProperties)', self.setMeasuredData)
-    slicer.util.openAddDataDialog()
-    slicer.app.ioManager().disconnect('newFileLoaded(qSlicerIO::IOProperties)', self.setMeasuredData)
+    # In default of clinical mode: open .vff file loader
+    if self.mode == 'Clinical' or self.mode == None:
+      slicer.app.ioManager().connect('newFileLoaded(qSlicerIO::IOProperties)', self.setMeasuredData)
+      slicer.util.openAddDataDialog()
+      slicer.app.ioManager().disconnect('newFileLoaded(qSlicerIO::IOProperties)', self.setMeasuredData)
+    # In preclinical mode: open DICOM loader
+    elif self.mode == 'Preclinical':
+      slicer.app.ioManager().connect('newFileLoaded(qSlicerIO::IOProperties)', self.setMeasuredData)
+      self.logic.onDicomLoad()
+      slicer.app.ioManager().disconnect('newFileLoaded(qSlicerIO::IOProperties)', self.setMeasuredData)
 
   def setMeasuredData(self, params):
     # Assumes that two MRML nodes are created when loading a VFF file, and the first one is the volume (second is the display node)
@@ -962,10 +1025,17 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step4A_pddLoadStatusLabel.setText('PDD loading failed!')
 
   def onLoadCalibrationData(self):
-    slicer.app.ioManager().connect('newFileLoaded(qSlicerIO::IOProperties)', self.setCalibrationData)
-    slicer.util.openAddDataDialog()
-    slicer.app.ioManager().disconnect('newFileLoaded(qSlicerIO::IOProperties)', self.setCalibrationData)
-
+    # In default of clinical mode: open .vff file loader
+    if self.mode == 'Clinical' or self.mode == None:
+      slicer.app.ioManager().connect('newFileLoaded(qSlicerIO::IOProperties)', self.setCalibrationData)
+      slicer.util.openAddDataDialog()
+      slicer.app.ioManager().disconnect('newFileLoaded(qSlicerIO::IOProperties)', self.setCalibrationData)
+    # In preclinical mode: open DICOM loader
+    elif self.mode == 'Preclinical':
+      slicer.app.ioManager().connect('newFileLoaded(qSlicerIO::IOProperties)', self.setCalibrationData)
+      self.logic.onDicomLoad()
+      slicer.app.ioManager().disconnect('newFileLoaded(qSlicerIO::IOProperties)', self.setCalibrationData)
+      
   def setCalibrationData(self, params):
     # Assumes that two MRML nodes are created when loading a VFF file, and the first one is the volume (second is the display node)
     self.calibrationVolumeNode = slicer.mrmlScene.GetNthNode( slicer.mrmlScene.GetNumberOfNodes()-2 )
@@ -1512,6 +1582,7 @@ class GelDosimetryAnalysisSlicelet(object):
     slicer.util.loadScene(scenePath)
 
     # Set member variables for the loaded scene
+    self.mode = slicer.util.getNode(mode)
     self.planCtVolumeNode = slicer.util.getNode(planCtVolumeNodeName)
     self.obiVolumeNode = slicer.util.getNode(obiVolumeNodeName)
     self.planDoseVolumeNode = slicer.util.getNode(planDoseVolumeNodeName)
