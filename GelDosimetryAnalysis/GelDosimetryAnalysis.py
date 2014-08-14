@@ -91,7 +91,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.gammaScalarBarColorTableName = "GammaScalarBarColorTable"
     self.numberOfGammaLabels = 9
 	
-	# Declare member variables (mainly for documentation)
+    # Declare member variables (mainly for documentation)
     self.mode = None
     self.planCtVolumeNode = None
     self.planDoseVolumeNode = None
@@ -103,7 +103,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.calibratedMeasuredVolumeNode = None
     self.maskContourNode = None
     self.gammaVolumeNode = None
-    
+
     self.gammaScalarBarWidget = None
     
     # Get markups widget and logic
@@ -158,7 +158,7 @@ class GelDosimetryAnalysisSlicelet(object):
     compositeNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
     for name in compositeNodes:
       if compositeNodes[name] != None:
-        compositeNodes[name].SetSliceIntersectionVisibility(1)
+        pass #compositeNodes[name].SetSliceIntersectionVisibility(1) #TODO: Uncomment when fixed https://www.assembla.com/spaces/slicerrt/tickets/643-slice-intersection-navigation-doesn-t-work#/activity/ticket:
 
     # Set up step panels
     self.setup_Step0_LayoutSelection()    
@@ -227,7 +227,7 @@ class GelDosimetryAnalysisSlicelet(object):
   def setup_Step0_LayoutSelection(self):
     # Layout selection step
     self.step0_layoutSelectionCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step0_layoutSelectionCollapsibleButton.text = "Layout and Mode Selector"
+    self.step0_layoutSelectionCollapsibleButton.text = "Layout and mode selector"
     self.sliceletPanelLayout.addWidget(self.step0_layoutSelectionCollapsibleButton)
     self.step0_layoutSelectionCollapsibleButtonLayout = qt.QFormLayout(self.step0_layoutSelectionCollapsibleButton)
     self.step0_layoutSelectionCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
@@ -242,20 +242,20 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step0_layoutSelectionCollapsibleButtonLayout.addRow("Layout: ", self.step0_viewSelectorComboBox)
     self.step0_viewSelectorComboBox.connect('activated(int)', self.onViewSelect)
     
-	#Mode Selector: Radio-buttons
+    # Mode Selector: Radio-buttons
     self.step0_modeSelectorLayout = qt.QGridLayout()
-    self.step0_modeSelectorLabel = qt.QLabel('Select Mode: ')
+    self.step0_modeSelectorLabel = qt.QLabel('Select mode: ')
     self.step0_modeSelectorLayout.addWidget(self.step0_modeSelectorLabel, 0, 0, 1, 1)
-    self.step0_clinicalModeRadioButton = qt.QRadioButton('Clinical Optical Readout')
+    self.step0_clinicalModeRadioButton = qt.QRadioButton('Clinical optical readout')
     self.step0_clinicalModeRadioButton.setChecked(True)
     self.step0_modeSelectorLayout.addWidget(self.step0_clinicalModeRadioButton, 0, 1)
-    self.step0_preclinicalModeRadioButton = qt.QRadioButton('Preclinical MRI Readout')
+    self.step0_preclinicalModeRadioButton = qt.QRadioButton('Preclinical MRI readout')
     self.step0_modeSelectorLayout.addWidget(self.step0_preclinicalModeRadioButton, 0, 2)
     self.step0_layoutSelectionCollapsibleButtonLayout.addRow(self.step0_modeSelectorLayout)
     self.step0_clinicalModeRadioButton.connect('toggled(bool)', self.onClinicalModeSelect)
     self.step0_preclinicalModeRadioButton.connect('toggled(bool)', self.onPreclinicalModeSelect)
     
-	# Add layout widget
+    # Add layout widget
     self.layoutWidget = slicer.qMRMLLayoutWidget()
     self.layoutWidget.setMRMLScene(slicer.mrmlScene)
     self.parent.layout().addWidget(self.layoutWidget,2)
@@ -991,7 +991,8 @@ class GelDosimetryAnalysisSlicelet(object):
       if compositeNodes[name] != None:
         compositeNodes[name].SetForegroundOpacity(0.5)
     # Hide structures for sake of speed
-    self.planStructuresNode.SetDisplayVisibilityForBranch(0)
+    if self.planStructuresNode != None:
+      self.planStructuresNode.SetDisplayVisibilityForBranch(0)
     # Hide beam models
     beamModelsParent = slicer.util.getNode('*_BeamModels_SubjectHierarchy')
     if beamModelsParent != None:
@@ -1092,7 +1093,7 @@ class GelDosimetryAnalysisSlicelet(object):
     if hasattr(self, 'calibrationMeanOpticalDensityLine'):
       self.calibrationCurveChart.RemovePlotInstance(self.calibrationMeanOpticalDensityLine)
     self.calibrationMeanOpticalDensityLine = self.calibrationCurveChart.AddPlot(vtk.vtkChart.LINE)
-    self.calibrationMeanOpticalDensityLine.SetInput(self.calibrationCurveDataTable, 0, 1)
+    self.calibrationMeanOpticalDensityLine.SetInputData(self.calibrationCurveDataTable, 0, 1)
     self.calibrationMeanOpticalDensityLine.SetColor(255, 0, 0, 255)
     self.calibrationMeanOpticalDensityLine.SetWidth(2.0)
 
@@ -1114,7 +1115,7 @@ class GelDosimetryAnalysisSlicelet(object):
     if hasattr(self, 'pddLine'):
       self.calibrationCurveChart.RemovePlotInstance(self.pddLine)
     self.pddLine = self.calibrationCurveChart.AddPlot(vtk.vtkChart.LINE)
-    self.pddLine.SetInput(self.pddDataTable, 0, 1)
+    self.pddLine.SetInputData(self.pddDataTable, 0, 1)
     self.pddLine.SetColor(0, 0, 255, 255)
     self.pddLine.SetWidth(2.0)
 
@@ -1136,7 +1137,7 @@ class GelDosimetryAnalysisSlicelet(object):
     if hasattr(self, 'calibrationDataAlignedLine'):
       self.calibrationCurveChart.RemovePlotInstance(self.calibrationDataAlignedLine)
     self.calibrationDataAlignedLine = self.calibrationCurveChart.AddPlot(vtk.vtkChart.LINE)
-    self.calibrationDataAlignedLine.SetInput(self.calibrationDataAlignedTable, 0, 1)
+    self.calibrationDataAlignedLine.SetInputData(self.calibrationDataAlignedTable, 0, 1)
     self.calibrationDataAlignedLine.SetColor(0, 212, 0, 255)
     self.calibrationDataAlignedLine.SetWidth(2.0)
 
@@ -1222,11 +1223,11 @@ class GelDosimetryAnalysisSlicelet(object):
       self.odVsDoseDataTable.SetValue(rowIndex, 1, self.logic.opticalDensityVsDoseFunction[rowIndex, 1])
 
     self.odVsDoseLinePoint = self.odVsDoseChart.AddPlot(vtk.vtkChart.POINTS)
-    self.odVsDoseLinePoint.SetInput(self.odVsDoseDataTable, 0, 1)
+    self.odVsDoseLinePoint.SetInputData(self.odVsDoseDataTable, 0, 1)
     self.odVsDoseLinePoint.SetColor(0, 0, 255, 255)
     self.odVsDoseLinePoint.SetMarkerSize(10)
     self.odVsDoseLineInnerPoint = self.odVsDoseChart.AddPlot(vtk.vtkChart.POINTS)
-    self.odVsDoseLineInnerPoint.SetInput(self.odVsDoseDataTable, 0, 1)
+    self.odVsDoseLineInnerPoint.SetInputData(self.odVsDoseDataTable, 0, 1)
     self.odVsDoseLineInnerPoint.SetColor(255, 255, 255, 223)
     self.odVsDoseLineInnerPoint.SetMarkerSize(8)
 
@@ -1303,7 +1304,7 @@ class GelDosimetryAnalysisSlicelet(object):
       self.odVsDoseChart.RemovePlotInstance(self.polynomialLine)
       
     self.polynomialLine = self.odVsDoseChart.AddPlot(vtk.vtkChart.LINE)
-    self.polynomialLine.SetInput(self.polynomialTable, 0, 1)
+    self.polynomialLine.SetInputData(self.polynomialTable, 0, 1)
     self.polynomialLine.SetColor(192, 0, 0, 255)
     self.polynomialLine.SetWidth(2)
 
