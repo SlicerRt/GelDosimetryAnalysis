@@ -158,7 +158,7 @@ class GelDosimetryAnalysisSlicelet(object):
     compositeNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
     for name in compositeNodes:
       if compositeNodes[name] != None:
-        pass #compositeNodes[name].SetSliceIntersectionVisibility(1) #TODO: Uncomment when fixed https://www.assembla.com/spaces/slicerrt/tickets/643-slice-intersection-navigation-doesn-t-work#/activity/ticket:
+        compositeNodes[name].SetSliceIntersectionVisibility(1)
 
     # Set up step panels
     self.setup_Step0_LayoutSelection()    
@@ -199,8 +199,8 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step0_clinicalModeRadioButton.disconnect('toggled(bool)', self.onClinicalModeSelect)
     self.step0_preclinicalModeRadioButton.disconnect('toggled(bool)', self.onPreclinicalModeSelect)
     self.step1_showDicomBrowserButton.disconnect('clicked()', self.logic.onDicomLoad)
-    self.obiAdditionalLoadDataButton.disconnect('clicked()', self.logic.onDicomLoad)
-    self.registerObiToPlanCtButton.disconnect('clicked()', self.onObiToPlanCTRegistration)
+    self.step2_obiAdditionalLoadDataButton.disconnect('clicked()', self.logic.onDicomLoad)
+    self.step2_registerObiToPlanCtButton.disconnect('clicked()', self.onObiToPlanCTRegistration)
     self.step3_measuredDoseToObiRegistrationCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep3_MeasuredDoseToObiRegistrationSelected)
     self.step3A_obiFiducialSelectionCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep3A_ObiFiducialCollectionSelected)
     self.step3C_measuredFiducialSelectionCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep3C_ObiFiducialCollectionSelected)
@@ -290,10 +290,10 @@ class GelDosimetryAnalysisSlicelet(object):
 
     # OBI (on board imaging ~ CBCT) load button
     self.obiAdditionalLoadDataLabel = qt.QLabel("Load OBI data: ")
-    self.obiAdditionalLoadDataButton = qt.QPushButton("Show DICOM browser")
-    self.obiAdditionalLoadDataButton.toolTip = "Load on-board cone beam CT scan if not already loaded"
-    self.obiAdditionalLoadDataButton.name = "obiAdditionalLoadDataButton"
-    self.step2_obiToPlanCtRegistrationCollapsibleButtonLayout.addRow(self.obiAdditionalLoadDataLabel, self.obiAdditionalLoadDataButton)
+    self.step2_obiAdditionalLoadDataButton = qt.QPushButton("Show DICOM browser")
+    self.step2_obiAdditionalLoadDataButton.toolTip = "Load on-board cone beam CT scan if not already loaded"
+    self.step2_obiAdditionalLoadDataButton.name = "step2_obiAdditionalLoadDataButton"
+    self.step2_obiToPlanCtRegistrationCollapsibleButtonLayout.addRow(self.obiAdditionalLoadDataLabel, self.step2_obiAdditionalLoadDataButton)
 
     # PLANCT node selector
     self.planCTSelector = slicer.qMRMLNodeComboBox()
@@ -336,14 +336,14 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step2_obiToPlanCtRegistrationCollapsibleButtonLayout.addRow('OBI volume: ', self.obiSelector)
 
     # OBI to PLANCT registration button
-    self.registerObiToPlanCtButton = qt.QPushButton("Perform registration")
-    self.registerObiToPlanCtButton.toolTip = "Register OBI volume to PLANCT volume"
-    self.registerObiToPlanCtButton.name = "registerObiToPlanCtButton"
-    self.step2_obiToPlanCtRegistrationCollapsibleButtonLayout.addRow('Register OBI to PLANCT: ', self.registerObiToPlanCtButton)
+    self.step2_registerObiToPlanCtButton = qt.QPushButton("Perform registration")
+    self.step2_registerObiToPlanCtButton.toolTip = "Register OBI volume to PLANCT volume"
+    self.step2_registerObiToPlanCtButton.name = "step2_registerObiToPlanCtButton"
+    self.step2_obiToPlanCtRegistrationCollapsibleButtonLayout.addRow('Register OBI to PLANCT: ', self.step2_registerObiToPlanCtButton)
 
     # Connections
-    self.obiAdditionalLoadDataButton.connect('clicked()', self.logic.onDicomLoad)
-    self.registerObiToPlanCtButton.connect('clicked()', self.onObiToPlanCTRegistration)
+    self.step2_obiAdditionalLoadDataButton.connect('clicked()', self.logic.onDicomLoad)
+    self.step2_registerObiToPlanCtButton.connect('clicked()', self.onObiToPlanCTRegistration)
 
   def setup_Step3_MeasuredToObiRegistration(self):
     # Step 3: Gel CT scan to cone beam CT registration panel
@@ -1142,12 +1142,13 @@ class GelDosimetryAnalysisSlicelet(object):
     self.calibrationDataAlignedLine.SetWidth(2.0)
 
     # Show chart
-    self.calibrationCurveChart.GetAxis(1).SetTitle('Depth (cm)')
+    self.calibrationCurveChart.GetAxis(1).SetTitle('Depth (cm) - select region using right mouse button to be considered for calibration')
     self.calibrationCurveChart.GetAxis(0).SetTitle('Percent Depth Dose / Optical Density')
     self.calibrationCurveChart.SetShowLegend(True)
     self.calibrationCurveChart.SetTitle('PDD vs Calibration data')
     self.calibrationCurveChartView.GetInteractor().Initialize()
     self.calibrationCurveChartView.GetRenderWindow().SetSize(800,550)
+    self.calibrationCurveChartView.GetRenderWindow().SetWindowName('PDD vs Calibration data chart')
     self.calibrationCurveChartView.GetRenderWindow().Start()
 
   def onAlignCalibrationCurves(self):
@@ -1234,9 +1235,10 @@ class GelDosimetryAnalysisSlicelet(object):
     # Show chart
     self.odVsDoseChart.GetAxis(1).SetTitle('Optical density')
     self.odVsDoseChart.GetAxis(0).SetTitle('Dose (GY)')
-    self.odVsDoseChart.SetTitle('Optical density VS dose')
+    self.odVsDoseChart.SetTitle('Optical density vs Dose')
     self.odVsDoseChartView.GetInteractor().Initialize()
     self.odVsDoseChartView.GetRenderWindow().SetSize(800,550)
+    self.odVsDoseChartView.GetRenderWindow().SetWindowName('Optical density vs Dose chart')
     self.odVsDoseChartView.GetRenderWindow().Start()
 
   def onRemoveSelectedPointsFromOpticalDensityVsDoseCurve(self):
@@ -1583,7 +1585,7 @@ class GelDosimetryAnalysisSlicelet(object):
     slicer.util.loadScene(scenePath)
 
     # Set member variables for the loaded scene
-    self.mode = slicer.util.getNode(mode)
+    self.mode = 'Clinical'
     self.planCtVolumeNode = slicer.util.getNode(planCtVolumeNodeName)
     self.obiVolumeNode = slicer.util.getNode(obiVolumeNodeName)
     self.planDoseVolumeNode = slicer.util.getNode(planDoseVolumeNodeName)

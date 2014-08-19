@@ -429,7 +429,7 @@ class GelDosimetryAnalysisLogic:
         self.opticalDensityVsDoseFunction[doseNumberOfRows-doseRowIndex-1, 1] = self.calculatedDose[doseRowIndex, 1]
       else:
         # If the depth value is out of range then delete the last row (it will never be set, but we need to remove the zeros from the end)
-        self.opticalDensityVsDoseFunction = numpy.delete(self.opticalDensityVsDoseFunction, self.opticalDensityVsDoseFunction.shape[0]-1, 0)
+        self.opticalDensityVsDoseFunction = numpy.delete(self.opticalDensityVsDoseFunction, doseNumberOfRows-doseRowIndex-1, 0)
 
   # ---------------------------------------------------------------------------
   def fitCurveToOpticalDensityVsDoseFunctionArray(self, orderOfFittedPolynomial):
