@@ -751,7 +751,7 @@ class GelDosimetryAnalysisSlicelet(object):
     gammaScalarBarActor.SetPosition(0.1, 0.1)
     gammaScalarBarActor.SetWidth(0.1)
     gammaScalarBarActor.SetHeight(0.5)
-    layoutManager = self.layoutWidget.layoutManager() #slicer.app.layoutManager() #TODO remove
+    layoutManager = self.layoutWidget.layoutManager()
     sliceViewerNames = layoutManager.sliceViewNames()
     sliceViewerWidgetRed = layoutManager.sliceWidget(sliceViewerNames[0])
     sliceViewRed = sliceViewerWidgetRed.sliceView()
@@ -1351,14 +1351,18 @@ class GelDosimetryAnalysisSlicelet(object):
       self.gammaScalarBarWidget.Render()
 
   def onStep5_MaskContourSelectionChanged(self, node):
+    # Use subject hierarchy to properly toggle visibility, slice intersections and all
+    from vtkSlicerSubjectHierarchyModuleMRML import vtkMRMLSubjectHierarchyNode
     # Hide previously selected mask contour
     if self.maskContourNode != None:
-      self.maskContourNode.SetDisplayVisibility(0)
+      maskContourShNode = vtkMRMLSubjectHierarchyNode.GetAssociatedSubjectHierarchyNode(self.maskContourNode)
+      maskContourShNode.SetDisplayVisibilityForBranch(0)
     # Set new mask contour
     self.maskContourNode = node
     # Show new mask contour
     if self.maskContourNode != None:
-      self.maskContourNode.SetDisplayVisibility(1)
+      maskContourShNode = vtkMRMLSubjectHierarchyNode.GetAssociatedSubjectHierarchyNode(self.maskContourNode)
+      maskContourShNode.SetDisplayVisibilityForBranch(1)
 
   def onUseMaximumDoseRadioButtonToggled(self, toggled):
     self.step5A_referenceDoseCustomValuecGySpinBox.setEnabled(not toggled)
@@ -1386,12 +1390,12 @@ class GelDosimetryAnalysisSlicelet(object):
       self.gammaParameterSetNode.SetReferenceDoseGy(self.step5A_referenceDoseCustomValuecGySpinBox.value)
       self.gammaParameterSetNode.SetAnalysisThresholdPercent(self.step5A_analysisThresholdPercentSpinBox.value)
       self.gammaParameterSetNode.SetMaximumGamma(self.step5A_maximumGammaSpinBox.value)
-      
+
       qt.QApplication.setOverrideCursor(qt.QCursor(qt.Qt.BusyCursor))
       slicer.modules.dosecomparison.logic().SetAndObserveDoseComparisonNode(self.gammaParameterSetNode)
       slicer.modules.dosecomparison.logic().ComputeGammaDoseDifference()
       qt.QApplication.restoreOverrideCursor()
-      
+
       if self.gammaParameterSetNode.GetResultsValid():
         self.step5A_gammaStatusLabel.setText('Gamma dose comparison succeeded\nPass fraction: {0:.2f}%'.format(self.gammaParameterSetNode.GetPassFractionPercent()))
       else:
@@ -1404,6 +1408,16 @@ class GelDosimetryAnalysisSlicelet(object):
       selectionNode.SetReferenceSecondaryVolumeID(None)
       appLogic.PropagateVolumeSelection()
 
+      # Show contour (use subject hierarchy to properly toggle visibility, slice intersections and all)
+      from vtkSlicerSubjectHierarchyModuleMRML import vtkMRMLSubjectHierarchyNode
+      maskContourShNode = vtkMRMLSubjectHierarchyNode.GetAssociatedSubjectHierarchyNode(self.maskContourNode)
+      maskContourShNode.SetDisplayVisibilityForBranch(1)
+      
+      # Show gamma slice in 3D view
+      redSlice = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeRed')
+      if redSlice != None:
+        redSlice.SetSliceVisible(1)
+
       # Set gamma window/level
       maximumGamma = self.step5A_maximumGammaSpinBox.value
       gammaDisplayNode = self.gammaVolumeNode.GetDisplayNode()
@@ -1412,9 +1426,11 @@ class GelDosimetryAnalysisSlicelet(object):
       gammaDisplayNode.ApplyThresholdOn()
       gammaDisplayNode.AutoThresholdOff()
       gammaDisplayNode.SetLowerThreshold(0.001)
+
       # Add scalar bar
       gammaColorTable = slicer.util.getNode('Gamma_Color*')
-      if gammaColorTable != None:
+      if False: # TODO: Use new scalar bar https://www.assembla.com/spaces/slicerrt/tickets/644
+      # if gammaColorTable != None:
         gammaScalarBarColorTable = slicer.util.getNode(self.gammaScalarBarColorTableName)
         if gammaScalarBarColorTable == None:
           gammaScalarBarColorTable = slicer.vtkMRMLColorTableNode()
@@ -1562,7 +1578,7 @@ class GelDosimetryAnalysisSlicelet(object):
 
   def performSelfTestFromSavedScene(self):
     # Set variables. Only this section needs to be changed when testing new dataset
-    scenePath = 'c:/Slicer_Data/20140124_GelDosimetry_Scene/2014-01-24-Scene.mrml'
+    scenePath = 'c:/Slicer_Data/20140820_GelDosimetry_StructureSetIncluded/2014-08-20-Scene.mrml'
     planCtVolumeNodeName = '*ARIA RadOnc Images - Verification Plan Phantom'
     obiVolumeNodeName = '0: Unknown'
     planDoseVolumeNodeName = '53: RTDOSE: Eclipse Doses: '
