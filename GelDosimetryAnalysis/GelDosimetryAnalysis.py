@@ -816,17 +816,19 @@ class GelDosimetryAnalysisSlicelet(object):
       slicer.app.ioManager().disconnect('newFileLoaded(qSlicerIO::IOProperties)', self.setMeasuredData)
     # In preclinical mode: open DICOM loader
     elif self.mode == 'Preclinical':
-      slicer.app.ioManager().connect('newFileLoaded(qSlicerIO::IOProperties)', self.setMeasuredData)
       self.logic.onDicomLoad()
-      slicer.app.ioManager().disconnect('newFileLoaded(qSlicerIO::IOProperties)', self.setMeasuredData)
 
   def setMeasuredData(self, params):
     # Assumes that two MRML nodes are created when loading a VFF file, and the first one is the volume (second is the display node)
     self.measuredVolumeNode = slicer.mrmlScene.GetNthNode( slicer.mrmlScene.GetNumberOfNodes()-2 )
     self.step3D_measuredVolumeSelector.setCurrentNode(self.measuredVolumeNode)
     self.step4C_measuredVolumeSelector.setCurrentNode(self.measuredVolumeNode)
-
     self.step3B_loadMeasuredDataStatusLabel.setText('Volume loaded and set as MEASURED')
+
+    # Compute auto window level for optical CT volume
+    import vtkSlicerRtCommon
+    autoWindowLevel = vtkSlicerRtCommon.vtkSlicerAutoWindowLevelLogic()
+    autoWindowLevel.ComputeWindowLevel(self.measuredVolumeNode)
 
   def onStep3_MeasuredDoseToObiRegistrationSelected(self, collapsed):
     # Make sure the functions handling entering the fiducial selection panels are called when entering the outer panel
@@ -1018,16 +1020,18 @@ class GelDosimetryAnalysisSlicelet(object):
       slicer.app.ioManager().disconnect('newFileLoaded(qSlicerIO::IOProperties)', self.setCalibrationData)
     # In preclinical mode: open DICOM loader
     elif self.mode == 'Preclinical':
-      slicer.app.ioManager().connect('newFileLoaded(qSlicerIO::IOProperties)', self.setCalibrationData)
       self.logic.onDicomLoad()
-      slicer.app.ioManager().disconnect('newFileLoaded(qSlicerIO::IOProperties)', self.setCalibrationData)
       
   def setCalibrationData(self, params):
     # Assumes that two MRML nodes are created when loading a VFF file, and the first one is the volume (second is the display node)
     self.calibrationVolumeNode = slicer.mrmlScene.GetNthNode( slicer.mrmlScene.GetNumberOfNodes()-2 )
     self.step4A_calibrationVolumeSelector.setCurrentNode(self.calibrationVolumeNode)
-
     self.step4A_parseCalibrationVolumeStatusLabel.setText('Volume loaded and set as CALIBRATION')
+
+    # Compute auto window level for optical CT volume
+    import vtkSlicerRtCommon
+    autoWindowLevel = vtkSlicerRtCommon.vtkSlicerAutoWindowLevelLogic()
+    autoWindowLevel.ComputeWindowLevel(self.calibrationVolumeNode)
 
   def onStep4C_PolynomialFittingAndCalibrationSelected(self, collapsed):
     if collapsed == False:
@@ -1667,7 +1671,7 @@ class GelDosimetryAnalysis:
     parent.title = "Gel Dosimetry Analysis"
     parent.categories = ["Slicelets"]
     parent.dependencies = ["GelDosimetryAnalysisAlgo", "DicomRtImport", "BRAINSFit", "BRAINSResample", "DoseComparison"]
-    parent.contributors = ["Mattea Welch (Queen's University), Jennifer Andrea (Queen's University), Csaba Pinter (Queen's University)"] # replace with "Firstname Lastname (Org)"
+    parent.contributors = ["Csaba Pinter (Queen's University), Mattea Welch (Queen's University), Jennifer Andrea (Queen's University), Kevin Alexander (Kingston General Hospital)"] # replace with "Firstname Lastname (Org)"
     parent.helpText = "Slicelet for gel dosimetry analysis"
     parent.acknowledgementText = """
     This file was originally developed by Mattea Welch, Jennifer Andrea, and Csaba Pinter (Queen's University). Funding was provided by NSERC-USRA, OCAIRO, Cancer Care Ontario and Queen's University
