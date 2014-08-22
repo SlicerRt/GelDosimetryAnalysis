@@ -741,22 +741,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step5C_doseDifferenceComparisonCollapsibleButtonLayout.setSpacing(4)
 
     # Scalar bar
-    from vtkSlicerIsodoseModuleWidgets import vtkSlicerRTScalarBarActor
     self.gammaScalarBarWidget = vtk.vtkScalarBarWidget()
-    gammaScalarBarActor = vtkSlicerRTScalarBarActor()
-    self.gammaScalarBarWidget.SetScalarBarActor(gammaScalarBarActor)
-    gammaScalarBarActor.SetNumberOfLabels(self.numberOfGammaLabels)
-    gammaScalarBarActor.SetTitle('gamma')
-    gammaScalarBarActor.SetLabelFormat(' %.2f')
-    gammaScalarBarActor.SetPosition(0.1, 0.1)
-    gammaScalarBarActor.SetWidth(0.1)
-    gammaScalarBarActor.SetHeight(0.5)
-    layoutManager = self.layoutWidget.layoutManager()
-    sliceViewerNames = layoutManager.sliceViewNames()
-    sliceViewerWidgetRed = layoutManager.sliceWidget(sliceViewerNames[0])
-    sliceViewRed = sliceViewerWidgetRed.sliceView()
-    sliceViewerWidgetRedInteractorStyle = sliceViewerWidgetRed.interactorStyle()
-    self.gammaScalarBarWidget.SetInteractor(sliceViewerWidgetRedInteractorStyle.GetInteractor())
 
     # Connections
     self.step5_doseComparisonCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep5_DoseComparisonSelected)
@@ -1414,9 +1399,13 @@ class GelDosimetryAnalysisSlicelet(object):
       maskContourShNode.SetDisplayVisibilityForBranch(1)
       
       # Show gamma slice in 3D view
-      redSlice = slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeRed')
-      if redSlice != None:
-        redSlice.SetSliceVisible(1)
+      layoutManager = self.layoutWidget.layoutManager()
+      sliceViewerNames = layoutManager.sliceViewNames()
+      sliceViewerWidgetRed = layoutManager.sliceWidget(sliceViewerNames[0])
+      sliceLogicRed = sliceViewerWidgetRed.sliceLogic()
+      sliceLogicRed.StartSliceNodeInteraction(slicer.vtkMRMLSliceNode.SliceVisibleFlag)
+      sliceLogicRed.GetSliceNode().SetSliceVisible(1)
+      sliceLogicRed.EndSliceNodeInteraction()
 
       # Set gamma window/level
       maximumGamma = self.step5A_maximumGammaSpinBox.value
@@ -1427,10 +1416,34 @@ class GelDosimetryAnalysisSlicelet(object):
       gammaDisplayNode.AutoThresholdOff()
       gammaDisplayNode.SetLowerThreshold(0.001)
 
+      # Create scalar bar
+      import vtkSlicerColorsModuleVTKWidgets
+      gammaScalarBarActor = vtkSlicerColorsModuleVTKWidgets.vtkSlicerScalarBarActor()
+      gammaScalarBarActor.SetOrientationToVertical()
+      gammaScalarBarActor.SetNumberOfLabels(self.numberOfGammaLabels)
+      gammaScalarBarTitleTextProps = gammaScalarBarActor.GetTitleTextProperty()
+      gammaScalarBarTitleTextProps.SetFontSize(8)
+      gammaScalarBarActor.SetTitleTextProperty(gammaScalarBarTitleTextProps)
+      gammaScalarBarActor.SetTitle('gamma')
+      gammaScalarBarActor.SetLabelFormat(' %.2f')
+      gammaScalarBarActor.SetPosition(0.1, 0.1)
+      gammaScalarBarActor.SetWidth(0.1)
+      gammaScalarBarActor.SetHeight(0.8)
+      gammaScalarBarActor.DrawAnnotationsOn() # TODO: Temporary solution for showing actual gamma values
+      gammaScalarBarActor.DrawTickLabelsOff() # TODO:
+      gammaScalarBarActor.SetAnnotationLeaderPadding(2) # TODO:
+      
       # Add scalar bar
+      layoutManager = self.layoutWidget.layoutManager()
+      sliceViewerNames = layoutManager.sliceViewNames()
+      sliceViewerWidgetRed = layoutManager.sliceWidget(sliceViewerNames[0])
+      sliceViewRed = sliceViewerWidgetRed.sliceView()
+      sliceViewerWidgetRedInteractorStyle = sliceViewerWidgetRed.interactorStyle()
+      self.gammaScalarBarWidget.SetInteractor(sliceViewerWidgetRedInteractorStyle.GetInteractor())
+
+      # Setup scalar bar colors and labels
       gammaColorTable = slicer.util.getNode('Gamma_Color*')
-      if False: # TODO: Use new scalar bar https://www.assembla.com/spaces/slicerrt/tickets/644
-      # if gammaColorTable != None:
+      if gammaColorTable != None:
         gammaScalarBarColorTable = slicer.util.getNode(self.gammaScalarBarColorTableName)
         if gammaScalarBarColorTable == None:
           gammaScalarBarColorTable = slicer.vtkMRMLColorTableNode()
@@ -1443,16 +1456,16 @@ class GelDosimetryAnalysisSlicelet(object):
         gammaScalarBarColorTableLookupTable = gammaScalarBarColorTable.GetLookupTable()
         gammaScalarBarColorTableLookupTable.SetTableRange(0,self.numberOfGammaLabels-1)
         gammaLookupTable = gammaColorTable.GetLookupTable()
-        gammaScalarBarActor = self.gammaScalarBarWidget.GetScalarBarActor()
-        gammaScalarBarActor.SetLookupTable(gammaScalarBarColorTableLookupTable)
         for colorIndex in xrange(0,self.numberOfGammaLabels):
           interpolatedColor = [0]*3
           gammaLookupTable.GetColor(256*colorIndex/(self.numberOfGammaLabels-1), interpolatedColor)
           colorName = '{0:.2f}'.format(maximumGamma*colorIndex/(self.numberOfGammaLabels-1))
-          gammaScalarBarActor.SetColorName(colorIndex, colorName)
+          gammaScalarBarColorTableLookupTable.SetAnnotation(colorIndex, colorName)
           gammaScalarBarColorTable.AddColor(colorName, interpolatedColor[0], interpolatedColor[1], interpolatedColor[2])
           # print('Name: ' + colorName + '  Color' + repr(interpolatedColor)) #TODO remove
-        gammaScalarBarActor.UseColorNameAsLabelOn()
+        gammaScalarBarActor.UseAnnotationAsLabelOn()
+        gammaScalarBarActor.SetLookupTable(gammaScalarBarColorTableLookupTable)
+        self.gammaScalarBarWidget.SetScalarBarActor(gammaScalarBarActor)
         self.gammaScalarBarWidget.SetEnabled(1)
         self.gammaScalarBarWidget.Render()
       else:
@@ -1715,7 +1728,7 @@ class GelDosimetryAnalysisWidget:
 
     # Make the slicelet reachable from the Slicer python interactor for testing
     # TODO_ForTesting: Should be uncommented for testing
-    # slicer.gelDosimetrySliceletInstance = slicelet
+    slicer.gelDosimetrySliceletInstance = slicelet
 
   def onSliceletClosed(self):
     print('Slicelet closed')
