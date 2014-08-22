@@ -1425,13 +1425,10 @@ class GelDosimetryAnalysisSlicelet(object):
       gammaScalarBarTitleTextProps.SetFontSize(8)
       gammaScalarBarActor.SetTitleTextProperty(gammaScalarBarTitleTextProps)
       gammaScalarBarActor.SetTitle('gamma')
-      gammaScalarBarActor.SetLabelFormat(' %.2f')
+      gammaScalarBarActor.SetLabelFormat('%.8s')
       gammaScalarBarActor.SetPosition(0.1, 0.1)
       gammaScalarBarActor.SetWidth(0.1)
       gammaScalarBarActor.SetHeight(0.8)
-      gammaScalarBarActor.DrawAnnotationsOn() # TODO: Temporary solution for showing actual gamma values
-      gammaScalarBarActor.DrawTickLabelsOff() # TODO:
-      gammaScalarBarActor.SetAnnotationLeaderPadding(2) # TODO:
       
       # Add scalar bar
       layoutManager = self.layoutWidget.layoutManager()
@@ -1658,7 +1655,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step5_doseComparisonCollapsibleButton.setChecked(True)
     self.step5_gammaVolumeSelector.addNode()
     self.step5_maskContourSelector.setCurrentNodeID(maskContourNodeID)
-    # self.onGammaDoseComparison() # Uncomment if needed, takes a lot of time (~10s)
+    # self.onGammaDoseComparison() # TODO: Uncomment if needed, takes a lot of time (~10s)
     
     qt.QApplication.restoreOverrideCursor()
 
@@ -1728,7 +1725,7 @@ class GelDosimetryAnalysisWidget:
 
     # Make the slicelet reachable from the Slicer python interactor for testing
     # TODO_ForTesting: Should be uncommented for testing
-    slicer.gelDosimetrySliceletInstance = slicelet
+    # slicer.gelDosimetrySliceletInstance = slicelet
 
   def onSliceletClosed(self):
     print('Slicelet closed')
