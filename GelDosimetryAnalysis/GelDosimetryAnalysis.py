@@ -694,12 +694,13 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step5A_referenceDoseLayout.addWidget(self.step5A_referenceDoseLabel, 0, 0, 2, 1)
     self.step5A_referenceDoseUseMaximumDoseRadioButton = qt.QRadioButton('Use maximum dose')
     self.step5A_referenceDoseLayout.addWidget(self.step5A_referenceDoseUseMaximumDoseRadioButton, 0, 1)
-    self.step5A_referenceDoseUseCustomValuecGyRadioButton = qt.QRadioButton('Use custom value (cGy)')
-    self.step5A_referenceDoseLayout.addWidget(self.step5A_referenceDoseUseCustomValuecGyRadioButton, 1, 1)
-    self.step5A_referenceDoseCustomValuecGySpinBox = qt.QDoubleSpinBox()
-    self.step5A_referenceDoseCustomValuecGySpinBox.setValue(5.0)
-    self.step5A_referenceDoseCustomValuecGySpinBox.setEnabled(False)
-    self.step5A_referenceDoseLayout.addWidget(self.step5A_referenceDoseCustomValuecGySpinBox, 1, 2)
+    self.step5A_referenceDoseUseCustomValueGyRadioButton = qt.QRadioButton('Use custom value (Gy)')
+    self.step5A_referenceDoseLayout.addWidget(self.step5A_referenceDoseUseCustomValueGyRadioButton, 1, 1)
+    self.step5A_referenceDoseCustomValueGySpinBox = qt.QDoubleSpinBox()
+    self.step5A_referenceDoseCustomValueGySpinBox.setValue(5.0)
+    self.step5A_referenceDoseCustomValueGySpinBox.setEnabled(False)
+    self.step5A_referenceDoseCustomValueGySpinBox.setMaximum(99999)
+    self.step5A_referenceDoseLayout.addWidget(self.step5A_referenceDoseCustomValueGySpinBox, 1, 2)
     self.step5A_gammaDoseComparisonCollapsibleButtonLayout.addRow(self.step5A_referenceDoseLayout)
 
     self.step5A_analysisThresholdPercentSpinBox = qt.QDoubleSpinBox()
@@ -1354,7 +1355,7 @@ class GelDosimetryAnalysisSlicelet(object):
       maskContourShNode.SetDisplayVisibilityForBranch(1)
 
   def onUseMaximumDoseRadioButtonToggled(self, toggled):
-    self.step5A_referenceDoseCustomValuecGySpinBox.setEnabled(not toggled)
+    self.step5A_referenceDoseCustomValueGySpinBox.setEnabled(not toggled)
 
   def onGammaDoseComparison(self):
     try:
@@ -1376,7 +1377,7 @@ class GelDosimetryAnalysisSlicelet(object):
       self.gammaParameterSetNode.SetDtaDistanceToleranceMm(self.step5A_dtaDistanceToleranceMmSpinBox.value)
       self.gammaParameterSetNode.SetDoseDifferenceTolerancePercent(self.step5A_doseDifferenceTolerancePercentSpinBox.value)
       self.gammaParameterSetNode.SetUseMaximumDose(self.step5A_referenceDoseUseMaximumDoseRadioButton.isChecked())
-      self.gammaParameterSetNode.SetReferenceDoseGy(self.step5A_referenceDoseCustomValuecGySpinBox.value)
+      self.gammaParameterSetNode.SetReferenceDoseGy(self.step5A_referenceDoseCustomValueGySpinBox.value)
       self.gammaParameterSetNode.SetAnalysisThresholdPercent(self.step5A_analysisThresholdPercentSpinBox.value)
       self.gammaParameterSetNode.SetMaximumGamma(self.step5A_maximumGammaSpinBox.value)
 
