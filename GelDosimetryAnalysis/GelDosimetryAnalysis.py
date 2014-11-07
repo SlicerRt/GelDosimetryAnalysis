@@ -220,7 +220,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step4C_fitPolynomialToOpticalDensityVsDoseCurveButton.disconnect('clicked()', self.onFitPolynomialToOpticalDensityVsDoseCurve)
     self.step4C_applyCalibrationButton.disconnect('clicked()', self.onApplyCalibration)
     self.step5_doseComparisonCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep5_DoseComparisonSelected)
-    self.step5_maskContourSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onStep5_MaskContourSelectionChanged)
+    self.step5_maskContourSelector.disconnect('currentNodeChanged(vtkMRMLNode*)', self.onStep5_MaskContourSelectionChanged)
     self.step5A_referenceDoseUseMaximumDoseRadioButton.disconnect('toggled(bool)', self.onUseMaximumDoseRadioButtonToggled)
     self.step5A_computeGammaButton.disconnect('clicked()', self.onGammaDoseComparison)
 
@@ -1472,6 +1472,12 @@ class GelDosimetryAnalysisSlicelet(object):
         self.gammaScalarBarWidget.Render()
       else:
         print('ERROR: Unable to find gamma color table!')
+
+      # Center 3D view
+      layoutManager = self.layoutWidget.layoutManager()
+      threeDWidget = layoutManager.threeDWidget(0)
+      if threeDWidget != None and threeDWidget.threeDView() != None:
+        threeDWidget.threeDView().resetFocalPoint()
       
     except Exception, e:
       import traceback
@@ -1660,7 +1666,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step5_doseComparisonCollapsibleButton.setChecked(True)
     self.step5_gammaVolumeSelector.addNode()
     self.step5_maskContourSelector.setCurrentNodeID(maskContourNodeID)
-    # self.onGammaDoseComparison() # TODO: Uncomment if needed, takes a lot of time (~10s)
+    self.onGammaDoseComparison() # TODO: Uncomment if needed, takes a lot of time (~10s)
     
     qt.QApplication.restoreOverrideCursor()
 
@@ -1730,7 +1736,7 @@ class GelDosimetryAnalysisWidget:
 
     # Make the slicelet reachable from the Slicer python interactor for testing
     # TODO_ForTesting: Should be uncommented for testing
-    # slicer.gelDosimetrySliceletInstance = slicelet
+    slicer.gelDosimetrySliceletInstance = slicelet
 
   def onSliceletClosed(self):
     print('Slicelet closed')

@@ -51,7 +51,8 @@ class GelDosimetryAnalysisLogic:
       parametersRigid["movingVolume"] = planCtVolumeID
       parametersRigid["useRigid"] = True
       parametersRigid["initializeTransformMode"] = "useGeometryAlign"
-      #parametersRigid["backgroundFillValue"] = -1000.0
+      parametersRigid["samplingPercentage"] = 0.0005
+      # parametersRigid["backgroundFillValue"] = -1000.0
 
       # Set output transform
       obiToPlanTransformNode = slicer.util.getNode(self.obiToPlanTransformName)
@@ -72,7 +73,7 @@ class GelDosimetryAnalysisLogic:
         waitCount += 1
       self.delayDisplay("Register OBI to PlanCT using rigid registration finished")
       qt.QApplication.restoreOverrideCursor()
-      
+
       # Invert output transform (planToObi) to get the desired obiToPlan transform
       obiToPlanTransformNode.GetMatrixTransformToParent().Invert()
 
