@@ -251,9 +251,10 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step0_modeSelectorLayout.addWidget(self.step0_clinicalModeRadioButton, 0, 1)
     self.step0_preclinicalModeRadioButton = qt.QRadioButton('Preclinical MRI readout')
     self.step0_modeSelectorLayout.addWidget(self.step0_preclinicalModeRadioButton, 0, 2)
-    self.step0_layoutSelectionCollapsibleButtonLayout.addRow(self.step0_modeSelectorLayout)
-    self.step0_clinicalModeRadioButton.connect('toggled(bool)', self.onClinicalModeSelect)
-    self.step0_preclinicalModeRadioButton.connect('toggled(bool)', self.onPreclinicalModeSelect)
+    #TODO: uncomment when preclinical mode works
+    # self.step0_layoutSelectionCollapsibleButtonLayout.addRow(self.step0_modeSelectorLayout)
+    # self.step0_clinicalModeRadioButton.connect('toggled(bool)', self.onClinicalModeSelect)
+    # self.step0_preclinicalModeRadioButton.connect('toggled(bool)', self.onPreclinicalModeSelect)
     
     # Add layout widget
     self.layoutWidget = slicer.qMRMLLayoutWidget()
@@ -838,17 +839,17 @@ class GelDosimetryAnalysisSlicelet(object):
       selectionNode = appLogic.GetSelectionNode()
       if self.step3A_obiFiducialSelectionCollapsibleButton.collapsed == False:
         if self.obiVolumeNode != None:
-          selectionNode.SetReferenceActiveVolumeID(self.obiVolumeNode.GetID())
+          selectionNode.SetActiveVolumeID(self.obiVolumeNode.GetID())
         else:
-          selectionNode.SetReferenceActiveVolumeID(None)
-        selectionNode.SetReferenceSecondaryVolumeID(None)
+          selectionNode.SetActiveVolumeID(None)
+        selectionNode.SetSecondaryVolumeID(None)
         appLogic.PropagateVolumeSelection() 
       elif self.step3C_measuredFiducialSelectionCollapsibleButton.collapsed == False:
         if self.measuredVolumeNode != None:
-          selectionNode.SetReferenceActiveVolumeID(self.measuredVolumeNode.GetID())
+          selectionNode.SetActiveVolumeID(self.measuredVolumeNode.GetID())
         else:
-          selectionNode.SetReferenceActiveVolumeID(None)
-        selectionNode.SetReferenceSecondaryVolumeID(None)
+          selectionNode.SetActiveVolumeID(None)
+        selectionNode.SetSecondaryVolumeID(None)
         appLogic.PropagateVolumeSelection() 
 
   def onStep3A_ObiFiducialCollectionSelected(self, collapsed):
