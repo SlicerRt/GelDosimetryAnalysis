@@ -1678,7 +1678,7 @@ class GelDosimetryAnalysis:
   def __init__(self, parent):
     parent.title = "Gel Dosimetry Analysis"
     parent.categories = ["Slicelets"]
-    parent.dependencies = ["GelDosimetryAnalysisAlgo", "DicomRtImport", "BRAINSFit", "BRAINSResample", "DoseComparison"]
+    parent.dependencies = ["GelDosimetryAnalysisAlgo", "DicomRtImportExport", "BRAINSFit", "BRAINSResample", "DoseComparison"]
     parent.contributors = ["Csaba Pinter (Queen's University), Mattea Welch (Queen's University), Jennifer Andrea (Queen's University), Kevin Alexander (Kingston General Hospital)"] # replace with "Firstname Lastname (Org)"
     parent.helpText = "Slicelet for gel dosimetry analysis"
     parent.acknowledgementText = """
