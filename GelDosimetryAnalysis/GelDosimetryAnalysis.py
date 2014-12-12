@@ -579,6 +579,10 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step4C_fitPolynomialToOpticalDensityVsDoseCurveButton.toolTip = "Finds the line of best fit based on the data and polynomial order provided"
     self.step4C_polynomialFittingAndCalibrationCollapsibleButtonLayout.addRow(self.step4C_fitPolynomialToOpticalDensityVsDoseCurveButton)
 
+    self.step4C_exportCalibrationToCSV = qt.QPushButton("Export calibration to CSV files")
+    self.step4C_exportCalibrationToCSV.toolTip = "Export optical density to dose calibration plot points (if points were removed, those are not exported).\nIf polynomial fitting has been done, export the coefficients as well."
+    self.step4C_polynomialFittingAndCalibrationCollapsibleButtonLayout.addRow(self.step4C_exportCalibrationToCSV)
+
     self.step4C_fitPolynomialStatusLabel = qt.QLabel()
     self.step4C_polynomialFittingAndCalibrationCollapsibleButtonLayout.addRow(self.step4C_fitPolynomialStatusLabel)
 
@@ -616,6 +620,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step4C_showOpticalDensityVsDoseCurveButton.connect('clicked()', self.onShowOpticalDensityVsDoseCurve)
     self.step4C_removeSelectedPointsFromOpticalDensityVsDoseCurveButton.connect('clicked()', self.onRemoveSelectedPointsFromOpticalDensityVsDoseCurve)
     self.step4C_fitPolynomialToOpticalDensityVsDoseCurveButton.connect('clicked()', self.onFitPolynomialToOpticalDensityVsDoseCurve)
+    self.step4C_exportCalibrationToCSV.connect('clicked()', self.onExportCalibration)
     self.step4C_applyCalibrationButton.connect('clicked()', self.onApplyCalibration)
 
     # Open prepare calibration data panel when step is first opened
@@ -1076,7 +1081,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.calibrationCurveDataTable.AddColumn(calibrationMeanOpticalDensityArray)
 
     self.calibrationCurveDataTable.SetNumberOfRows(calibrationNumberOfRows)
-    for rowIndex in xrange(0, calibrationNumberOfRows):
+    for rowIndex in xrange(calibrationNumberOfRows):
       self.calibrationCurveDataTable.SetValue(rowIndex, 0, self.logic.calibrationDataArray[rowIndex, 0])
       self.calibrationCurveDataTable.SetValue(rowIndex, 1, self.logic.calibrationDataArray[rowIndex, 1])
       # self.calibrationCurveDataTable.SetValue(rowIndex, 2, self.logic.calibrationDataArray[rowIndex, 2])
@@ -1099,7 +1104,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.pddDataTable.AddColumn(pddValueArray)
 
     self.pddDataTable.SetNumberOfRows(pddNumberOfRows)
-    for pddDepthCounter in xrange(0, pddNumberOfRows):
+    for pddDepthCounter in xrange(pddNumberOfRows):
       self.pddDataTable.SetValue(pddDepthCounter, 0, self.logic.pddDataArray[pddDepthCounter, 0])
       self.pddDataTable.SetValue(pddDepthCounter, 1, self.logic.pddDataArray[pddDepthCounter, 1])
 
@@ -1121,7 +1126,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.calibrationDataAlignedTable.AddColumn(calibrationDataAlignedValueArray)
 
     self.calibrationDataAlignedTable.SetNumberOfRows(calibrationDataAlignedNumberOfRows)
-    for calibrationDataAlignedDepthCounter in xrange(0, calibrationDataAlignedNumberOfRows):
+    for calibrationDataAlignedDepthCounter in xrange(calibrationDataAlignedNumberOfRows):
       self.calibrationDataAlignedTable.SetValue(calibrationDataAlignedDepthCounter, 0, self.logic.calibrationDataAlignedToDisplayArray[calibrationDataAlignedDepthCounter, 0])
       self.calibrationDataAlignedTable.SetValue(calibrationDataAlignedDepthCounter, 1, self.logic.calibrationDataAlignedToDisplayArray[calibrationDataAlignedDepthCounter, 1])
 
@@ -1210,7 +1215,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.odVsDoseDataTable.AddColumn(doseArray)
 
     self.odVsDoseDataTable.SetNumberOfRows(odVsDoseNumberOfRows)
-    for rowIndex in xrange(0, odVsDoseNumberOfRows):
+    for rowIndex in xrange(odVsDoseNumberOfRows):
       self.odVsDoseDataTable.SetValue(rowIndex, 0, self.logic.opticalDensityVsDoseFunction[rowIndex, 0])
       self.odVsDoseDataTable.SetValue(rowIndex, 1, self.logic.opticalDensityVsDoseFunction[rowIndex, 1])
 
@@ -1237,7 +1242,7 @@ class GelDosimetryAnalysisSlicelet(object):
     if outlierSelection == None:
       outlierSelection = self.odVsDoseLinePoint.GetSelection()
     if outlierSelection != None and outlierSelection.GetNumberOfTuples() > 0:
-      for outlierSelectionIndex in reversed(xrange(0, outlierSelection.GetNumberOfTuples())):
+      for outlierSelectionIndex in reversed(xrange(outlierSelection.GetNumberOfTuples())):
         outlierIndex = outlierSelection.GetValue(outlierSelectionIndex)
         self.odVsDoseDataTable.RemoveRow(outlierIndex)
         self.logic.opticalDensityVsDoseFunction = numpy.delete(self.logic.opticalDensityVsDoseFunction, outlierIndex, 0)
@@ -1260,7 +1265,7 @@ class GelDosimetryAnalysisSlicelet(object):
 
     # Show polynomial on GUI
     polynomialText = ''
-    for order in xrange(0,maxOrder+1):
+    for order in xrange(maxOrder+1):
       polynomialText = polynomialText + '{0:.6f} * x<span style=" font-size:8pt; vertical-align:super;">{1}</span>'.format(p[order],maxOrder-order)
       if order != len(p)-1:
         polynomialText = polynomialText + ' + '
@@ -1285,11 +1290,11 @@ class GelDosimetryAnalysisSlicelet(object):
     # The displayed polynomial is 4 times as dense as the OD VS dose curve
     polynomialNumberOfRows = odVsDoseNumberOfRows * 4
     self.polynomialTable.SetNumberOfRows(polynomialNumberOfRows)
-    for rowIndex in xrange(0, polynomialNumberOfRows):
+    for rowIndex in xrange(polynomialNumberOfRows):
       x = minPolynomial + (maxPolynomial-minPolynomial)*rowIndex/polynomialNumberOfRows
       self.polynomialTable.SetValue(rowIndex, 0, x)
       y = 0
-      for order in xrange(0,maxOrder+1):
+      for order in xrange(maxOrder+1):
         y += p[order] * x ** (maxOrder-order)
       self.polynomialTable.SetValue(rowIndex, 1, y)
 
@@ -1301,6 +1306,10 @@ class GelDosimetryAnalysisSlicelet(object):
     self.polynomialLine.SetColor(192, 0, 0, 255)
     self.polynomialLine.SetWidth(2)
 
+  def onExportCalibration(self):
+    result = self.logic.exportCalibrationToCSV()
+    qt.QMessageBox.information(None, 'Calibration values exported', result)
+    
   def onApplyCalibration(self):
     self.calibratedMeasuredVolumeNode = self.logic.calibrate(self.measuredVolumeNode.GetID())
     if self.calibratedMeasuredVolumeNode != None:
@@ -1459,7 +1468,7 @@ class GelDosimetryAnalysisSlicelet(object):
         gammaScalarBarColorTableLookupTable = gammaScalarBarColorTable.GetLookupTable()
         gammaScalarBarColorTableLookupTable.SetTableRange(0,self.numberOfGammaLabels-1)
         gammaLookupTable = gammaColorTable.GetLookupTable()
-        for colorIndex in xrange(0,self.numberOfGammaLabels):
+        for colorIndex in xrange(self.numberOfGammaLabels):
           interpolatedColor = [0]*3
           gammaLookupTable.GetColor(256*colorIndex/(self.numberOfGammaLabels-1), interpolatedColor)
           colorName = '{0:.2f}'.format(maximumGamma*colorIndex/(self.numberOfGammaLabels-1))
@@ -1762,8 +1771,9 @@ class GelDosimetryAnalysisTest(unittest.TestCase):
 # Main
 #
 if __name__ == "__main__":
-  # TODO: need a way to access and parse command line arguments
-  # TODO: ideally command line args should handle --xml
+  # TODO: access and parse command line arguments
+  #   Example: SlicerRt/src/BatchProcessing
+  #   Ideally handle --xml
 
   import sys
   print( sys.argv )

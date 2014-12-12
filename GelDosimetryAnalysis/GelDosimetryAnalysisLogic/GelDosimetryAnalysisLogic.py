@@ -94,7 +94,7 @@ class GelDosimetryAnalysisLogic:
       childrenContours = vtk.vtkCollection()
       if planStructuresNode != None:
         planStructuresNode.GetAssociatedChildrenNodes(childrenContours)
-      for contourIndex in xrange(0, childrenContours.GetNumberOfItems()):
+      for contourIndex in xrange(childrenContours.GetNumberOfItems()):
         contour = childrenContours.GetItemAsObject(contourIndex)
         if contour.IsA('vtkMRMLContourNode'): # There is one color table node in the collection, ignore it
           contour.SetAndObserveTransformNodeID(obiToPlanTransformNode.GetID())
@@ -222,7 +222,7 @@ class GelDosimetryAnalysisLogic:
       
       meanOpticalDensity = totalOpticalDensity / totalPixels
       standardDeviationOpticalDensity	= 0
-      for currentOpticalDensityValue in xrange(0, totalPixels):
+      for currentOpticalDensityValue in xrange(totalPixels):
         standardDeviationOpticalDensity += pow((listOfOpticalDensities[currentOpticalDensityValue] - meanOpticalDensity), 2)
       standardDeviationOpticalDensity = sqrt(standardDeviationOpticalDensity / totalPixels)
       opticalDensityOfCentralCylinderTable[sliceNumber, 0] = sliceNumber * calibrationVolumeSliceThicknessCm
@@ -301,7 +301,7 @@ class GelDosimetryAnalysisLogic:
     sumSquaredDifference = 0.0
     calibrationAlignedRowIndex = -1
     pddNumberOfRows = self.pddDataArray.shape[0]
-    for pddRowIndex in xrange(0, pddNumberOfRows):
+    for pddRowIndex in xrange(pddNumberOfRows):
       pddCurrentDepth = self.pddDataArray[pddRowIndex, 0]
       if pddCurrentDepth >= range[0] and pddCurrentDepth <= range[1]:
         calibrationAlignedRowIndex += 1
@@ -319,7 +319,7 @@ class GelDosimetryAnalysisLogic:
     sumSquaredDifference = 0.0
     calibrationAlignedRowIndex = -1
     pddNumberOfRows = self.pddDataArray.shape[0]
-    for pddRowIndex in xrange(0, pddNumberOfRows):
+    for pddRowIndex in xrange(pddNumberOfRows):
       pddCurrentDepth = self.pddDataArray[pddRowIndex, 0]
       if pddCurrentDepth >= range[0] and pddCurrentDepth <= range[1]:
         calibrationAlignedRowIndex += 1
@@ -376,7 +376,7 @@ class GelDosimetryAnalysisLogic:
   def computeMeanDifferenceOfNeighborsForArray(self, array):
     numberOfValues = array.shape[0]
     sumDifferences = 0
-    for index in xrange(0, numberOfValues-1):
+    for index in xrange(numberOfValues-1):
       sumDifferences += abs(array[index, 1] - array[index+1, 1])
     return sumDifferences / (numberOfValues-1)
 
@@ -384,7 +384,7 @@ class GelDosimetryAnalysisLogic:
   def findMaxValueInArray(self, array):
     numberOfValues = array.shape[0]
     maximumValue = -1
-    for index in xrange(0, numberOfValues):
+    for index in xrange(numberOfValues):
       if array[index, 1] > maximumValue:
         maximumValue = array[index, 1]
     return maximumValue
@@ -392,7 +392,7 @@ class GelDosimetryAnalysisLogic:
   # ---------------------------------------------------------------------------
   def populateInterpolatorForParameters(self, interpolator, xTrans, yScale, yTrans):
     calibrationNumberOfRows = self.calibrationDataCleanedArray.shape[0]
-    for calibrationRowIndex in xrange(0, calibrationNumberOfRows):
+    for calibrationRowIndex in xrange(calibrationNumberOfRows):
       xTranslated = self.calibrationDataCleanedArray[calibrationRowIndex, 0] + xTrans
       yScaled = self.calibrationDataCleanedArray[calibrationRowIndex, 1] * yScale
       yStretched = yScaled + yTrans
@@ -402,7 +402,7 @@ class GelDosimetryAnalysisLogic:
   def computeDoseForMeasuredData(self, rdf, monitorUnits):
     self.calculatedDose = numpy.zeros(self.pddDataArray.shape)
     pddNumberOfRows = self.pddDataArray.shape[0]
-    for pddRowIndex in xrange(0, pddNumberOfRows):
+    for pddRowIndex in xrange(pddNumberOfRows):
       self.calculatedDose[pddRowIndex, 0] = self.pddDataArray[pddRowIndex, 0]
       self.calculatedDose[pddRowIndex, 1] = self.pddDataArray[pddRowIndex, 1] * rdf * monitorUnits / 10000.0
     return True
@@ -413,7 +413,7 @@ class GelDosimetryAnalysisLogic:
     # depths present in the calculated dose function
     interpolator = vtk.vtkPiecewiseFunction()
     calibrationAlignedNumberOfRows = self.calibrationDataAlignedArray.shape[0]
-    for calibrationRowIndex in xrange(0, calibrationAlignedNumberOfRows):
+    for calibrationRowIndex in xrange(calibrationAlignedNumberOfRows):
       currentDose = self.calibrationDataAlignedArray[calibrationRowIndex, 0]
       currentOpticalDensity = self.calibrationDataAlignedArray[calibrationRowIndex, 1]
       interpolator.AddPoint(currentDose, currentOpticalDensity)
@@ -422,7 +422,7 @@ class GelDosimetryAnalysisLogic:
     # Get the optical density and the dose values from the aligned calibration function and the calculated dose
     self.opticalDensityVsDoseFunction = numpy.zeros(self.calculatedDose.shape)
     doseNumberOfRows = self.calculatedDose.shape[0]
-    for doseRowIndex in xrange(0, doseNumberOfRows):
+    for doseRowIndex in xrange(doseNumberOfRows):
       # Reverse the function so that smallest dose comes first (which decreases with depth)
       currentDepth = self.calculatedDose[doseRowIndex, 0]
       if currentDepth >= interpolatorRange[0] and currentDepth <= interpolatorRange[1] and currentDepth >= pddRangeMin and currentDepth <= pddRangeMax:
@@ -438,16 +438,59 @@ class GelDosimetryAnalysisLogic:
     odVsDoseNumberOfRows = self.opticalDensityVsDoseFunction.shape[0]
     opticalDensityData = numpy.zeros((odVsDoseNumberOfRows))
     doseData = numpy.zeros((odVsDoseNumberOfRows))
-    for rowIndex in xrange(0, odVsDoseNumberOfRows):
+    for rowIndex in xrange(odVsDoseNumberOfRows):
       opticalDensityData[rowIndex] = self.opticalDensityVsDoseFunction[rowIndex, 0]
       doseData[rowIndex] = self.opticalDensityVsDoseFunction[rowIndex, 1]
     fittingResult = numpy.polyfit(opticalDensityData, doseData, orderOfFittedPolynomial, None, True)
     print fittingResult
     self.calibrationPolynomialCoefficients = fittingResult[0]
-    residuals = fittingResult[1]
+    self.fittingResiduals = fittingResult[1]
     print('Coefficients of the fitted polynomial: ' + repr(self.calibrationPolynomialCoefficients.tolist()))
-    print('  Fitting residuals: ' + repr(residuals[0]))
-    return residuals
+    print('  Fitting residuals: ' + repr(self.fittingResiduals[0]))
+    return self.fittingResiduals
+
+  # ---------------------------------------------------------------------------
+  def exportCalibrationToCSV(self):
+    import csv
+    import os
+
+    self.outputDir = slicer.app.temporaryPath + '/GelDosimetry'
+    if not os.access(self.outputDir, os.F_OK):
+      os.mkdir(self.outputDir)
+    if not hasattr(self, 'opticalDensityVsDoseFunction'):
+      return 'Optical density to dose values (calibration curve) not computed yet!\nClick Show in step 4/B to compute the curve.\n'
+
+    # Assemble file name for calibration curve points file
+    from time import gmtime, strftime
+    fileName = self.outputDir + '/' + strftime("%Y%m%d_%H%M%S_", gmtime()) + 'ODvsDosePoints.csv'
+
+    # Write calibration curve points CSV file
+    message = 'Optical density to dose values saved in file\n' + fileName + '\n\n'
+    with open(fileName, 'w') as fp:
+      csvWriter = csv.writer(fp, delimiter=',', lineterminator='\n')
+      data = [['OpticalDensity','Dose']]
+      for odVsDosePoint in self.opticalDensityVsDoseFunction:
+        data.append(odVsDosePoint)
+      csvWriter.writerows(data)
+
+    # Assemble file name for polynomial coefficients
+    if not hasattr(self, 'calibrationPolynomialCoefficients'):
+      message += 'Calibration polynomial has not been fitted to the curve yet!\nClick Fit polynomial in step 4/B to do the fitting.\n'
+      return message
+    fileName = self.outputDir + '/' + strftime("%Y%m%d_%H%M%S_", gmtime()) + 'CalibrationPolynomialCoefficients.csv'
+
+    # Write calibration curve points CSV file
+    message += 'Calibration polynomial coefficients saved in file\n' + fileName + '\n'
+    with open(fileName, 'w') as fp:
+      csvWriter = csv.writer(fp, delimiter=',', lineterminator='\n')
+      data = [['Order','Coefficient']]
+      maxOrder = len(self.calibrationPolynomialCoefficients)
+      for order in xrange(maxOrder):
+        data.append([maxOrder-order-1, self.calibrationPolynomialCoefficients[order]])
+      data.append(['Residuals', self.fittingResiduals[0]])
+      csvWriter.writerows(data)
+    
+    return message
 
   # ---------------------------------------------------------------------------
   def calibrate(self, measuredVolumeID):
@@ -520,7 +563,7 @@ def curveAlignmentCalibrationFunction():
   # Compute similarity between the Pdd and the transformed calibration curve
   pddNumberOfRows = logic.pddDataArray.shape[0]
   sumSquaredDifference = 0.0
-  for pddRowIndex in xrange(0, pddNumberOfRows):
+  for pddRowIndex in xrange(pddNumberOfRows):
     pddCurrentDepth = logic.pddDataArray[pddRowIndex, 0]
     pddCurrentDose = logic.pddDataArray[pddRowIndex, 1]
     difference = pddCurrentDose - interpolator.GetValue(pddCurrentDepth)
