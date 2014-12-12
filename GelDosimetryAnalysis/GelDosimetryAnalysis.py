@@ -71,6 +71,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step3_measuredDoseToObiRegistrationCollapsibleButton = ctk.ctkCollapsibleButton()
     self.step4_doseCalibrationCollapsibleButton = ctk.ctkCollapsibleButton()
     self.step5_doseComparisonCollapsibleButton = ctk.ctkCollapsibleButton()
+    self.stepT1_lineProfileCollapsibleButton = ctk.ctkCollapsibleButton()
 
     self.collapsibleButtonsGroup = qt.QButtonGroup()
     self.collapsibleButtonsGroup.addButton(self.step0_layoutSelectionCollapsibleButton)
@@ -79,6 +80,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.collapsibleButtonsGroup.addButton(self.step3_measuredDoseToObiRegistrationCollapsibleButton)
     self.collapsibleButtonsGroup.addButton(self.step4_doseCalibrationCollapsibleButton)
     self.collapsibleButtonsGroup.addButton(self.step5_doseComparisonCollapsibleButton)
+    self.collapsibleButtonsGroup.addButton(self.stepT1_lineProfileCollapsibleButton)
 
     self.step0_layoutSelectionCollapsibleButton.setProperty('collapsed', False)
     
@@ -167,6 +169,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.setup_Step3_MeasuredToObiRegistration()
     self.setup_Step4_DoseCalibration()
     self.setup_Step5_DoseComparison()
+    self.setup_StepT1_lineProfileCollapsibleButton()
 
     if widgetClass:
       self.widget = widgetClass(self.parent)
@@ -218,16 +221,25 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step4C_showOpticalDensityVsDoseCurveButton.disconnect('clicked()', self.onShowOpticalDensityVsDoseCurve)
     self.step4C_removeSelectedPointsFromOpticalDensityVsDoseCurveButton.disconnect('clicked()', self.onRemoveSelectedPointsFromOpticalDensityVsDoseCurve)
     self.step4C_fitPolynomialToOpticalDensityVsDoseCurveButton.disconnect('clicked()', self.onFitPolynomialToOpticalDensityVsDoseCurve)
+    self.step4C_exportCalibrationToCSV.disconnect('clicked()', self.onExportCalibration)
     self.step4C_applyCalibrationButton.disconnect('clicked()', self.onApplyCalibration)
     self.step5_doseComparisonCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep5_DoseComparisonSelected)
     self.step5_maskContourSelector.disconnect('currentNodeChanged(vtkMRMLNode*)', self.onStep5_MaskContourSelectionChanged)
     self.step5A_referenceDoseUseMaximumDoseRadioButton.disconnect('toggled(bool)', self.onUseMaximumDoseRadioButtonToggled)
     self.step5A_computeGammaButton.disconnect('clicked()', self.onGammaDoseComparison)
+    self.stepT1_lineProfileCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStepT1_LineProfileSelected)
+    self.stepT1_createLineProfileButton.disconnect('clicked(bool)', self.onCreateLineProfileButton)
+    self.stepT1_inputVolumeSelector.disconnect("currentNodeChanged(vtkMRMLNode*)", self.onSelectLineProfileParameters)
+    self.stepT1_inputVolumeSelector.disconnect("currentNodeChanged(vtkMRMLNode*)", self.onSelectVolumeForLineProfile)
+    self.stepT1_inputRulerSelector.disconnect("currentNodeChanged(vtkMRMLNode*)", self.onSelectLineProfileParameters)
+    self.stepT1_outputArraySelector.disconnect("currentNodeChanged(vtkMRMLNode*)", self.onSelectLineProfileParameters)
 
   def setup_Step0_LayoutSelection(self):
     # Layout selection step
     self.step0_layoutSelectionCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step0_layoutSelectionCollapsibleButton.text = "Layout and mode selector"
+    #TODO: Change back if there are more modes
+    self.step0_layoutSelectionCollapsibleButton.text = "Layout selector"
+    # self.step0_layoutSelectionCollapsibleButton.text = "Layout and mode selector"
     self.sliceletPanelLayout.addWidget(self.step0_layoutSelectionCollapsibleButton)
     self.step0_layoutSelectionCollapsibleButtonLayout = qt.QFormLayout(self.step0_layoutSelectionCollapsibleButton)
     self.step0_layoutSelectionCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
@@ -239,6 +251,8 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step0_viewSelectorComboBox.addItem("3D-only view")
     self.step0_viewSelectorComboBox.addItem("Axial slice only view")
     self.step0_viewSelectorComboBox.addItem("Double 3D view")
+    self.step0_viewSelectorComboBox.addItem("Four-up plus plot view")
+    self.step0_viewSelectorComboBox.addItem("Plot only view")
     self.step0_layoutSelectionCollapsibleButtonLayout.addRow("Layout: ", self.step0_viewSelectorComboBox)
     self.step0_viewSelectorComboBox.connect('activated(int)', self.onViewSelect)
     
@@ -251,7 +265,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step0_modeSelectorLayout.addWidget(self.step0_clinicalModeRadioButton, 0, 1)
     self.step0_preclinicalModeRadioButton = qt.QRadioButton('Preclinical MRI readout')
     self.step0_modeSelectorLayout.addWidget(self.step0_preclinicalModeRadioButton, 0, 2)
-    #TODO: uncomment when preclinical mode works
+    #TODO: Uncomment when preclinical mode works
     # self.step0_layoutSelectionCollapsibleButtonLayout.addRow(self.step0_modeSelectorLayout)
     # self.step0_clinicalModeRadioButton.connect('toggled(bool)', self.onClinicalModeSelect)
     # self.step0_preclinicalModeRadioButton.connect('toggled(bool)', self.onPreclinicalModeSelect)
@@ -760,6 +774,89 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step5A_gammaDoseComparisonCollapsibleButton.setProperty('collapsed',False)
     self.step5A_referenceDoseUseMaximumDoseRadioButton.setChecked(True)
 
+  def setup_StepT1_lineProfileCollapsibleButton(self):
+    # Step T1: Line profile tool
+    self.stepT1_lineProfileCollapsibleButton.setProperty('collapsedHeight', 4)
+    self.stepT1_lineProfileCollapsibleButton.text = "Tool: Line profile"
+    self.sliceletPanelLayout.addWidget(self.stepT1_lineProfileCollapsibleButton)
+    self.stepT1_lineProfileCollapsibleButtonLayout = qt.QFormLayout(self.stepT1_lineProfileCollapsibleButton)
+    self.stepT1_lineProfileCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
+    self.stepT1_lineProfileCollapsibleButtonLayout.setSpacing(4)
+
+    # Input volume selector
+    self.stepT1_inputVolumeSelector = slicer.qMRMLNodeComboBox()
+    self.stepT1_inputVolumeSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
+    self.stepT1_inputVolumeSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 0 )
+    self.stepT1_inputVolumeSelector.selectNodeUponCreation = True
+    self.stepT1_inputVolumeSelector.addEnabled = False
+    self.stepT1_inputVolumeSelector.removeEnabled = False
+    self.stepT1_inputVolumeSelector.noneEnabled = False
+    self.stepT1_inputVolumeSelector.showHidden = False
+    self.stepT1_inputVolumeSelector.showChildNodeTypes = False
+    self.stepT1_inputVolumeSelector.setMRMLScene( slicer.mrmlScene )
+    self.stepT1_inputVolumeSelector.setToolTip( "Pick the input volume which will be sampled along the line." )
+    self.stepT1_lineProfileCollapsibleButtonLayout.addRow("Input volume: ", self.stepT1_inputVolumeSelector)
+    
+    # Ruler creator
+    self.stepT1_rulerCreationButton = slicer.qSlicerMouseModeToolBar()
+    self.stepT1_rulerCreationButton.setApplicationLogic(slicer.app.applicationLogic())
+    self.stepT1_rulerCreationButton.setMRMLScene(slicer.app.mrmlScene())
+    self.stepT1_rulerCreationButton.setToolTip( "Create ruler (line segment) for line profile" )
+    self.stepT1_lineProfileCollapsibleButtonLayout.addRow("Create ruler: ", self.stepT1_rulerCreationButton)
+
+    # Input ruler selector
+    self.stepT1_inputRulerSelector = slicer.qMRMLNodeComboBox()
+    self.stepT1_inputRulerSelector.nodeTypes = ( ("vtkMRMLAnnotationRulerNode"), "" )
+    self.stepT1_inputRulerSelector.selectNodeUponCreation = True
+    self.stepT1_inputRulerSelector.addEnabled = False
+    self.stepT1_inputRulerSelector.removeEnabled = False
+    self.stepT1_inputRulerSelector.noneEnabled = False
+    self.stepT1_inputRulerSelector.showHidden = False
+    self.stepT1_inputRulerSelector.showChildNodeTypes = False
+    self.stepT1_inputRulerSelector.setMRMLScene( slicer.mrmlScene )
+    self.stepT1_inputRulerSelector.setToolTip( "Pick the ruler that defines the sampling line." )
+    self.stepT1_lineProfileCollapsibleButtonLayout.addRow("Input ruler: ", self.stepT1_inputRulerSelector)
+
+    # Output array selector
+    self.stepT1_outputArraySelector = slicer.qMRMLNodeComboBox()
+    self.stepT1_outputArraySelector.nodeTypes = ( ("vtkMRMLDoubleArrayNode"), "" )
+    self.stepT1_outputArraySelector.addEnabled = True
+    self.stepT1_outputArraySelector.removeEnabled = True
+    self.stepT1_outputArraySelector.noneEnabled = False
+    self.stepT1_outputArraySelector.showHidden = False
+    self.stepT1_outputArraySelector.showChildNodeTypes = False
+    self.stepT1_outputArraySelector.setMRMLScene( slicer.mrmlScene )
+    self.stepT1_outputArraySelector.setToolTip( "Pick the output array for line profile measurement. Please create if empty." )
+    self.stepT1_lineProfileCollapsibleButtonLayout.addRow("Output array: ", self.stepT1_outputArraySelector)
+
+    # Scale factor for screen shots
+    self.stepT1_lineResolutionSliderWidget = ctk.ctkSliderWidget()
+    self.stepT1_lineResolutionSliderWidget.singleStep = 1
+    self.stepT1_lineResolutionSliderWidget.minimum = 2
+    self.stepT1_lineResolutionSliderWidget.maximum = 1000
+    self.stepT1_lineResolutionSliderWidget.value = 100
+    self.stepT1_lineResolutionSliderWidget.setToolTip("Number of points to sample along the line")
+    self.stepT1_lineProfileCollapsibleButtonLayout.addRow("Line resolution: ", self.stepT1_lineResolutionSliderWidget)
+
+    # Create line profile button
+    self.stepT1_createLineProfileButton = qt.QPushButton("Create line profile")
+    self.stepT1_createLineProfileButton.toolTip = "Compute and show line profile"
+    self.stepT1_createLineProfileButton.enabled = False
+    self.stepT1_lineProfileCollapsibleButtonLayout.addRow(self.stepT1_createLineProfileButton)
+    self.onSelectLineProfileParameters()
+
+    self.stepT1_lineProfileCollapsibleButtonLayout.addRow(' ', None)
+    self.stepT1_lineProfileHintLabel = qt.QLabel("Hint: Full screen plot view is available in the layout selector tab (top one)")
+    self.stepT1_lineProfileCollapsibleButtonLayout.addRow(self.stepT1_lineProfileHintLabel)
+
+    # Connections
+    self.stepT1_lineProfileCollapsibleButton.connect('contentsCollapsed(bool)', self.onStepT1_LineProfileSelected)
+    self.stepT1_createLineProfileButton.connect('clicked(bool)', self.onCreateLineProfileButton)
+    self.stepT1_inputVolumeSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelectLineProfileParameters)
+    self.stepT1_inputVolumeSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelectVolumeForLineProfile)
+    self.stepT1_inputRulerSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelectLineProfileParameters)
+    self.stepT1_outputArraySelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelectLineProfileParameters)
+
   #
   # Event handler functions
   #
@@ -774,6 +871,10 @@ class GelDosimetryAnalysisSlicelet(object):
        self.layoutWidget.setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutTabbedSliceView)
     elif layoutIndex == 4:
        self.layoutWidget.setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutDual3DView)
+    elif layoutIndex == 5:
+       self.layoutWidget.setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutFourUpQuantitativeView)
+    elif layoutIndex == 6:
+       self.layoutWidget.setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutOneUpQuantitativeView)
 
   def onClinicalModeSelect(self, toggled):
     if self.step0_clinicalModeRadioButton.isChecked() == True:
@@ -879,6 +980,8 @@ class GelDosimetryAnalysisSlicelet(object):
       selectionNode.SetActivePlaceNodeID(self.obiMarkupsFiducialNode.GetID())
       # interactionNode = appLogic.GetInteractionNode()
       # interactionNode.SwitchToSinglePlaceMode()
+      # Switch to place fiducial mode
+      selectionNode.SetReferenceActivePlaceNodeClassName("vtkMRMLMarkupsFiducialNode")
 
       # Select OBI fiducials node
       activeMarkupMrmlNodeCombobox = slicer.util.findChildren(widget=self.markupsWidgetClone, className='qMRMLNodeComboBox', name='activeMarkupMRMLNodeComboBox')[0]
@@ -891,10 +994,10 @@ class GelDosimetryAnalysisSlicelet(object):
 
       # Automatically show OBI volume (show nothing if not present)
       if self.obiVolumeNode != None:
-        selectionNode.SetReferenceActiveVolumeID(self.obiVolumeNode.GetID())
+        selectionNode.SetActiveVolumeID(self.obiVolumeNode.GetID())
       else:
-        selectionNode.SetReferenceActiveVolumeID(None)
-      selectionNode.SetReferenceSecondaryVolumeID(None)
+        selectionNode.SetActiveVolumeID(None)
+      selectionNode.SetSecondaryVolumeID(None)
       appLogic.PropagateVolumeSelection() 
     else:
       # Delete temporary layout
@@ -928,6 +1031,8 @@ class GelDosimetryAnalysisSlicelet(object):
       selectionNode.SetActivePlaceNodeID(self.measuredMarkupsFiducialNode.GetID())
       # interactionNode = appLogic.GetInteractionNode()
       # interactionNode.SwitchToSinglePlaceMode()
+      # Switch to place fiducial mode
+      selectionNode.SetReferenceActivePlaceNodeClassName("vtkMRMLMarkupsFiducialNode")
 
       # Select MEASURED fiducials node
       activeMarkupMrmlNodeCombobox = slicer.util.findChildren(widget=self.markupsWidgetClone, className='qMRMLNodeComboBox', name='activeMarkupMRMLNodeComboBox')[0]
@@ -940,10 +1045,10 @@ class GelDosimetryAnalysisSlicelet(object):
 
       # Automatically show MEASURED volume (show nothing if not present)
       if self.measuredVolumeNode != None:
-        selectionNode.SetReferenceActiveVolumeID(self.measuredVolumeNode.GetID())
+        selectionNode.SetActiveVolumeID(self.measuredVolumeNode.GetID())
       else:
-        selectionNode.SetReferenceActiveVolumeID(None)
-      selectionNode.SetReferenceSecondaryVolumeID(None)
+        selectionNode.SetActiveVolumeID(None)
+      selectionNode.SetSecondaryVolumeID(None)
       appLogic.PropagateVolumeSelection() 
     else:
       # Delete temporary layout
@@ -972,8 +1077,8 @@ class GelDosimetryAnalysisSlicelet(object):
     # Show the two volumes for visual evaluation of the registration
     appLogic = slicer.app.applicationLogic()
     selectionNode = appLogic.GetSelectionNode()
-    selectionNode.SetReferenceActiveVolumeID(planCTVolumeID)
-    selectionNode.SetReferenceSecondaryVolumeID(obiVolumeID)
+    selectionNode.SetActiveVolumeID(planCTVolumeID)
+    selectionNode.SetSecondaryVolumeID(obiVolumeID)
     appLogic.PropagateVolumeSelection() 
     # Set color to the OBI volume
     obiVolumeDisplayNode = self.obiVolumeNode.GetDisplayNode()
@@ -1005,8 +1110,8 @@ class GelDosimetryAnalysisSlicelet(object):
     # Show both volumes in the 2D views
     appLogic = slicer.app.applicationLogic()
     selectionNode = appLogic.GetSelectionNode()
-    selectionNode.SetReferenceActiveVolumeID(self.obiVolumeNode.GetID())
-    selectionNode.SetReferenceSecondaryVolumeID(self.measuredVolumeNode.GetID())
+    selectionNode.SetActiveVolumeID(self.obiVolumeNode.GetID())
+    selectionNode.SetSecondaryVolumeID(self.measuredVolumeNode.GetID())
     appLogic.PropagateVolumeSelection() 
 
   def onLoadPddDataRead(self):
@@ -1045,10 +1150,10 @@ class GelDosimetryAnalysisSlicelet(object):
       appLogic = slicer.app.applicationLogic()
       selectionNode = appLogic.GetSelectionNode()
       if self.measuredVolumeNode != None:
-        selectionNode.SetReferenceActiveVolumeID(self.measuredVolumeNode.GetID())
+        selectionNode.SetActiveVolumeID(self.measuredVolumeNode.GetID())
       else:
-        selectionNode.SetReferenceActiveVolumeID(None)
-      selectionNode.SetReferenceSecondaryVolumeID(None)
+        selectionNode.SetActiveVolumeID(None)
+      selectionNode.SetSecondaryVolumeID(None)
       appLogic.PropagateVolumeSelection() 
 
   def onParseCalibrationVolume(self):
@@ -1321,8 +1426,8 @@ class GelDosimetryAnalysisSlicelet(object):
     # Show calibrated volume
     appLogic = slicer.app.applicationLogic()
     selectionNode = appLogic.GetSelectionNode()
-    selectionNode.SetReferenceActiveVolumeID(self.calibratedMeasuredVolumeNode.GetID())
-    selectionNode.SetReferenceSecondaryVolumeID(self.planDoseVolumeNode.GetID())
+    selectionNode.SetActiveVolumeID(self.calibratedMeasuredVolumeNode.GetID())
+    selectionNode.SetSecondaryVolumeID(self.planDoseVolumeNode.GetID())
     appLogic.PropagateVolumeSelection() 
 
     # Set window/level options for the calibrated dose
@@ -1404,8 +1509,8 @@ class GelDosimetryAnalysisSlicelet(object):
       # Show gamma volume
       appLogic = slicer.app.applicationLogic()
       selectionNode = appLogic.GetSelectionNode()
-      selectionNode.SetReferenceActiveVolumeID(self.step5_gammaVolumeSelector.currentNodeID)
-      selectionNode.SetReferenceSecondaryVolumeID(None)
+      selectionNode.SetActiveVolumeID(self.step5_gammaVolumeSelector.currentNodeID)
+      selectionNode.SetSecondaryVolumeID(None)
       appLogic.PropagateVolumeSelection()
 
       # Show contour (use subject hierarchy to properly toggle visibility, slice intersections and all)
@@ -1493,6 +1598,44 @@ class GelDosimetryAnalysisSlicelet(object):
       import traceback
       traceback.print_exc()
       print('ERROR: Failed to perform gamma dose comparison!')
+
+  def onStepT1_LineProfileSelected(self, collapsed):
+    # Change to quantitative view on enter, change back on leave
+    if collapsed == False:
+      self.currentLayoutIndex = self.step0_viewSelectorComboBox.currentIndex
+      self.onViewSelect(5)
+    else:
+      self.onViewSelect(self.currentLayoutIndex)
+
+    # Select shown volume
+    appLogic = slicer.app.applicationLogic()
+    selectionNode = appLogic.GetSelectionNode()
+    refVolumeID = selectionNode.GetActiveVolumeID()
+    self.stepT1_inputVolumeSelector.currentNodeID = refVolumeID
+    
+    # Switch to place ruler mode
+    appLogic = slicer.app.applicationLogic()
+    selectionNode = appLogic.GetSelectionNode()
+    selectionNode.SetReferenceActivePlaceNodeClassName("vtkMRMLAnnotationRulerNode")
+
+  def onCreateLineProfileButton(self):
+    lineProfileLogic = GelDosimetryAnalysisLogic.LineProfileLogic()
+    lineResolution = int(self.stepT1_lineResolutionSliderWidget.value)    
+    lineProfileLogic.run(self.stepT1_inputVolumeSelector.currentNode(), self.stepT1_inputRulerSelector.currentNode(), self.stepT1_outputArraySelector.currentNode(), lineResolution)
+
+  def onSelectLineProfileParameters(self):
+    self.stepT1_createLineProfileButton.enabled = self.stepT1_inputVolumeSelector.currentNode() and self.stepT1_inputRulerSelector.currentNode() and self.stepT1_outputArraySelector.currentNode()
+
+  def onSelectVolumeForLineProfile(self):
+    # Show selected volume
+    volume = self.stepT1_inputVolumeSelector.currentNode()
+    if volume != None:
+      appLogic = slicer.app.applicationLogic()
+      selectionNode = appLogic.GetSelectionNode()
+      selectionNode.SetActiveVolumeID(self.stepT1_inputVolumeSelector.currentNodeID)
+      selectionNode.SetSecondaryVolumeID(None)
+      appLogic.PropagateVolumeSelection()
+
 
   #
   # Testing related functions

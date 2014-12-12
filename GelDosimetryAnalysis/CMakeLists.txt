@@ -12,6 +12,7 @@ set(MODULE_PYTHON_SCRIPTS
   ${MODULE_NAME}
   ${MODULE_NAME}Logic/__init__
   ${MODULE_NAME}Logic/${MODULE_NAME}Logic
+  ${MODULE_NAME}Logic/LineProfileLogic
   )
 
 set(MODULE_PYTHON_RESOURCES
