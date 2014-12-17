@@ -229,6 +229,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.stepT1_lineProfileCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStepT1_LineProfileSelected)
     self.stepT1_createLineProfileButton.disconnect('clicked(bool)', self.onCreateLineProfileButton)
     self.stepT1_inputRulerSelector.disconnect("currentNodeChanged(vtkMRMLNode*)", self.onSelectLineProfileParameters)
+    self.stepT1_exportLineProfilesToCSV.disconnect('clicked()', self.onExportLineProfiles)
 
   def setup_Step0_LayoutSelection(self):
     # Layout selection step
@@ -513,21 +514,23 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step4B_adjustAlignmentLabel = qt.QLabel('Manually adjust alignment: ')
     self.step4B_xTranslationLabel = qt.QLabel('  X shift:')
     self.step4B_xTranslationSpinBox = qt.QDoubleSpinBox()
-    self.step4B_xTranslationSpinBox.setDecimals(2)
-    self.step4B_xTranslationSpinBox.setSingleStep(0.01)
-    self.step4B_xTranslationSpinBox.setValue(0)
-    self.step4B_xTranslationSpinBox.setMinimum(-10.0)
+    self.step4B_xTranslationSpinBox.decimals = 2
+    self.step4B_xTranslationSpinBox.singleStep = 0.01
+    self.step4B_xTranslationSpinBox.value = 0
+    self.step4B_xTranslationSpinBox.minimum = -10.0
     self.step4B_yScaleLabel = qt.QLabel('  Y scale:')
     self.step4B_yScaleSpinBox = qt.QDoubleSpinBox()
-    self.step4B_yScaleSpinBox.setDecimals(3)
-    self.step4B_yScaleSpinBox.setSingleStep(0.005)
-    self.step4B_yScaleSpinBox.setValue(1)
+    self.step4B_yScaleSpinBox.decimals = 3
+    self.step4B_yScaleSpinBox.singleStep = 0.25
+    self.step4B_yScaleSpinBox.value = 1
+    self.step4B_yScaleSpinBox.minimum = 0
+    self.step4B_yScaleSpinBox.maximum = 1000
     self.step4B_yTranslationLabel = qt.QLabel('  Y shift:')
     self.step4B_yTranslationSpinBox = qt.QDoubleSpinBox()
-    self.step4B_yTranslationSpinBox.setDecimals(2)
-    self.step4B_yTranslationSpinBox.setSingleStep(0.1)
-    self.step4B_yTranslationSpinBox.setValue(0)
-    self.step4B_yTranslationSpinBox.setMinimum(-99.9)
+    self.step4B_yTranslationSpinBox.decimals = 2
+    self.step4B_yTranslationSpinBox.singleStep = 0.1
+    self.step4B_yTranslationSpinBox.value = 0
+    self.step4B_yTranslationSpinBox.minimum = -99.9
     self.step4B_adjustAlignmentControlsLayout.addWidget(self.step4B_adjustAlignmentLabel)
     self.step4B_adjustAlignmentControlsLayout.addWidget(self.step4B_xTranslationLabel)
     self.step4B_adjustAlignmentControlsLayout.addWidget(self.step4B_xTranslationSpinBox)
@@ -799,7 +802,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.stepT1_inputRulerSelector.setToolTip( "Pick the ruler that defines the sampling line." )
     self.stepT1_lineProfileCollapsibleButtonLayout.addRow("Input ruler: ", self.stepT1_inputRulerSelector)
 
-    # Scale factor for screen shots
+    # Line sampling resolution in mm
     self.stepT1_lineResolutionMmSliderWidget = ctk.ctkSliderWidget()
     self.stepT1_lineResolutionMmSliderWidget.decimals = 1
     self.stepT1_lineResolutionMmSliderWidget.singleStep = 0.1
@@ -816,6 +819,12 @@ class GelDosimetryAnalysisSlicelet(object):
     self.stepT1_lineProfileCollapsibleButtonLayout.addRow(self.stepT1_createLineProfileButton)
     self.onSelectLineProfileParameters()
 
+    # Export line profiles to CSV button
+    self.stepT1_exportLineProfilesToCSV = qt.QPushButton("Export line profiles to CSV")
+    self.stepT1_exportLineProfilesToCSV.toolTip = "Export calculated line profiles to CSV"
+    self.stepT1_lineProfileCollapsibleButtonLayout.addRow(self.stepT1_exportLineProfilesToCSV)
+
+    # Hint label
     self.stepT1_lineProfileCollapsibleButtonLayout.addRow(' ', None)
     self.stepT1_lineProfileHintLabel = qt.QLabel("Hint: Full screen plot view is available in the layout selector tab (top one)")
     self.stepT1_lineProfileCollapsibleButtonLayout.addRow(self.stepT1_lineProfileHintLabel)
@@ -824,6 +833,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.stepT1_lineProfileCollapsibleButton.connect('contentsCollapsed(bool)', self.onStepT1_LineProfileSelected)
     self.stepT1_createLineProfileButton.connect('clicked(bool)', self.onCreateLineProfileButton)
     self.stepT1_inputRulerSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelectLineProfileParameters)
+    self.stepT1_exportLineProfilesToCSV.connect('clicked()', self.onExportLineProfiles)
 
   #
   # Event handler functions
@@ -1587,8 +1597,8 @@ class GelDosimetryAnalysisSlicelet(object):
     selectionNode = appLogic.GetSelectionNode()
     if self.planDoseVolumeNode:
       selectionNode.SetActiveVolumeID(self.planDoseVolumeNode.GetID())
-    if self.measuredVolumeNode:
-      selectionNode.SetSecondaryVolumeID(self.measuredVolumeNode.GetID())
+    if self.calibratedMeasuredVolumeNode:
+      selectionNode.SetSecondaryVolumeID(self.calibratedMeasuredVolumeNode.GetID())
     appLogic = slicer.app.applicationLogic()
     appLogic.PropagateVolumeSelection()
 
@@ -1600,26 +1610,71 @@ class GelDosimetryAnalysisSlicelet(object):
     if not hasattr(self, 'planDoseLineProfileArrayNode'):
       self.planDoseLineProfileArrayNode = slicer.vtkMRMLDoubleArrayNode()
       slicer.mrmlScene.AddNode(self.planDoseLineProfileArrayNode)
-    if not hasattr(self, 'measuredDoseLineProfileArrayNode'):
-      self.measuredDoseLineProfileArrayNode = slicer.vtkMRMLDoubleArrayNode()
-      slicer.mrmlScene.AddNode(self.measuredDoseLineProfileArrayNode)
-    if not hasattr(self, 'gammaLineProfileArrayNode'):
+    if not hasattr(self, 'calibratedMeasuredDoseLineProfileArrayNode'):
+      self.calibratedMeasuredDoseLineProfileArrayNode = slicer.vtkMRMLDoubleArrayNode()
+      slicer.mrmlScene.AddNode(self.calibratedMeasuredDoseLineProfileArrayNode)
+    if self.gammaVolumeNode and not hasattr(self, 'gammaLineProfileArrayNode'):
       self.gammaLineProfileArrayNode = slicer.vtkMRMLDoubleArrayNode()
       slicer.mrmlScene.AddNode(self.gammaLineProfileArrayNode)
 
     lineProfileLogic = GelDosimetryAnalysisLogic.LineProfileLogic()
     lineResolutionMm = float(self.stepT1_lineResolutionMmSliderWidget.value)
+    selectedRuler = self.stepT1_inputRulerSelector.currentNode()
+    rulerLengthMm = lineProfileLogic.computeRulerLength(selectedRuler)
+    numberOfLineSamples = int( (rulerLengthMm / lineResolutionMm) + 0.5 )
 
+    # Get number of samples based on selected sampling density
     if self.planDoseVolumeNode:
-      lineProfileLogic.run(self.planDoseVolumeNode, self.stepT1_inputRulerSelector.currentNode(), self.planDoseLineProfileArrayNode, lineResolutionMm)
-    if self.measuredVolumeNode:
-      lineProfileLogic.run(self.measuredVolumeNode, self.stepT1_inputRulerSelector.currentNode(), self.measuredDoseLineProfileArrayNode, lineResolutionMm)
+      lineProfileLogic.run(self.planDoseVolumeNode, selectedRuler, self.planDoseLineProfileArrayNode, numberOfLineSamples)
+    if self.calibratedMeasuredVolumeNode:
+      lineProfileLogic.run(self.calibratedMeasuredVolumeNode, selectedRuler, self.calibratedMeasuredDoseLineProfileArrayNode, numberOfLineSamples)
     if self.gammaVolumeNode:
-      lineProfileLogic.run(self.gammaVolumeNode, self.stepT1_inputRulerSelector.currentNode(), self.gammaLineProfileArrayNode, lineResolutionMm)
+      lineProfileLogic.run(self.gammaVolumeNode, selectedRuler, self.gammaLineProfileArrayNode, numberOfLineSamples)
 
   def onSelectLineProfileParameters(self):
     self.stepT1_createLineProfileButton.enabled = self.planDoseVolumeNode and self.measuredVolumeNode and self.stepT1_inputRulerSelector.currentNode()
 
+  def onExportLineProfiles(self):
+    import csv
+    import os
+
+    self.outputDir = slicer.app.temporaryPath + '/GelDosimetry'
+    if not os.access(self.outputDir, os.F_OK):
+      os.mkdir(self.outputDir)
+    if not hasattr(self, 'planDoseLineProfileArrayNode') and not hasattr(self, 'calibratedMeasuredDoseLineProfileArrayNode'):
+      return 'Dose line profiles not computed yet!\nClick Create line profile\n'
+
+    # Assemble file name for calibration curve points file
+    from time import gmtime, strftime
+    fileName = self.outputDir + '/' + strftime("%Y%m%d_%H%M%S_", gmtime()) + 'LineProfiles.csv'
+
+    # Write calibration curve points CSV file
+    with open(fileName, 'w') as fp:
+      csvWriter = csv.writer(fp, delimiter=',', lineterminator='\n')
+
+      planDoseLineProfileArray = self.planDoseLineProfileArrayNode.GetArray()
+      calibratedDoseLineProfileArray = self.calibratedMeasuredDoseLineProfileArrayNode.GetArray()
+      gammaLineProfileArray = None
+      if hasattr(self, 'gammaLineProfileArrayNode'):
+        data = [['PlanDose','CalibratedMeasuredDose','Gamma']]
+        gammaLineProfileArray = self.gammaLineProfileArrayNode.GetArray()
+      else:
+        data = [['PlanDose','CalibratedMeasuredDose']]
+
+      numOfSamples = planDoseLineProfileArray.GetNumberOfTuples()
+      for index in xrange(numOfSamples):
+        planDoseSample = planDoseLineProfileArray.GetTuple(index)[1]
+        calibratedDoseSample = calibratedDoseLineProfileArray.GetTuple(index)[1]
+        if gammaLineProfileArray:
+          gammaSample = gammaLineProfileArray.GetTuple(index)[1]
+          samples = [planDoseSample, calibratedDoseSample, gammaSample]
+        else:
+          samples = [planDoseSample, calibratedDoseSample]
+        data.append(samples)
+      csvWriter.writerows(data)
+
+    message = 'Dose line profiles saved in file\n' + fileName + '\n\n'
+    qt.QMessageBox.information(None, 'Line profiles values exported', message)
 
   #
   # Testing related functions

@@ -15,18 +15,18 @@ class LineProfileLogic:
   def __init__(self):
     self.chartNodeID = None
 
-  def run(self,inputVolume,inputRuler,outputArray,lineResolutionMm=0.5):
+  def run(self,inputVolume,inputRuler,outputArray,numberOfLineSamples=100):
     """
     Run the actual algorithm
     """
 
-    self.updateOutputArray(inputVolume,inputRuler,outputArray,lineResolutionMm)
+    self.updateOutputArray(inputVolume,inputRuler,outputArray,numberOfLineSamples)
     name = inputVolume.GetName()
     self.updateChart(outputArray,name)
 
     return True
 
-  def updateOutputArray(self,inputVolume,inputRuler,outputArray,lineResolutionMm):
+  def updateOutputArray(self,inputVolume,inputRuler,outputArray,numberOfLineSamples):
     rulerStartPoint_Ruler = [0,0,0]
     rulerEndPoint_Ruler = [0,0,0]
     inputRuler.GetPosition1(rulerStartPoint_Ruler)
@@ -69,10 +69,9 @@ class LineProfileLogic:
     rasToIJK.MultiplyPoint(rulerStartPoint_RAS1,rulerStartPoint_IJK1)
     rasToIJK.MultiplyPoint(rulerEndPoint_RAS1,rulerEndPoint_IJK1) 
     
-    lineSource=vtk.vtkLineSource()
+    lineSource = vtk.vtkLineSource()
     lineSource.SetPoint1(rulerStartPoint_IJK1[0],rulerStartPoint_IJK1[1],rulerStartPoint_IJK1[2])
     lineSource.SetPoint2(rulerEndPoint_IJK1[0], rulerEndPoint_IJK1[1], rulerEndPoint_IJK1[2])
-    numberOfLineSamples = int(rulerLengthMm / lineResolutionMm)
     lineSource.SetResolution(numberOfLineSamples-1)
 
     probeFilter=vtk.vtkProbeFilter()
@@ -119,3 +118,26 @@ class LineProfileLogic:
     # Set the chart to display
     cvn.SetChartNodeID(cn.GetID())
     cvn.Modified()
+
+  def computeRulerLength(self,inputRuler):
+    rulerStartPoint_Ruler = [0,0,0]
+    rulerEndPoint_Ruler = [0,0,0]
+    inputRuler.GetPosition1(rulerStartPoint_Ruler)
+    inputRuler.GetPosition2(rulerEndPoint_Ruler)
+    rulerStartPoint_Ruler1 = [rulerStartPoint_Ruler[0], rulerStartPoint_Ruler[1], rulerStartPoint_Ruler[2], 1.0]
+    rulerEndPoint_Ruler1 = [rulerEndPoint_Ruler[0], rulerEndPoint_Ruler[1], rulerEndPoint_Ruler[2], 1.0]
+    
+    rulerToRAS = vtk.vtkMatrix4x4()
+    rulerTransformNode = inputRuler.GetParentTransformNode()
+    if rulerTransformNode:
+      if rulerTransformNode.IsTransformToWorldLinear():
+        rulerToRAS.DeepCopy(rulerTransformNode.GetMatrixTransformToParent())
+      else:
+        print("Cannot handle non-linear transforms - ignoring transform of the input ruler")
+
+    rulerStartPoint_RAS1 = [0,0,0,1]
+    rulerEndPoint_RAS1 = [0,0,0,1]
+    rulerToRAS.MultiplyPoint(rulerStartPoint_Ruler1,rulerStartPoint_RAS1)
+    rulerToRAS.MultiplyPoint(rulerEndPoint_Ruler1,rulerEndPoint_RAS1)        
+    
+    return math.sqrt(vtk.vtkMath.Distance2BetweenPoints(rulerStartPoint_RAS1[0:3],rulerEndPoint_RAS1[0:3]))
