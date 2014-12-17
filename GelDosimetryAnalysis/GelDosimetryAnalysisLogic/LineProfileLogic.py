@@ -15,18 +15,18 @@ class LineProfileLogic:
   def __init__(self):
     self.chartNodeID = None
 
-  def run(self,inputVolume,inputRuler,outputArray,lineResolution=100):
+  def run(self,inputVolume,inputRuler,outputArray,lineResolutionMm=0.5):
     """
     Run the actual algorithm
     """
 
-    self.updateOutputArray(inputVolume,inputRuler,outputArray,lineResolution)
+    self.updateOutputArray(inputVolume,inputRuler,outputArray,lineResolutionMm)
     name = inputVolume.GetName()
-    self.updateChart(outputArray,name,lineResolution)
+    self.updateChart(outputArray,name)
 
     return True
 
-  def updateOutputArray(self,inputVolume,inputRuler,outputArray,lineResolution):
+  def updateOutputArray(self,inputVolume,inputRuler,outputArray,lineResolutionMm):
     rulerStartPoint_Ruler = [0,0,0]
     rulerEndPoint_Ruler = [0,0,0]
     inputRuler.GetPosition1(rulerStartPoint_Ruler)
@@ -72,7 +72,8 @@ class LineProfileLogic:
     lineSource=vtk.vtkLineSource()
     lineSource.SetPoint1(rulerStartPoint_IJK1[0],rulerStartPoint_IJK1[1],rulerStartPoint_IJK1[2])
     lineSource.SetPoint2(rulerEndPoint_IJK1[0], rulerEndPoint_IJK1[1], rulerEndPoint_IJK1[2])
-    lineSource.SetResolution(lineResolution-1)
+    numberOfLineSamples = int(rulerLengthMm / lineResolutionMm)
+    lineSource.SetResolution(numberOfLineSamples-1)
 
     probeFilter=vtk.vtkProbeFilter()
     probeFilter.SetInputConnection(lineSource.GetOutputPort())
@@ -97,7 +98,7 @@ class LineProfileLogic:
       
     probedPoints.GetPointData().GetScalars().Modified()
 
-  def updateChart(self,outputArray,name,lineResolution):
+  def updateChart(self,outputArray,name):
     # Get the first ChartView node
     cvn = slicer.util.getNode(pattern='vtkMRMLChartViewNode*')
 

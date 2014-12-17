@@ -158,9 +158,8 @@ class GelDosimetryAnalysisSlicelet(object):
 
     # Turn on slice intersections in 2D viewers
     compositeNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
-    for name in compositeNodes:
-      if compositeNodes[name] != None:
-        compositeNodes[name].SetSliceIntersectionVisibility(1)
+    for compositeNode in compositeNodes.values():
+      compositeNode.SetSliceIntersectionVisibility(1)
 
     # Set up step panels
     self.setup_Step0_LayoutSelection()    
@@ -229,10 +228,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step5A_computeGammaButton.disconnect('clicked()', self.onGammaDoseComparison)
     self.stepT1_lineProfileCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStepT1_LineProfileSelected)
     self.stepT1_createLineProfileButton.disconnect('clicked(bool)', self.onCreateLineProfileButton)
-    self.stepT1_inputVolumeSelector.disconnect("currentNodeChanged(vtkMRMLNode*)", self.onSelectLineProfileParameters)
-    self.stepT1_inputVolumeSelector.disconnect("currentNodeChanged(vtkMRMLNode*)", self.onSelectVolumeForLineProfile)
     self.stepT1_inputRulerSelector.disconnect("currentNodeChanged(vtkMRMLNode*)", self.onSelectLineProfileParameters)
-    self.stepT1_outputArraySelector.disconnect("currentNodeChanged(vtkMRMLNode*)", self.onSelectLineProfileParameters)
 
   def setup_Step0_LayoutSelection(self):
     # Layout selection step
@@ -782,20 +778,6 @@ class GelDosimetryAnalysisSlicelet(object):
     self.stepT1_lineProfileCollapsibleButtonLayout = qt.QFormLayout(self.stepT1_lineProfileCollapsibleButton)
     self.stepT1_lineProfileCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
     self.stepT1_lineProfileCollapsibleButtonLayout.setSpacing(4)
-
-    # Input volume selector
-    self.stepT1_inputVolumeSelector = slicer.qMRMLNodeComboBox()
-    self.stepT1_inputVolumeSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
-    self.stepT1_inputVolumeSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 0 )
-    self.stepT1_inputVolumeSelector.selectNodeUponCreation = True
-    self.stepT1_inputVolumeSelector.addEnabled = False
-    self.stepT1_inputVolumeSelector.removeEnabled = False
-    self.stepT1_inputVolumeSelector.noneEnabled = False
-    self.stepT1_inputVolumeSelector.showHidden = False
-    self.stepT1_inputVolumeSelector.showChildNodeTypes = False
-    self.stepT1_inputVolumeSelector.setMRMLScene( slicer.mrmlScene )
-    self.stepT1_inputVolumeSelector.setToolTip( "Pick the input volume which will be sampled along the line." )
-    self.stepT1_lineProfileCollapsibleButtonLayout.addRow("Input volume: ", self.stepT1_inputVolumeSelector)
     
     # Ruler creator
     self.stepT1_rulerCreationButton = slicer.qSlicerMouseModeToolBar()
@@ -817,26 +799,15 @@ class GelDosimetryAnalysisSlicelet(object):
     self.stepT1_inputRulerSelector.setToolTip( "Pick the ruler that defines the sampling line." )
     self.stepT1_lineProfileCollapsibleButtonLayout.addRow("Input ruler: ", self.stepT1_inputRulerSelector)
 
-    # Output array selector
-    self.stepT1_outputArraySelector = slicer.qMRMLNodeComboBox()
-    self.stepT1_outputArraySelector.nodeTypes = ( ("vtkMRMLDoubleArrayNode"), "" )
-    self.stepT1_outputArraySelector.addEnabled = True
-    self.stepT1_outputArraySelector.removeEnabled = True
-    self.stepT1_outputArraySelector.noneEnabled = False
-    self.stepT1_outputArraySelector.showHidden = False
-    self.stepT1_outputArraySelector.showChildNodeTypes = False
-    self.stepT1_outputArraySelector.setMRMLScene( slicer.mrmlScene )
-    self.stepT1_outputArraySelector.setToolTip( "Pick the output array for line profile measurement. Please create if empty." )
-    self.stepT1_lineProfileCollapsibleButtonLayout.addRow("Output array: ", self.stepT1_outputArraySelector)
-
     # Scale factor for screen shots
-    self.stepT1_lineResolutionSliderWidget = ctk.ctkSliderWidget()
-    self.stepT1_lineResolutionSliderWidget.singleStep = 1
-    self.stepT1_lineResolutionSliderWidget.minimum = 2
-    self.stepT1_lineResolutionSliderWidget.maximum = 1000
-    self.stepT1_lineResolutionSliderWidget.value = 100
-    self.stepT1_lineResolutionSliderWidget.setToolTip("Number of points to sample along the line")
-    self.stepT1_lineProfileCollapsibleButtonLayout.addRow("Line resolution: ", self.stepT1_lineResolutionSliderWidget)
+    self.stepT1_lineResolutionMmSliderWidget = ctk.ctkSliderWidget()
+    self.stepT1_lineResolutionMmSliderWidget.decimals = 1
+    self.stepT1_lineResolutionMmSliderWidget.singleStep = 0.1
+    self.stepT1_lineResolutionMmSliderWidget.minimum = 0.1
+    self.stepT1_lineResolutionMmSliderWidget.maximum = 2
+    self.stepT1_lineResolutionMmSliderWidget.value = 0.5
+    self.stepT1_lineResolutionMmSliderWidget.setToolTip("Sampling density along the line in mm")
+    self.stepT1_lineProfileCollapsibleButtonLayout.addRow("Line resolution (mm): ", self.stepT1_lineResolutionMmSliderWidget)
 
     # Create line profile button
     self.stepT1_createLineProfileButton = qt.QPushButton("Create line profile")
@@ -852,10 +823,7 @@ class GelDosimetryAnalysisSlicelet(object):
     # Connections
     self.stepT1_lineProfileCollapsibleButton.connect('contentsCollapsed(bool)', self.onStepT1_LineProfileSelected)
     self.stepT1_createLineProfileButton.connect('clicked(bool)', self.onCreateLineProfileButton)
-    self.stepT1_inputVolumeSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelectLineProfileParameters)
-    self.stepT1_inputVolumeSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelectVolumeForLineProfile)
     self.stepT1_inputRulerSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelectLineProfileParameters)
-    self.stepT1_outputArraySelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelectLineProfileParameters)
 
   #
   # Event handler functions
@@ -927,8 +895,9 @@ class GelDosimetryAnalysisSlicelet(object):
       self.logic.onDicomLoad()
 
   def setMeasuredData(self, params):
-    # Assumes that two MRML nodes are created when loading a VFF file, and the first one is the volume (second is the display node)
-    self.measuredVolumeNode = slicer.mrmlScene.GetNthNode( slicer.mrmlScene.GetNumberOfNodes()-2 )
+    # Gets the last volume node in the scene
+    volumesCollection = slicer.mrmlScene.GetNodesByClass("vtkMRMLScalarVolumeNode")
+    self.measuredVolumeNode = volumesCollection.GetItemAsObject(volumesCollection.GetNumberOfItems()-1)
     self.step3D_measuredVolumeSelector.setCurrentNode(self.measuredVolumeNode)
     self.step4C_measuredVolumeSelector.setCurrentNode(self.measuredVolumeNode)
     self.step3B_loadMeasuredDataStatusLabel.setText('Volume loaded and set as MEASURED')
@@ -1086,9 +1055,8 @@ class GelDosimetryAnalysisSlicelet(object):
     obiVolumeDisplayNode.SetAndObserveColorNodeID(colorNode.GetID())
     # Set transparency to the OBI volume
     compositeNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
-    for name in compositeNodes:
-      if compositeNodes[name] != None:
-        compositeNodes[name].SetForegroundOpacity(0.5)
+    for compositeNode in compositeNodes.values():
+      compositeNode.SetForegroundOpacity(0.5)
     # Hide structures for sake of speed
     if self.planStructuresNode != None:
       self.planStructuresNode.SetDisplayVisibilityForBranch(0)
@@ -1135,8 +1103,9 @@ class GelDosimetryAnalysisSlicelet(object):
       self.logic.onDicomLoad()
       
   def setCalibrationData(self, params):
-    # Assumes that two MRML nodes are created when loading a VFF file, and the first one is the volume (second is the display node)
-    self.calibrationVolumeNode = slicer.mrmlScene.GetNthNode( slicer.mrmlScene.GetNumberOfNodes()-2 )
+    # Gets the last volume node in the scene
+    volumesCollection = slicer.mrmlScene.GetNodesByClass("vtkMRMLScalarVolumeNode")
+    self.calibrationVolumeNode = volumesCollection.GetItemAsObject(volumesCollection.GetNumberOfItems()-1)
     self.step4A_calibrationVolumeSelector.setCurrentNode(self.calibrationVolumeNode)
     self.step4A_parseCalibrationVolumeStatusLabel.setText('Volume loaded and set as CALIBRATION')
 
@@ -1347,8 +1316,14 @@ class GelDosimetryAnalysisSlicelet(object):
     if outlierSelection == None:
       outlierSelection = self.odVsDoseLinePoint.GetSelection()
     if outlierSelection != None and outlierSelection.GetNumberOfTuples() > 0:
-      for outlierSelectionIndex in reversed(xrange(outlierSelection.GetNumberOfTuples())):
+      # Get outlier indices in descending order
+      outlierIndices = []
+      for outlierSelectionIndex in xrange(outlierSelection.GetNumberOfTuples()):
         outlierIndex = outlierSelection.GetValue(outlierSelectionIndex)
+        outlierIndices.append(outlierIndex)
+      outlierIndices.sort()
+      outlierIndices.reverse()
+      for outlierIndex in outlierIndices:
         self.odVsDoseDataTable.RemoveRow(outlierIndex)
         self.logic.opticalDensityVsDoseFunction = numpy.delete(self.logic.opticalDensityVsDoseFunction, outlierIndex, 0)
 
@@ -1607,34 +1582,43 @@ class GelDosimetryAnalysisSlicelet(object):
     else:
       self.onViewSelect(self.currentLayoutIndex)
 
-    # Select shown volume
+    # Show dose volumes
     appLogic = slicer.app.applicationLogic()
     selectionNode = appLogic.GetSelectionNode()
-    refVolumeID = selectionNode.GetActiveVolumeID()
-    self.stepT1_inputVolumeSelector.currentNodeID = refVolumeID
-    
+    if self.planDoseVolumeNode:
+      selectionNode.SetActiveVolumeID(self.planDoseVolumeNode.GetID())
+    if self.measuredVolumeNode:
+      selectionNode.SetSecondaryVolumeID(self.measuredVolumeNode.GetID())
+    appLogic = slicer.app.applicationLogic()
+    appLogic.PropagateVolumeSelection()
+
     # Switch to place ruler mode
-    appLogic = slicer.app.applicationLogic()
-    selectionNode = appLogic.GetSelectionNode()
     selectionNode.SetReferenceActivePlaceNodeClassName("vtkMRMLAnnotationRulerNode")
 
   def onCreateLineProfileButton(self):
+    # Create array nodes for the results
+    if not hasattr(self, 'planDoseLineProfileArrayNode'):
+      self.planDoseLineProfileArrayNode = slicer.vtkMRMLDoubleArrayNode()
+      slicer.mrmlScene.AddNode(self.planDoseLineProfileArrayNode)
+    if not hasattr(self, 'measuredDoseLineProfileArrayNode'):
+      self.measuredDoseLineProfileArrayNode = slicer.vtkMRMLDoubleArrayNode()
+      slicer.mrmlScene.AddNode(self.measuredDoseLineProfileArrayNode)
+    if not hasattr(self, 'gammaLineProfileArrayNode'):
+      self.gammaLineProfileArrayNode = slicer.vtkMRMLDoubleArrayNode()
+      slicer.mrmlScene.AddNode(self.gammaLineProfileArrayNode)
+
     lineProfileLogic = GelDosimetryAnalysisLogic.LineProfileLogic()
-    lineResolution = int(self.stepT1_lineResolutionSliderWidget.value)    
-    lineProfileLogic.run(self.stepT1_inputVolumeSelector.currentNode(), self.stepT1_inputRulerSelector.currentNode(), self.stepT1_outputArraySelector.currentNode(), lineResolution)
+    lineResolutionMm = float(self.stepT1_lineResolutionMmSliderWidget.value)
+
+    if self.planDoseVolumeNode:
+      lineProfileLogic.run(self.planDoseVolumeNode, self.stepT1_inputRulerSelector.currentNode(), self.planDoseLineProfileArrayNode, lineResolutionMm)
+    if self.measuredVolumeNode:
+      lineProfileLogic.run(self.measuredVolumeNode, self.stepT1_inputRulerSelector.currentNode(), self.measuredDoseLineProfileArrayNode, lineResolutionMm)
+    if self.gammaVolumeNode:
+      lineProfileLogic.run(self.gammaVolumeNode, self.stepT1_inputRulerSelector.currentNode(), self.gammaLineProfileArrayNode, lineResolutionMm)
 
   def onSelectLineProfileParameters(self):
-    self.stepT1_createLineProfileButton.enabled = self.stepT1_inputVolumeSelector.currentNode() and self.stepT1_inputRulerSelector.currentNode() and self.stepT1_outputArraySelector.currentNode()
-
-  def onSelectVolumeForLineProfile(self):
-    # Show selected volume
-    volume = self.stepT1_inputVolumeSelector.currentNode()
-    if volume != None:
-      appLogic = slicer.app.applicationLogic()
-      selectionNode = appLogic.GetSelectionNode()
-      selectionNode.SetActiveVolumeID(self.stepT1_inputVolumeSelector.currentNodeID)
-      selectionNode.SetSecondaryVolumeID(None)
-      appLogic.PropagateVolumeSelection()
+    self.stepT1_createLineProfileButton.enabled = self.planDoseVolumeNode and self.measuredVolumeNode and self.stepT1_inputRulerSelector.currentNode()
 
 
   #
