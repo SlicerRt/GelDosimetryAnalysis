@@ -52,6 +52,9 @@ class GelDosimetryAnalysisLogic:
       parametersRigid["useRigid"] = True
       parametersRigid["initializeTransformMode"] = "useGeometryAlign"
       parametersRigid["samplingPercentage"] = 0.0005
+      parametersRigid["maximumStepLength"] = 15 # Start with long-range translations
+      parametersRigid["relaxationFactor"] = 0.8 # Relax quickly
+      parametersRigid["translationScale"] = 1000000 # Suppress rotation
       # parametersRigid["backgroundFillValue"] = -1000.0
 
       # Set output transform
