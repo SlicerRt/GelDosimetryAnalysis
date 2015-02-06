@@ -226,6 +226,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step5_maskContourSelector.disconnect('currentNodeChanged(vtkMRMLNode*)', self.onStep5_MaskContourSelectionChanged)
     self.step5A_referenceDoseUseMaximumDoseRadioButton.disconnect('toggled(bool)', self.onUseMaximumDoseRadioButtonToggled)
     self.step5A_computeGammaButton.disconnect('clicked()', self.onGammaDoseComparison)
+    self.step5A_showGammaReportButton.disconnect('clicked()', self.onShowGammaReport)
     self.stepT1_lineProfileCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStepT1_LineProfileSelected)
     self.stepT1_createLineProfileButton.disconnect('clicked(bool)', self.onCreateLineProfileButton)
     self.stepT1_inputRulerSelector.disconnect("currentNodeChanged(vtkMRMLNode*)", self.onSelectLineProfileParameters)
@@ -726,6 +727,11 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step5A_analysisThresholdPercentSpinBox.setValue(0.0)
     self.step5A_gammaDoseComparisonCollapsibleButtonLayout.addRow('Analysis threshold (%): ', self.step5A_analysisThresholdPercentSpinBox)
 
+    self.step5A_useLinearInterpolationCheckBox = qt.QCheckBox()
+    self.step5A_useLinearInterpolationCheckBox.checked = True
+    self.step5A_useLinearInterpolationCheckBox.setToolTip('Flag determining whether linear interpolation is used when resampling the compare dose volume to reference grid')
+    self.step5A_gammaDoseComparisonCollapsibleButtonLayout.addRow('Use linear interpolation: ', self.step5A_useLinearInterpolationCheckBox)
+
     self.step5A_maximumGammaSpinBox = qt.QDoubleSpinBox()
     self.step5A_maximumGammaSpinBox.setValue(2.0)
     self.step5A_gammaDoseComparisonCollapsibleButtonLayout.addRow('Maximum gamma: ', self.step5A_maximumGammaSpinBox)
@@ -745,6 +751,10 @@ class GelDosimetryAnalysisSlicelet(object):
 
     self.step5A_gammaStatusLabel = qt.QLabel()
     self.step5A_gammaDoseComparisonCollapsibleButtonLayout.addRow(self.step5A_gammaStatusLabel)
+
+    self.step5A_showGammaReportButton = qt.QPushButton('Show report')
+    self.step5A_showGammaReportButton.enabled = False
+    self.step5A_gammaDoseComparisonCollapsibleButtonLayout.addRow(self.step5A_showGammaReportButton)
 
     # 5/B) Chi dose comparison
     self.step5B_chiDoseComparisonCollapsibleButton.text = "5/B) Chi dose comparison"
@@ -768,6 +778,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step5_maskContourSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onStep5_MaskContourSelectionChanged)
     self.step5A_referenceDoseUseMaximumDoseRadioButton.connect('toggled(bool)', self.onUseMaximumDoseRadioButtonToggled)
     self.step5A_computeGammaButton.connect('clicked()', self.onGammaDoseComparison)
+    self.step5A_showGammaReportButton.connect('clicked()', self.onShowGammaReport)
 
     # Open gamma dose comparison panel when step is first opened
     self.step5A_gammaDoseComparisonCollapsibleButton.setProperty('collapsed',False)
@@ -1477,6 +1488,7 @@ class GelDosimetryAnalysisSlicelet(object):
       self.gammaParameterSetNode.SetDtaDistanceToleranceMm(self.step5A_dtaDistanceToleranceMmSpinBox.value)
       self.gammaParameterSetNode.SetDoseDifferenceTolerancePercent(self.step5A_doseDifferenceTolerancePercentSpinBox.value)
       self.gammaParameterSetNode.SetUseMaximumDose(self.step5A_referenceDoseUseMaximumDoseRadioButton.isChecked())
+      self.gammaParameterSetNode.SetUseLinearInterpolation(self.step5A_useLinearInterpolationCheckBox.isChecked())
       self.gammaParameterSetNode.SetReferenceDoseGy(self.step5A_referenceDoseCustomValueGySpinBox.value)
       self.gammaParameterSetNode.SetAnalysisThresholdPercent(self.step5A_analysisThresholdPercentSpinBox.value)
       self.gammaParameterSetNode.SetMaximumGamma(self.step5A_maximumGammaSpinBox.value)
@@ -1488,8 +1500,11 @@ class GelDosimetryAnalysisSlicelet(object):
 
       if self.gammaParameterSetNode.GetResultsValid():
         self.step5A_gammaStatusLabel.setText('Gamma dose comparison succeeded\nPass fraction: {0:.2f}%'.format(self.gammaParameterSetNode.GetPassFractionPercent()))
+        self.step5A_showGammaReportButton.enabled = True
+        self.gammaReport = self.gammaParameterSetNode.GetReportString()
       else:
         self.step5A_gammaStatusLabel.setText('Gamma dose comparison failed!')
+        self.step5A_showGammaReportButton.enabled = False
 
       # Show gamma volume
       appLogic = slicer.app.applicationLogic()
@@ -1584,6 +1599,12 @@ class GelDosimetryAnalysisSlicelet(object):
       traceback.print_exc()
       print('ERROR: Failed to perform gamma dose comparison!')
 
+  def onShowGammaReport(self):
+    if hasattr(self,"gammaReport"):
+      qt.QMessageBox.information(None, 'Gamma computation report', self.gammaReport)
+    else:
+      qt.QMessageBox.information(None, 'Gamma computation report missing', 'No report available!')
+    
   def onStepT1_LineProfileSelected(self, collapsed):
     # Change to quantitative view on enter, change back on leave
     if collapsed == False:
@@ -1799,7 +1820,7 @@ class GelDosimetryAnalysisSlicelet(object):
     measuredVolumeNodeName = 'lcv01_hr.vff'
     calibrationVolumeNodeName = 'lcv02_hr.vff'
     radiusMmFromCentrePixelMm = '5'
-    pddFileName = 'd:/devel/_Images/RT/20130415_GelDosimetryData/12MeV_6x6.csv'
+    pddFileName = 'd:/devel/_Images/RT/20140123_GelDosimetry_StructureSetIncluded/12MeV.csv'
     rdf = '0.989'
     monitorUnits = '1850'
     maskContourNodeID = 'vtkMRMLContourNode7'
