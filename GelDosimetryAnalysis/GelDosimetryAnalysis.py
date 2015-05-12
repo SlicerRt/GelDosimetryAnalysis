@@ -2,8 +2,10 @@ import os
 import unittest
 import numpy
 from __main__ import vtk, qt, ctk, slicer
+from slicer.ScriptedLoadableModule import *
+import logging
 import GelDosimetryAnalysisLogic
-
+ 
 #
 # Gel dosimetry analysis slicelet
 #
@@ -26,7 +28,7 @@ class GelDosimetryAnalysisSliceletWidget:
     except Exception, e:
       import traceback
       traceback.print_exc()
-      print("ERROR: There is no parent to GelDosimetryAnalysisSliceletWidget!")
+      logging.error("There is no parent to GelDosimetryAnalysisSliceletWidget!")
 
 #
 # SliceletMainFrame
@@ -42,11 +44,11 @@ class SliceletMainFrame(qt.QFrame):
     import gc
     refs = gc.get_referrers(self.slicelet)
     if len(refs) > 1:
-      print('Stuck slicelet references (' + repr(len(refs)) + '):\n' + repr(refs))
+      logging.debug('Stuck slicelet references (' + repr(len(refs)) + '):\n' + repr(refs))
 
     slicer.gelDosimetrySliceletInstance = None
-    self.slicelet.parent = None
-    self.slicelet = None
+    # self.slicelet.parent = None #TODO: Comment out these two lines because they cause a crash now when slicelet is closed
+    # self.slicelet = None
     self.deleteLater()
 
 #
@@ -127,7 +129,7 @@ class GelDosimetryAnalysisSlicelet(object):
     except Exception, e:
       import traceback
       traceback.print_exc()
-      print('ERROR: Unable to find Markups module!')
+      logging.error('Unable to find Markups module!')
     # Build re-usable markups widget
     self.markupsWidgetClone = qt.QFrame()
     self.markupsWidgetClone.setLayout(self.markupsWidgetLayout)
@@ -152,7 +154,7 @@ class GelDosimetryAnalysisSlicelet(object):
     except Exception, e:
       import traceback
       traceback.print_exc()
-      print('ERROR: Failed to correctly reparent the Markups widget!')
+      logging.error('Failed to correctly reparent the Markups widget!')
 
     # Create or get fiducial nodes
     self.obiMarkupsFiducialNode = slicer.util.getNode(self.obiMarkupsFiducialNodeName)
@@ -189,7 +191,7 @@ class GelDosimetryAnalysisSlicelet(object):
     
   # Clean up when slicelet is closed
   def cleanUp(self):
-    print('Cleaning up')
+    logging.debug('Cleaning up')
     # Show the previously hidden advanced panel in the Markups module UI
     try:
       advancedCollapsibleButton = slicer.util.findChildren(widget=self.markupsWidgetClone, className='ctkCollapsibleGroupBox', name='advancedCollapsibleButton')[0]
@@ -202,7 +204,7 @@ class GelDosimetryAnalysisSlicelet(object):
     except Exception, e:
       import traceback
       traceback.print_exc()
-      print('ERROR: Cleaning up failed!')
+      logging.error('Cleaning up failed!')
 
   # Disconnect all connections made to the slicelet to enable the garbage collector to destruct the slicelet object on quit
   def disconnect(self):
@@ -1309,7 +1311,7 @@ class GelDosimetryAnalysisSlicelet(object):
     else:
       pddRangeMin = -1000
       pddRangeMax = 1000
-    print('Selected Pdd range: {0} - {1}'.format(pddRangeMin,pddRangeMax))
+    logging.info('Selected Pdd range: {0} - {1}'.format(pddRangeMin,pddRangeMax))
 
     # Create optical density vs dose function
     self.logic.createOpticalDensityVsDoseFunction(pddRangeMin, pddRangeMax)
@@ -1600,14 +1602,14 @@ class GelDosimetryAnalysisSlicelet(object):
           colorName = '{0:.2f}'.format(maximumGamma*colorIndex/(self.numberOfGammaLabels-1))
           gammaScalarBarColorTableLookupTable.SetAnnotation(colorIndex, colorName)
           gammaScalarBarColorTable.AddColor(colorName, interpolatedColor[0], interpolatedColor[1], interpolatedColor[2])
-          # print('Name: ' + colorName + '  Color' + repr(interpolatedColor)) #TODO remove
+          # logging.debug('Name: ' + colorName + '  Color' + repr(interpolatedColor)) #TODO remove
         gammaScalarBarActor.UseAnnotationAsLabelOn()
         gammaScalarBarActor.SetLookupTable(gammaScalarBarColorTableLookupTable)
         self.gammaScalarBarWidget.SetScalarBarActor(gammaScalarBarActor)
         self.gammaScalarBarWidget.SetEnabled(1)
         self.gammaScalarBarWidget.Render()
       else:
-        print('ERROR: Unable to find gamma color table!')
+        logging.error('Unable to find gamma color table!')
 
       # Center 3D view
       layoutManager = self.layoutWidget.layoutManager()
@@ -1618,7 +1620,7 @@ class GelDosimetryAnalysisSlicelet(object):
     except Exception, e:
       import traceback
       traceback.print_exc()
-      print('ERROR: Failed to perform gamma dose comparison!')
+      logging.error('Failed to perform gamma dose comparison!')
 
   def onShowGammaReport(self):
     if hasattr(self,"gammaReport"):
@@ -1723,8 +1725,8 @@ class GelDosimetryAnalysisSlicelet(object):
   #
   def onSelfTestButtonClicked(self):
     # TODO_ForTesting: Choose the testing method here
-    # self.performSelfTestFromScratch()
-    self.performSelfTestFromSavedScene()
+    self.performSelfTestFromScratch()
+    # self.performSelfTestFromSavedScene()
 
   def performSelfTestFromScratch(self):
     # 1. Load test data
@@ -1732,21 +1734,9 @@ class GelDosimetryAnalysisSlicelet(object):
     obiSeriesInstanceUid = '1.2.246.352.61.2.5257103442752107062.11507227178299854732'
     planDoseSeriesInstanceUid = '1.2.246.352.71.2.876365306.7756.20140123124241'
     structureSetSeriesInstanceUid = '1.2.246.352.71.2.876365306.7755.20140122163851'
+    seriesUIDList = [planCtSeriesInstanceUid, obiSeriesInstanceUid, planDoseSeriesInstanceUid, structureSetSeriesInstanceUid]
     dicomWidget = slicer.modules.dicom.widgetRepresentation().self()
-    # Plan CT
-    dicomWidget.detailsPopup.offerLoadables(planCtSeriesUid, 'Series')
-    dicomWidget.detailsPopup.examineForLoading()
-    dicomWidget.detailsPopup.loadCheckedLoadables()
-    # OBI
-    dicomWidget.detailsPopup.offerLoadables(obiSeriesInstanceUid, 'Series')
-    dicomWidget.detailsPopup.examineForLoading()
-    dicomWidget.detailsPopup.loadCheckedLoadables()
-    # Plan dose
-    dicomWidget.detailsPopup.offerLoadables(planDoseSeriesInstanceUid, 'Series')
-    dicomWidget.detailsPopup.examineForLoading()
-    dicomWidget.detailsPopup.loadCheckedLoadables()
-    # Structure set
-    dicomWidget.detailsPopup.offerLoadables(structureSetSeriesInstanceUid, 'Series')
+    dicomWidget.detailsPopup.offerLoadables(seriesUIDList, 'SeriesUIDList')
     dicomWidget.detailsPopup.examineForLoading()
     dicomWidget.detailsPopup.loadCheckedLoadables()
 
@@ -1907,8 +1897,13 @@ class GelDosimetryAnalysisSlicelet(object):
 #
 # GelDosimetryAnalysis
 #
-class GelDosimetryAnalysis:
+class GelDosimetryAnalysis(ScriptedLoadableModule):
+  """Uses ScriptedLoadableModule base class, available at:
+  https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
+  """ 
+
   def __init__(self, parent):
+    ScriptedLoadableModule.__init__(self, parent) 
     parent.title = "Gel Dosimetry Analysis"
     parent.categories = ["Slicelets"]
     parent.dependencies = ["GelDosimetryAnalysisAlgo", "DicomRtImportExport", "BRAINSFit", "BRAINSResample", "DoseComparison"]
@@ -1917,49 +1912,27 @@ class GelDosimetryAnalysis:
     parent.acknowledgementText = """
     This file was originally developed by Mattea Welch, Jennifer Andrea, and Csaba Pinter (Queen's University). Funding was provided by NSERC-USRA, OCAIRO, Cancer Care Ontario and Queen's University
     """
-    self.parent = parent
 
 #
 # GelDosimetryAnalysisWidget
 #
-class GelDosimetryAnalysisWidget:
-  def __init__(self, parent = None):
-    if not parent:
-      self.parent = slicer.qMRMLWidget()
-      self.parent.setLayout(qt.QVBoxLayout())
-      self.parent.setMRMLScene(slicer.mrmlScene)
-    else:
-      self.parent = parent
-    self.layout = self.parent.layout()
-    if not parent:
-      self.setup()
-      self.parent.show()
+class GelDosimetryAnalysisWidget(ScriptedLoadableModuleWidget):
+  """Uses ScriptedLoadableModuleWidget base class, available at:
+  https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
+  """
 
   def setup(self):
-    # Reload panel
-    reloadCollapsibleButton = ctk.ctkCollapsibleButton()
-    reloadCollapsibleButton.text = "Reload"
-    self.layout.addWidget(reloadCollapsibleButton)
-    reloadFormLayout = qt.QFormLayout(reloadCollapsibleButton)
-
-    # Reload button
-    self.reloadButton = qt.QPushButton("Reload")
-    self.reloadButton.toolTip = "Reload this module."
-    self.reloadButton.name = "GelDosimetryAnalysis Reload"
-    reloadFormLayout.addWidget(self.reloadButton)
-    self.reloadButton.connect('clicked()', self.onReload)
+    self.developerMode = True
+    ScriptedLoadableModuleWidget.setup(self) 
 
     # Show slicelet button
     launchSliceletButton = qt.QPushButton("Show slicelet")
     launchSliceletButton.toolTip = "Launch the slicelet"
-    reloadFormLayout.addWidget(launchSliceletButton)
+    self.layout.addWidget(launchSliceletButton)
     launchSliceletButton.connect('clicked()', self.onShowSliceletButtonClicked)
 
-  def onReload(self,moduleName="GelDosimetryAnalysis"):
-    """Generic reload method for any scripted module.
-    ModuleWizard will subsitute correct default moduleName.
-    """
-    globals()[moduleName] = slicer.util.reloadScriptedModule(moduleName)
+    # Add vertical spacer
+    self.layout.addStretch(1) 
 
   def onShowSliceletButtonClicked(self):
     mainFrame = SliceletMainFrame()
@@ -1973,12 +1946,14 @@ class GelDosimetryAnalysisWidget:
     slicer.gelDosimetrySliceletInstance = slicelet
 
   def onSliceletClosed(self):
-    print('Slicelet closed')
+    logging.debug('Slicelet closed')
 
 # ---------------------------------------------------------------------------
-class GelDosimetryAnalysisTest(unittest.TestCase):
+class GelDosimetryAnalysisTest(ScriptedLoadableModuleTest):
   """
   This is the test case for your scripted module.
+  Uses ScriptedLoadableModuleTest base class, available at:
+  https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
 
   def setUp(self):
@@ -2000,7 +1975,7 @@ if __name__ == "__main__":
   #   Ideally handle --xml
 
   import sys
-  print( sys.argv )
+  logging.debug( sys.argv )
 
   mainFrame = qt.QFrame()
   slicelet = GelDosimetryAnalysisSlicelet(mainFrame)

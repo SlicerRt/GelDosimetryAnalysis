@@ -1,6 +1,8 @@
 import os
 import time
 from __main__ import vtk, qt, ctk, slicer
+from slicer.ScriptedLoadableModule import *
+import logging
 from math import *
 import numpy
 from vtk.util import numpy_support
@@ -8,13 +10,15 @@ from vtk.util import numpy_support
 #
 # GelDosimetryAnalysisLogic
 #
-class GelDosimetryAnalysisLogic:
+class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
   """This class should implement all the actual
   computation done by your module.  The interface
   should be such that other python code can import
   this class and make use of the functionality without
-  requiring an instance of the Widget
-  """
+  requiring an instance of the Widget.
+  Uses ScriptedLoadableModuleLogic base class, available at:
+  https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
+  """ 
 
   def __init__(self):
     # Define constants
@@ -87,7 +91,7 @@ class GelDosimetryAnalysisLogic:
         planDoseVolumeNode = slicer.mrmlScene.GetNodeByID(planDoseVolumeID)
         planDoseVolumeNode.SetAndObserveTransformNodeID(obiToPlanTransformNode.GetID())
       else:
-        print('WARNING: The selected nodes are the same for plan CT and plan dose!')
+        logging.warning('The selected nodes are the same for plan CT and plan dose!')
       # The output transform was automatically applied to the moving image (the OBI), undo that
       obiVolumeNode = slicer.mrmlScene.GetNodeByID(obiVolumeID)
       obiVolumeNode.SetAndObserveTransformNodeID(None)
@@ -147,7 +151,7 @@ class GelDosimetryAnalysisLogic:
   # ---------------------------------------------------------------------------
   def loadPdd(self, fileName):
     if fileName == None or fileName == '':
-      print('ERROR: Empty PDD file name!')
+      logging.error('Empty PDD file name!')
       return False
 
     readFile = open(fileName, 'r')
@@ -168,10 +172,10 @@ class GelDosimetryAnalysisLogic:
         return False
       valueTwo = float(secondValue)
       doseTable[rowCounter, 0] = secondValue
-      # print('PDD row ' + rowCounter + ': ' + firstValue + ', ' + secondValue) # For testing
+      # logging.debug('PDD row ' + rowCounter + ': ' + firstValue + ', ' + secondValue) # For testing
       rowCounter += 1
 
-    print("Pdd data successfully loaded from file '" + fileName + "'")
+    logging.info("Pdd data successfully loaded from file '" + fileName + "'")
     self.pddDataArray = doseTable
     return True
 
@@ -187,12 +191,12 @@ class GelDosimetryAnalysisLogic:
     # Get image properties needed for the calculation
     calibrationVolumeSliceThicknessCm = calibrationVolume.GetSpacing()[2] / 10.0
     if calibrationVolume.GetSpacing()[0] != calibrationVolume.GetSpacing()[1]:
-      print('WARNING! Image data X and Y spacing differ! This is not supported, the mean optical density data may be skewed!')
+      logging.warning('Image data X and Y spacing differ! This is not supported, the mean optical density data may be skewed!')
     calibrationVolumeInPlaneSpacing = calibrationVolume.GetSpacing()[0]
 
     centralRadiusPixel = int(numpy.ceil(centralRadiusMm / calibrationVolumeInPlaneSpacing))
     if centralRadiusPixel != centralRadiusMm / calibrationVolumeInPlaneSpacing:
-      print('Central radius has been rounded up to {0} (original radius is {1}mm = {2}px)'.format(centralRadiusPixel, centralRadiusMm, centralRadiusMm / calibrationVolumeInPlaneSpacing))
+      logging.info('Central radius has been rounded up to {0} (original radius is {1}mm = {2}px)'.format(centralRadiusPixel, centralRadiusMm, centralRadiusMm / calibrationVolumeInPlaneSpacing))
 
     numberOfSlices = calibrationVolumeImageData.GetExtent()[5] - calibrationVolumeImageData.GetExtent()[4] + 1
     centerXCoordinate = (calibrationVolumeImageData.GetExtent()[1] - calibrationVolumeImageData.GetExtent()[0])/2
@@ -231,13 +235,13 @@ class GelDosimetryAnalysisLogic:
       opticalDensityOfCentralCylinderTable[sliceNumber, 0] = sliceNumber * calibrationVolumeSliceThicknessCm
       opticalDensityOfCentralCylinderTable[sliceNumber, 1] = meanOpticalDensity
       opticalDensityOfCentralCylinderTable[sliceNumber, 2] = standardDeviationOpticalDensity
-      # print('Slice (cm): ' + repr(sliceNumber*calibrationVolumeSliceThicknessCm))
-      # print('  Mean: ' + repr(meanOpticalDensity) + '  StdDev: ' + repr(standardDeviationOpticalDensity))
+      # logging.debug('Slice (cm): ' + repr(sliceNumber*calibrationVolumeSliceThicknessCm))
+      # logging.debug('  Mean: ' + repr(meanOpticalDensity) + '  StdDev: ' + repr(standardDeviationOpticalDensity))
       sliceNumber += 1
       z -= 1
 
     qt.QApplication.restoreOverrideCursor()
-    print('CALIBRATION data has been successfully parsed with averaging radius {0}mm ({1}px)'.format(centralRadiusMm, centralRadiusPixel))
+    logging.info('CALIBRATION data has been successfully parsed with averaging radius {0}mm ({1}px)'.format(centralRadiusMm, centralRadiusPixel))
     self.calibrationDataArray = opticalDensityOfCentralCylinderTable
     return True
 
@@ -248,7 +252,7 @@ class GelDosimetryAnalysisLogic:
 
     # Check the input arrays
     if self.pddDataArray.size == 0 or self.calibrationDataArray.size == 0:
-      print('ERROR: Pdd or calibration data is empty!')
+      logging.error('Pdd or calibration data is empty!')
       return error
 
     # Discard values of 0 from both ends of the data (it is considered invalid)
@@ -268,7 +272,7 @@ class GelDosimetryAnalysisLogic:
     maxPdd = self.findMaxValueInArray(self.pddDataArray)
     maxCalibration = self.findMaxValueInArray(self.calibrationDataCleanedArray)
     initialScaling = maxPdd / maxCalibration
-    # print('Initial scaling factor {0:.4f}'.format(initialScaling))
+    # logging.debug('Initial scaling factor {0:.4f}'.format(initialScaling))
 
     # Create the working structures
     self.minimizer = vtk.vtkAmoebaMinimizer()
@@ -291,7 +295,7 @@ class GelDosimetryAnalysisLogic:
     self.createAlignedCalibrationArray(xTrans, yScale, yTrans)
 
     qt.QApplication.restoreOverrideCursor()
-    print('CALIBRATION successfully aligned with PDD with error={0:.2f} and parameters xTrans={1:.2f}, yScale={2:.2f}, yTrans={3:.2f}'.format(error, xTrans, yScale, yTrans))
+    logging.info('CALIBRATION successfully aligned with PDD with error={0:.2f} and parameters xTrans={1:.2f}, yScale={2:.2f}, yTrans={3:.2f}'.format(error, xTrans, yScale, yTrans))
     return [error, xTrans, yScale, yTrans]
 
   # ---------------------------------------------------------------------------
@@ -352,21 +356,21 @@ class GelDosimetryAnalysisLogic:
     while numberOfIterations < maxNumberOfOutlierIterations and numberOfFoundOutliers != 0 and numberOfRows > 0:
       maxValue = self.findMaxValueInArray(arrayToClean)
       meanDifference = self.computeMeanDifferenceOfNeighborsForArray(arrayToClean)
-      # print('Outlier removel iteration {0}: MeanDifference={1:.2f} (fraction of max value: {2:.4f})'.format(numberOfIterations, meanDifference, meanDifference/maxValue))
-      # print('  Difference at egdges: first={0:.2f}  last={1:.2f}'.format(abs(arrayToClean[0,1] - arrayToClean[1,1]), abs(arrayToClean[numberOfRows-1,1] - arrayToClean[numberOfRows-2,1])))
+      # logging.debug('Outlier removel iteration {0}: MeanDifference={1:.2f} (fraction of max value: {2:.4f})'.format(numberOfIterations, meanDifference, meanDifference/maxValue))
+      # logging.debug('  Difference at egdges: first={0:.2f}  last={1:.2f}'.format(abs(arrayToClean[0,1] - arrayToClean[1,1]), abs(arrayToClean[numberOfRows-1,1] - arrayToClean[numberOfRows-2,1])))
       if meanDifference < maxValue * minimumMeanDifferenceInFractionOfMaxValueThreshold:
-        # print('  MaxValue: {0:.2f} ({1:.4f}), finishing outlier search'.format(maxValue,maxValue*minimumMeanDifferenceInFractionOfMaxValueThreshold))
+        # logging.debug('  MaxValue: {0:.2f} ({1:.4f}), finishing outlier search'.format(maxValue,maxValue*minimumMeanDifferenceInFractionOfMaxValueThreshold))
         break
       numberOfFoundOutliers = 0
       # Remove outliers from the beginning
       while abs(arrayToClean[0,1] - arrayToClean[1,1]) > meanDifference * outlierThreshold:
-        # print('  Deleted first: {0:.2f},{0:.2f}  difference={0:.2f}'.format(arrayToClean[0,0], arrayToClean[0,1], abs(arrayToClean[0,1] - arrayToClean[1,1])))
+        # logging.debug('  Deleted first: {0:.2f},{0:.2f}  difference={0:.2f}'.format(arrayToClean[0,0], arrayToClean[0,1], abs(arrayToClean[0,1] - arrayToClean[1,1])))
         arrayToClean = numpy.delete(arrayToClean, 0, 0)
         numberOfFoundOutliers += 1
       # Remove outliers from the end        
       numberOfRows = arrayToClean.shape[0]
       while abs(arrayToClean[numberOfRows-1,1] - arrayToClean[numberOfRows-2,1]) > meanDifference * outlierThreshold:
-        # print('  Deleted last: {0:.2f},{0:.2f}  difference={0:.2f}'.format(arrayToClean[numberOfRows-1,0], arrayToClean[numberOfRows-1,1], abs(arrayToClean[numberOfRows-1,1] - arrayToClean[numberOfRows-2,1])))
+        # logging.debug('  Deleted last: {0:.2f},{0:.2f}  difference={0:.2f}'.format(arrayToClean[numberOfRows-1,0], arrayToClean[numberOfRows-1,1], abs(arrayToClean[numberOfRows-1,1] - arrayToClean[numberOfRows-2,1])))
         arrayToClean = numpy.delete(arrayToClean, numberOfRows-1, 0)
         numberOfRows = arrayToClean.shape[0]
         numberOfFoundOutliers += 1
@@ -445,11 +449,10 @@ class GelDosimetryAnalysisLogic:
       opticalDensityData[rowIndex] = self.opticalDensityVsDoseFunction[rowIndex, 0]
       doseData[rowIndex] = self.opticalDensityVsDoseFunction[rowIndex, 1]
     fittingResult = numpy.polyfit(opticalDensityData, doseData, orderOfFittedPolynomial, None, True)
-    print fittingResult
     self.calibrationPolynomialCoefficients = fittingResult[0]
     self.fittingResiduals = fittingResult[1]
-    print('Coefficients of the fitted polynomial: ' + repr(self.calibrationPolynomialCoefficients.tolist()))
-    print('  Fitting residuals: ' + repr(self.fittingResiduals[0]))
+    logging.info('Coefficients of the fitted polynomial: ' + repr(self.calibrationPolynomialCoefficients.tolist()))
+    logging.info('  Fitting residuals: ' + repr(self.fittingResiduals[0]))
     return self.fittingResiduals
 
   # ---------------------------------------------------------------------------
@@ -518,34 +521,14 @@ class GelDosimetryAnalysisLogic:
     
     import vtkSlicerGelDosimetryAnalysisAlgoModuleLogic
     if slicer.modules.geldosimetryanalysisalgo.logic().ApplyPolynomialFunctionOnVolume(calibratedVolume, coefficients) == False:
-      print('ERROR: Calibration failed!')
+      logging.error('Calibration failed!')
       slicer.mrmlScene.RemoveNode(calibratedVolume)
       return None
 
     end = time.time()
     qt.QApplication.restoreOverrideCursor()
-    print('Calibration of MEASURED volume is successful (time: {0})'.format(end - start))
+    logging.info('Calibration of MEASURED volume is successful (time: {0})'.format(end - start))
     return calibratedVolume
-
-  # ---------------------------------------------------------------------------
-  # Utility functions
-  # ---------------------------------------------------------------------------
-  def delayDisplay(self,message,msec=1000):
-    """This utility method displays a small dialog and waits.
-    This does two things: 1) it lets the event loop catch up
-    to the state of the test so that rendering and widget updates
-    have all taken place before the test continues and 2) it
-    shows the user/developer/tester the state of the test
-    so that we'll know when it breaks.
-    """
-    print(message)
-    self.info = qt.QDialog()
-    self.infoLayout = qt.QVBoxLayout()
-    self.info.setLayout(self.infoLayout)
-    self.label = qt.QLabel(message,self.info)
-    self.infoLayout.addWidget(self.label)
-    qt.QTimer.singleShot(msec, self.info.close)
-    self.info.exec_()
 
 #
 # Function to minimize for the calibration curve alignment
@@ -575,7 +558,7 @@ def curveAlignmentCalibrationFunction():
     else:
       sumSquaredDifference += difference ** 2
 
-  # print('Iteration: {0:2}  xTrans: {1:6.2f}  yScale: {2:6.2f}  yTrans: {3:6.2f}    error: {4:.2f}'.format(logic.minimizer.GetIterations(), xTrans, yScale, yTrans, sumSquaredDifference))
+  # logging.debug('Iteration: {0:2}  xTrans: {1:6.2f}  yScale: {2:6.2f}  yTrans: {3:6.2f}    error: {4:.2f}'.format(logic.minimizer.GetIterations(), xTrans, yScale, yTrans, sumSquaredDifference))
   logic.minimizer.SetFunctionValue(sumSquaredDifference)
 
 # Global variable holding the logic instance for the calibration curve minimizer function
