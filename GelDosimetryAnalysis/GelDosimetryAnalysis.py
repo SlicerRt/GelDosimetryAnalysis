@@ -79,8 +79,7 @@ class GelDosimetryAnalysisSlicelet(object):
     # Initiate and group together all panels
     self.step0_layoutSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
     self.step1_loadDataCollapsibleButton = ctk.ctkCollapsibleButton()
-    self.step2_obiToPlanCtRegistrationCollapsibleButton = ctk.ctkCollapsibleButton()
-    self.step3_measuredDoseToObiRegistrationCollapsibleButton = ctk.ctkCollapsibleButton()
+    self.step2_registrationCollapsibleButton = ctk.ctkCollapsibleButton()
     self.step4_doseCalibrationCollapsibleButton = ctk.ctkCollapsibleButton()
     self.step5_doseComparisonCollapsibleButton = ctk.ctkCollapsibleButton()
     self.stepT1_lineProfileCollapsibleButton = ctk.ctkCollapsibleButton()
@@ -88,8 +87,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.collapsibleButtonsGroup = qt.QButtonGroup()
     self.collapsibleButtonsGroup.addButton(self.step0_layoutSelectionCollapsibleButton)
     self.collapsibleButtonsGroup.addButton(self.step1_loadDataCollapsibleButton)
-    self.collapsibleButtonsGroup.addButton(self.step2_obiToPlanCtRegistrationCollapsibleButton)
-    self.collapsibleButtonsGroup.addButton(self.step3_measuredDoseToObiRegistrationCollapsibleButton)
+    self.collapsibleButtonsGroup.addButton(self.step2_registrationCollapsibleButton)
     self.collapsibleButtonsGroup.addButton(self.step4_doseCalibrationCollapsibleButton)
     self.collapsibleButtonsGroup.addButton(self.step5_doseComparisonCollapsibleButton)
     self.collapsibleButtonsGroup.addButton(self.stepT1_lineProfileCollapsibleButton)
@@ -176,10 +174,9 @@ class GelDosimetryAnalysisSlicelet(object):
     # Set up step panels
     self.setup_Step0_LayoutSelection()    
     self.setup_Step1_LoadData()
-    self.setup_Step2_ObiToPlanCtRegistration()
-    self.setup_Step3_MeasuredToObiRegistration()
-    self.setup_Step4_DoseCalibration()
-    self.setup_Step5_DoseComparison()
+    self.setup_Step2_Registration()
+    self.setup_step3_DoseCalibration()
+    self.setup_Step4_DoseComparison()
     self.setup_StepT1_lineProfileCollapsibleButton()
 
     if widgetClass:
@@ -213,12 +210,12 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step0_clinicalModeRadioButton.disconnect('toggled(bool)', self.onClinicalModeSelect)
     self.step0_preclinicalModeRadioButton.disconnect('toggled(bool)', self.onPreclinicalModeSelect)
     self.step1_showDicomBrowserButton.disconnect('clicked()', self.logic.onDicomLoad)
-    self.step2_registerObiToPlanCtButton.disconnect('clicked()', self.onObiToPlanCTRegistration)
-    self.step3_measuredDoseToObiRegistrationCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep3_MeasuredDoseToObiRegistrationSelected)
-    self.step3A_obiFiducialSelectionCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep3A_ObiFiducialCollectionSelected)
-    self.step3C_measuredFiducialSelectionCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep3C_ObiFiducialCollectionSelected)
-    self.step3B_loadMeasuredDataButton.disconnect('clicked()', self.onLoadMeasuredData)
-    self.step3D_registerMeasuredToObiButton.disconnect('clicked()', self.onMeasuredToObiRegistration)
+    self.step2_1_registerObiToPlanCtButton.disconnect('clicked()', self.onObiToPlanCTRegistration)
+    self.step2_2_measuredDoseToObiRegistrationCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep2_2_MeasuredDoseToObiRegistrationSelected)
+    self.step2_2_1_obiFiducialSelectionCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep2_2_1_ObiFiducialCollectionSelected)
+    self.step2_2_2_measuredFiducialSelectionCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep2_2_2_ObiFiducialCollectionSelected)
+    self.step1_loadNonDicomDataButton.disconnect('clicked()', self.onLoadNonDicomData)
+    self.step2_2_3_registerMeasuredToObiButton.disconnect('clicked()', self.onMeasuredToObiRegistration)
     self.step4A_pddLoadDataButton.disconnect('clicked()', self.onLoadPddDataRead)
     self.step4A_loadCalibrationDataButton.disconnect('clicked()', self.onLoadCalibrationData)
     self.step4A_parseCalibrationVolumeButton.disconnect('clicked()', self.onParseCalibrationVolume)
@@ -300,11 +297,17 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step1_loadDataCollapsibleButtonLayout.addRow(self.step1_LoadDataLabel)
 
     # Load DICOM data button
-    self.step1_showDicomBrowserButton = qt.QPushButton("Click here to show DICOM browser")
+    self.step1_showDicomBrowserButton = qt.QPushButton("Click here to load DICOM data")
     self.step1_showDicomBrowserButton.toolTip = "Load planning data (CT, dose, structures)"
     self.step1_showDicomBrowserButton.name = "showDicomBrowserButton"
     self.step1_loadDataCollapsibleButtonLayout.addRow(self.step1_showDicomBrowserButton)
 
+    # Load non-DICOM data button
+    self.step1_loadNonDicomDataButton = qt.QPushButton("Click here to load non-DICOM data from file")
+    self.step1_loadNonDicomDataButton.toolTip = "Load optical CT files from VFF, NRRD, etc."
+    self.step1_loadNonDicomDataButton.name = "loadNonDicomDataButton"
+    self.step1_loadDataCollapsibleButtonLayout.addRow(self.step1_loadNonDicomDataButton)
+    
     # Add empty row
     self.step1_loadDataCollapsibleButtonLayout.addRow(' ', None)
     
@@ -330,7 +333,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.planDoseSelector.addEnabled = False
     self.planDoseSelector.removeEnabled = False
     self.planDoseSelector.setMRMLScene( slicer.mrmlScene )
-    self.planDoseSelector.setToolTip( "Pick the planning dose volume for registration." )
+    self.planDoseSelector.setToolTip( "Pick the planning dose volume." )
     self.step1_loadDataCollapsibleButtonLayout.addRow('Plan dose volume: ', self.planDoseSelector)
 
     # PLANSTRUCTURES node selector
@@ -340,7 +343,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.planStructuresSelector.addEnabled = False
     self.planStructuresSelector.removeEnabled = False
     self.planStructuresSelector.setMRMLScene( slicer.mrmlScene )
-    self.planStructuresSelector.setToolTip( "Pick the planning structure set for registration." )
+    self.planStructuresSelector.setToolTip( "Pick the planning structure set." )
     self.step1_loadDataCollapsibleButtonLayout.addRow('Structures: ', self.planStructuresSelector)
 
     # OBI node selector
@@ -350,120 +353,126 @@ class GelDosimetryAnalysisSlicelet(object):
     self.obiSelector.addEnabled = False
     self.obiSelector.removeEnabled = False
     self.obiSelector.setMRMLScene( slicer.mrmlScene )
-    self.obiSelector.setToolTip( "Pick the OBI volume for registration." )
+    self.obiSelector.setToolTip( "Pick the OBI volume." )
     self.step1_loadDataCollapsibleButtonLayout.addRow('OBI volume: ', self.obiSelector)
-    
-    #TODO: Add VFF file selectors and assign comboboxes #677
-    
+
+    # MEASURED node selector
+    self.measuredVolumeSelector = slicer.qMRMLNodeComboBox()
+    self.measuredVolumeSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
+    self.measuredVolumeSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 0 )
+    self.measuredVolumeSelector.addEnabled = False
+    self.measuredVolumeSelector.removeEnabled = False
+    self.measuredVolumeSelector.setMRMLScene( slicer.mrmlScene )
+    self.measuredVolumeSelector.setToolTip( "Pick the measured gel dosimeter volume." )
+    self.step1_loadDataCollapsibleButtonLayout.addRow('Measured gel dosimeter volume: ', self.measuredVolumeSelector)
+
+    # CALIBRATION node selector
+    self.calibrationVolumeSelector = slicer.qMRMLNodeComboBox()
+    self.calibrationVolumeSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
+    self.calibrationVolumeSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 0 )
+    self.calibrationVolumeSelector.addEnabled = False
+    self.calibrationVolumeSelector.removeEnabled = False
+    self.calibrationVolumeSelector.setMRMLScene( slicer.mrmlScene )
+    self.calibrationVolumeSelector.setToolTip( "Pick the calibration gel dosimeter volume for registration." )
+    self.step1_loadDataCollapsibleButtonLayout.addRow('Calibration gel dosimeter volume: ', self.calibrationVolumeSelector)
+
     # Connections
     self.step1_showDicomBrowserButton.connect('clicked()', self.logic.onDicomLoad)
+    self.step1_loadNonDicomDataButton.connect('clicked()', self.onLoadNonDicomData)
 
-  def setup_Step2_ObiToPlanCtRegistration(self):
-    # Step 2: OBI to PLANCT registration panel
-    self.step2_obiToPlanCtRegistrationCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step2_obiToPlanCtRegistrationCollapsibleButton.text = "2. Registration"
-    self.sliceletPanelLayout.addWidget(self.step2_obiToPlanCtRegistrationCollapsibleButton)
-    self.step2_obiToPlanCtRegistrationCollapsibleButtonLayout = qt.QFormLayout(self.step2_obiToPlanCtRegistrationCollapsibleButton)
-    self.step2_obiToPlanCtRegistrationCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
-    self.step2_obiToPlanCtRegistrationCollapsibleButtonLayout.setSpacing(4)
+  def setup_Step2_Registration(self):
+    # Step 2: Registration step
+    self.step2_registrationCollapsibleButton.setProperty('collapsedHeight', 4)
+    self.step2_registrationCollapsibleButton.text = "2. Registration"
+    self.sliceletPanelLayout.addWidget(self.step2_registrationCollapsibleButton)
+    self.step2_registrationCollapsibleButtonLayout = qt.QFormLayout(self.step2_registrationCollapsibleButton)
+    self.step2_registrationCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
+    self.step2_registrationCollapsibleButtonLayout.setSpacing(4)
+
+    # Step 2.1: OBI to PLANCT registration panel    
+    self.step2_1_obiToPlanCtRegistrationCollapsibleButton = ctk.ctkCollapsibleButton()
+    self.step2_1_obiToPlanCtRegistrationCollapsibleButton.setProperty('collapsedHeight', 4)
+    self.step2_1_obiToPlanCtRegistrationCollapsibleButton.text = "2.1. Register OBI to planning CT"
+    self.step2_registrationCollapsibleButtonLayout.addWidget(self.step2_1_obiToPlanCtRegistrationCollapsibleButton)
+    self.step2_1_obiToPlanCtRegistrationLayout = qt.QFormLayout(self.step2_1_obiToPlanCtRegistrationCollapsibleButton)
+    self.step2_1_obiToPlanCtRegistrationLayout.setContentsMargins(12,4,4,4)
+    self.step2_1_obiToPlanCtRegistrationLayout.setSpacing(4)
 
     # Registration label
-    self.step1_RegistrationLabel = qt.QLabel("Automatically register the OBI volume to the planning CT.")
-    self.step1_RegistrationLabel.wordWrap = True
-    self.step2_obiToPlanCtRegistrationCollapsibleButtonLayout.addRow(self.step1_RegistrationLabel)
+    self.step2_1_RegistrationLabel = qt.QLabel("Automatically register the OBI volume to the planning CT.\nIt should take several seconds.")
+    self.step2_1_RegistrationLabel.wordWrap = True
+    self.step2_1_obiToPlanCtRegistrationLayout.addRow(self.step2_1_RegistrationLabel)
 
     # OBI to PLANCT registration button
-    self.step2_registerObiToPlanCtButton = qt.QPushButton("Click here to perform registration")
-    self.step2_registerObiToPlanCtButton.toolTip = "Register OBI volume to planning CT volume"
-    self.step2_registerObiToPlanCtButton.name = "step2_registerObiToPlanCtButton"
-    self.step2_obiToPlanCtRegistrationCollapsibleButtonLayout.addRow(self.step2_registerObiToPlanCtButton)
+    self.step2_1_registerObiToPlanCtButton = qt.QPushButton("Click here to perform registration")
+    self.step2_1_registerObiToPlanCtButton.toolTip = "Register OBI volume to planning CT volume"
+    self.step2_1_registerObiToPlanCtButton.name = "step2_1_registerObiToPlanCtButton"
+    self.step2_1_obiToPlanCtRegistrationLayout.addRow(self.step2_1_registerObiToPlanCtButton)
 
-    # Connections
-    self.step2_registerObiToPlanCtButton.connect('clicked()', self.onObiToPlanCTRegistration)
+    # Step 2.2: Gel CT scan to cone beam CT registration panel
+    self.step2_2_measuredDoseToObiRegistrationCollapsibleButton = ctk.ctkCollapsibleButton()
+    self.step2_2_measuredDoseToObiRegistrationCollapsibleButton.setProperty('collapsedHeight', 4)
+    self.step2_2_measuredDoseToObiRegistrationCollapsibleButton.text = "2.2. Register gel dosimeter volume to OBI"
+    self.step2_registrationCollapsibleButtonLayout.addWidget(self.step2_2_measuredDoseToObiRegistrationCollapsibleButton)
+    self.step2_2_measuredDoseToObiRegistrationLayout = qt.QVBoxLayout(self.step2_2_measuredDoseToObiRegistrationCollapsibleButton)
+    self.step2_2_measuredDoseToObiRegistrationLayout.setContentsMargins(12,4,4,4)
+    self.step2_2_measuredDoseToObiRegistrationLayout.setSpacing(4)
 
-  def setup_Step3_MeasuredToObiRegistration(self):
-    # Step 3: Gel CT scan to cone beam CT registration panel
-    self.step3_measuredDoseToObiRegistrationCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step3_measuredDoseToObiRegistrationCollapsibleButton.text = "3. Register MEASURED dose to OBI"
-    self.sliceletPanelLayout.addWidget(self.step3_measuredDoseToObiRegistrationCollapsibleButton)
-    self.step3_measuredDoseToObiRegistrationLayout = qt.QVBoxLayout(self.step3_measuredDoseToObiRegistrationCollapsibleButton)
-    self.step3_measuredDoseToObiRegistrationLayout.setContentsMargins(12,4,4,4)
-    self.step3_measuredDoseToObiRegistrationLayout.setSpacing(4)
+    # Step 2.2.1: Select OBI fiducials on OBI volume
+    self.step2_2_1_obiFiducialSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
+    self.step2_2_1_obiFiducialSelectionCollapsibleButton.setProperty('collapsedHeight', 4)
+    self.step2_2_1_obiFiducialSelectionCollapsibleButton.text = "2.2.1 Select OBI fiducial points"
+    self.step2_2_measuredDoseToObiRegistrationLayout.addWidget(self.step2_2_1_obiFiducialSelectionCollapsibleButton)
 
-    # Step 3/A): Select OBI fiducials on OBI volume
-    self.step3A_obiFiducialSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
-    self.step3A_obiFiducialSelectionCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step3A_obiFiducialSelectionCollapsibleButton.text = "3/A) Select OBI fiducial points"
-    self.step3_measuredDoseToObiRegistrationLayout.addWidget(self.step3A_obiFiducialSelectionCollapsibleButton)
+    # Step 2.2.2: Select MEASURED fiducials on MEASURED dose volume
+    self.step2_2_2_measuredFiducialSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
+    self.step2_2_2_measuredFiducialSelectionCollapsibleButton.setProperty('collapsedHeight', 4)
+    self.step2_2_2_measuredFiducialSelectionCollapsibleButton.text = "2.2.2 Select measured gel dosimeter fiducial points"
+    self.step2_2_measuredDoseToObiRegistrationLayout.addWidget(self.step2_2_2_measuredFiducialSelectionCollapsibleButton)
 
-    # Step 3/B): Load MEASURED dose CT scan
-    self.step3B_loadMeasuredDataCollapsibleButton = ctk.ctkCollapsibleButton()
-    self.step3B_loadMeasuredDataCollapsibleButton.setProperty('collapsedHeight', 4)
-    loadMeasuredDataCollapsibleButtonLayout = qt.QFormLayout(self.step3B_loadMeasuredDataCollapsibleButton)
-    loadMeasuredDataCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
-    loadMeasuredDataCollapsibleButtonLayout.setSpacing(4)
-    self.step3_measuredDoseToObiRegistrationLayout.addWidget(self.step3B_loadMeasuredDataCollapsibleButton)
-
-    self.step3B_loadMeasuredDataCollapsibleButton.text = "3/B) Load MEASURED dose CT scan" 
-    self.step3B_loadMeasuredDataButton = qt.QPushButton("Load .vff file")
-    self.step3B_loadMeasuredDataButton.toolTip = "Select CT scan of gel if not already loaded."
-    self.step3B_loadMeasuredDataButton.name = "loadMeasuredDataButton"
-    loadMeasuredDataCollapsibleButtonLayout.addRow('Load MEASURED dose volume: ', self.step3B_loadMeasuredDataButton)
-
-    self.step3B_loadMeasuredDataStatusLabel = qt.QLabel()
-    loadMeasuredDataCollapsibleButtonLayout.addRow(' ', self.step3B_loadMeasuredDataStatusLabel)
-
-    # Step 3/C): Select MEASURED fiducials on MEASURED dose volume
-    self.step3C_measuredFiducialSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
-    self.step3C_measuredFiducialSelectionCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step3C_measuredFiducialSelectionCollapsibleButton.text = "3/C) Select MEASURED fiducial points"
-    self.step3_measuredDoseToObiRegistrationLayout.addWidget(self.step3C_measuredFiducialSelectionCollapsibleButton)
-
-    # Step 3/D): Perform registration
-    self.step3D_measuredToObiRegistrationCollapsibleButton = ctk.ctkCollapsibleButton()
-    self.step3D_measuredToObiRegistrationCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step3D_measuredToObiRegistrationCollapsibleButton.text = "3/D) Perform registration"
-    measuredToObiRegistrationCollapsibleButtonLayout = qt.QFormLayout(self.step3D_measuredToObiRegistrationCollapsibleButton)
+    # Step 2.2.3: Perform registration
+    self.step2_2_3_measuredToObiRegistrationCollapsibleButton = ctk.ctkCollapsibleButton()
+    self.step2_2_3_measuredToObiRegistrationCollapsibleButton.setProperty('collapsedHeight', 4)
+    self.step2_2_3_measuredToObiRegistrationCollapsibleButton.text = "2.2.3 Perform registration"
+    measuredToObiRegistrationCollapsibleButtonLayout = qt.QFormLayout(self.step2_2_3_measuredToObiRegistrationCollapsibleButton)
     measuredToObiRegistrationCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
     measuredToObiRegistrationCollapsibleButtonLayout.setSpacing(4)
-    self.step3_measuredDoseToObiRegistrationLayout.addWidget(self.step3D_measuredToObiRegistrationCollapsibleButton)
-
-    # MEASURED volume selector
-    self.step3D_measuredVolumeSelector = slicer.qMRMLNodeComboBox()
-    self.step3D_measuredVolumeSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
-    self.step3D_measuredVolumeSelector.addEnabled = False
-    self.step3D_measuredVolumeSelector.removeEnabled = False
-    self.step3D_measuredVolumeSelector.setMRMLScene( slicer.mrmlScene )
-    self.step3D_measuredVolumeSelector.setToolTip( "MEASURED dose volume to be transformed" )
-    self.step3D_measuredVolumeSelector.enabled = False # Don't let the user select another, use the one that was loaded (the combobox is there to indicate which volume is involved)
-    measuredToObiRegistrationCollapsibleButtonLayout.addRow('MEASURED dose volume: ', self.step3D_measuredVolumeSelector)
+    self.step2_2_measuredDoseToObiRegistrationLayout.addWidget(self.step2_2_3_measuredToObiRegistrationCollapsibleButton)
 
     # Registration button - register MEASURED to OBI with fiducial registration
-    self.step3D_registerMeasuredToObiButton = qt.QPushButton("Perform registration")
-    self.step3D_registerMeasuredToObiButton.toolTip = "Perform fiducial registration between MEASURED dose and OBI"
-    self.step3D_registerMeasuredToObiButton.name = "registerMeasuredToObiButton"
-    measuredToObiRegistrationCollapsibleButtonLayout.addRow('Register MEASURED to OBI: ', self.step3D_registerMeasuredToObiButton)
+    self.step2_2_3_registerMeasuredToObiButton = qt.QPushButton("Click here to register gel volume to OBI")
+    self.step2_2_3_registerMeasuredToObiButton.toolTip = "Perform fiducial registration between measured gel dosimeter volume and OBI"
+    self.step2_2_3_registerMeasuredToObiButton.name = "registerMeasuredToObiButton"
+    measuredToObiRegistrationCollapsibleButtonLayout.addRow(self.step2_2_3_registerMeasuredToObiButton)
+
+    # Fiducial error label
+    self.step2_2_3_measuredToObiFiducialRegistrationErrorLabel = qt.QLabel('[Not yet performed]')
+    measuredToObiRegistrationCollapsibleButtonLayout.addRow('Fiducial registration error: ', self.step2_2_3_measuredToObiFiducialRegistrationErrorLabel)
+
+    # Add empty row
+    measuredToObiRegistrationCollapsibleButtonLayout.addRow(' ', None)
+
+    # Note label about fiducial error
+    self.step2_2_3_NoteLabel = qt.QLabel("Note: Typical registration error is < 3mm")
+    measuredToObiRegistrationCollapsibleButtonLayout.addRow(self.step2_2_3_NoteLabel)
     
-    self.step3D_measuredToObiFiducialRegistrationErrorLabel = qt.QLabel('[Not yet performed]')
-    measuredToObiRegistrationCollapsibleButtonLayout.addRow('Fiducial registration error: ', self.step3D_measuredToObiFiducialRegistrationErrorLabel)
-
     # Add substeps in a button group
-    self.step3D_measuredToObiRegistrationCollapsibleButtonGroup = qt.QButtonGroup()
-    self.step3D_measuredToObiRegistrationCollapsibleButtonGroup.addButton(self.step3A_obiFiducialSelectionCollapsibleButton)
-    self.step3D_measuredToObiRegistrationCollapsibleButtonGroup.addButton(self.step3B_loadMeasuredDataCollapsibleButton)
-    self.step3D_measuredToObiRegistrationCollapsibleButtonGroup.addButton(self.step3C_measuredFiducialSelectionCollapsibleButton)
-    self.step3D_measuredToObiRegistrationCollapsibleButtonGroup.addButton(self.step3D_measuredToObiRegistrationCollapsibleButton)
+    self.step2_2_3_measuredToObiRegistrationCollapsibleButtonGroup = qt.QButtonGroup()
+    self.step2_2_3_measuredToObiRegistrationCollapsibleButtonGroup.addButton(self.step2_2_1_obiFiducialSelectionCollapsibleButton)
+    self.step2_2_3_measuredToObiRegistrationCollapsibleButtonGroup.addButton(self.step2_2_2_measuredFiducialSelectionCollapsibleButton)
+    self.step2_2_3_measuredToObiRegistrationCollapsibleButtonGroup.addButton(self.step2_2_3_measuredToObiRegistrationCollapsibleButton)
+
     # Connections
-    self.step3_measuredDoseToObiRegistrationCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep3_MeasuredDoseToObiRegistrationSelected)
-    self.step3A_obiFiducialSelectionCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep3A_ObiFiducialCollectionSelected)
-    self.step3C_measuredFiducialSelectionCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep3C_ObiFiducialCollectionSelected)
-    self.step3B_loadMeasuredDataButton.connect('clicked()', self.onLoadMeasuredData)
-    self.step3D_registerMeasuredToObiButton.connect('clicked()', self.onMeasuredToObiRegistration)
+    self.step2_1_registerObiToPlanCtButton.connect('clicked()', self.onObiToPlanCTRegistration)
+    self.step2_2_measuredDoseToObiRegistrationCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep2_2_MeasuredDoseToObiRegistrationSelected)
+    self.step2_2_1_obiFiducialSelectionCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep2_2_1_ObiFiducialCollectionSelected)
+    self.step2_2_2_measuredFiducialSelectionCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep2_2_2_ObiFiducialCollectionSelected)
+    self.step2_2_3_registerMeasuredToObiButton.connect('clicked()', self.onMeasuredToObiRegistration)
 
-    # Open OBI fiducial selection panel when step is first opened
-    self.step3A_obiFiducialSelectionCollapsibleButton.setProperty('collapsed', False)
+    # Open automatic registration panel when step is first opened
+    self.step2_1_obiToPlanCtRegistrationCollapsibleButton.setProperty('collapsed', False)
 
-  def setup_Step4_DoseCalibration(self):
+  def setup_step3_DoseCalibration(self):
     # Step 4: Apply dose calibration curve to CALIBRATION dose volume
     self.step4_doseCalibrationCollapsibleButton.setProperty('collapsedHeight', 4)
     self.step4_doseCalibrationCollapsibleButton.text = "4. Apply dose calibration curve to MEASURED Dose"
@@ -646,7 +655,6 @@ class GelDosimetryAnalysisSlicelet(object):
     
     # Connections
     self.step4A_pddLoadDataButton.connect('clicked()', self.onLoadPddDataRead)
-    self.step4A_loadCalibrationDataButton.connect('clicked()', self.onLoadCalibrationData)
     self.step4A_parseCalibrationVolumeButton.connect('clicked()', self.onParseCalibrationVolume)
     self.step4B_alignCalibrationCurvesButton.connect('clicked()', self.onAlignCalibrationCurves)
     self.step4B_xTranslationSpinBox.connect('valueChanged(double)', self.onAdjustAlignmentValueChanged)
@@ -663,7 +671,7 @@ class GelDosimetryAnalysisSlicelet(object):
     # Open prepare calibration data panel when step is first opened
     self.step4A_prepareCalibrationDataCollapsibleButton.setProperty('collapsed', False)
     
-  def setup_Step5_DoseComparison(self):
+  def setup_Step4_DoseComparison(self):
     # Step 5: Dose comparison and analysis
     self.step5_doseComparisonCollapsibleButton.setProperty('collapsedHeight', 4)
     self.step5_doseComparisonCollapsibleButton.text = "5. Perform dose comparison and analysis"
@@ -870,7 +878,9 @@ class GelDosimetryAnalysisSlicelet(object):
     self.stepT1_exportLineProfilesToCSV.connect('clicked()', self.onExportLineProfiles)
 
   #
+  # -----------------------
   # Event handler functions
+  # -----------------------
   #
   def onViewSelect(self, layoutIndex):
     if layoutIndex == 0:
@@ -891,18 +901,7 @@ class GelDosimetryAnalysisSlicelet(object):
   def onClinicalModeSelect(self, toggled):
     if self.step0_clinicalModeRadioButton.isChecked() == True:
       self.mode = 'Clinical'
-      
-      #Step 3/B) loads VFF file for MEASURED volume
-      self.step3B_loadMeasuredDataCollapsibleButton.text = "3/B) Load MEASURED dose CT scan" 
-      self.step3B_loadMeasuredDataButton.setText("Load .vff file")
-      self.step3B_loadMeasuredDataButton.toolTip = "Select CT scan of gel if not already loaded."
-      self.step3B_loadMeasuredDataButton.name = "loadMeasuredDataButton"
-      
-      #Step 4/A) Loads VFF file for CALIBRATION volume
-      self.step4A_loadCalibrationDataButton.setText("Load .vff File")
-      self.step4A_loadCalibrationDataButton.toolTip = "Select calibration CT scan of gel if not already loaded."
-      self.step4A_loadCalibrationDataButton.name = "loadCalibrationDataButton"
-      
+            
       #Step 4/B) Label for plot visibility
       self.step4C_showOpticalDensityVsDoseCurveLabel.setText("Show optical density Vs. Dose curve: ")
       self.step4C_showOpticalDensityVsDoseCurveButton.setText("Show")
@@ -911,59 +910,28 @@ class GelDosimetryAnalysisSlicelet(object):
   def onPreclinicalModeSelect(self, toggled):
     if self.step0_preclinicalModeRadioButton.isChecked() == True:
       self.mode = 'Preclinical'
-      
-      #Step 3/B) loads DICOM file for MEASURED volume
-      self.step3B_loadMeasuredDataCollapsibleButton.text = "3/B) Load MEASURED dose MRI scan" 
-      self.step3B_loadMeasuredDataButton.setText("Load DICOM file")
-      self.step3B_loadMeasuredDataButton.toolTip = "Select MRI scan of gel if not already loaded."
-      self.step3B_loadMeasuredDataButton.name = "loadMeasuredDataButton"
-      
-      #Step 4/A) Loads DICOM file for CALIBRATION volume
-      self.step4A_loadCalibrationDataButton.setText("Load DICOM file")
-      self.step4A_loadCalibrationDataButton.toolTip = "Select calibration MRI scan of gel if not already loaded."
-      self.step4A_loadCalibrationDataButton.name = "loadCalibrationDataButton"
-      
+            
       #Step 4/B) Label for plot visibility
       self.step4C_showOpticalDensityVsDoseCurveLabel.setText("Show R1 Vs. Dose curve: ")
       self.step4C_showOpticalDensityVsDoseCurveButton.setText("Show")
       self.step4C_showOpticalDensityVsDoseCurveButton.toolTip = "Show Relaxation Rates Vs. Dose curve to determine the order of polynomial to fit."
     
-  def onLoadMeasuredData(self):
-    # In default of clinical mode: open .vff file loader
-    if self.mode == 'Clinical' or self.mode == None:
-      slicer.app.ioManager().connect('newFileLoaded(qSlicerIO::IOProperties)', self.setMeasuredData)
-      slicer.util.openAddDataDialog()
-      slicer.app.ioManager().disconnect('newFileLoaded(qSlicerIO::IOProperties)', self.setMeasuredData)
-    # In preclinical mode: open DICOM loader
-    elif self.mode == 'Preclinical':
-      self.logic.onDicomLoad()
+  def onLoadNonDicomData(self):
+    slicer.util.openAddDataDialog()
 
-  def setMeasuredData(self, params):
-    # Gets the last volume node in the scene
-    volumesCollection = slicer.mrmlScene.GetNodesByClass("vtkMRMLScalarVolumeNode")
-    self.measuredVolumeNode = volumesCollection.GetItemAsObject(volumesCollection.GetNumberOfItems()-1)
-    self.step3D_measuredVolumeSelector.setCurrentNode(self.measuredVolumeNode)
-    self.step4C_measuredVolumeSelector.setCurrentNode(self.measuredVolumeNode)
-    self.step3B_loadMeasuredDataStatusLabel.setText('Volume loaded and set as MEASURED')
-
-    # Compute auto window level for optical CT volume
-    import vtkSlicerRtCommon
-    autoWindowLevel = vtkSlicerRtCommon.vtkSlicerAutoWindowLevelLogic()
-    autoWindowLevel.ComputeWindowLevel(self.measuredVolumeNode)
-
-  def onStep3_MeasuredDoseToObiRegistrationSelected(self, collapsed):
+  def onStep2_2_MeasuredDoseToObiRegistrationSelected(self, collapsed):
     # Make sure the functions handling entering the fiducial selection panels are called when entering the outer panel
     if collapsed == False:
       appLogic = slicer.app.applicationLogic()
       selectionNode = appLogic.GetSelectionNode()
-      if self.step3A_obiFiducialSelectionCollapsibleButton.collapsed == False:
+      if self.step2_2_1_obiFiducialSelectionCollapsibleButton.collapsed == False:
         if self.obiVolumeNode != None:
           selectionNode.SetActiveVolumeID(self.obiVolumeNode.GetID())
         else:
           selectionNode.SetActiveVolumeID(None)
         selectionNode.SetSecondaryVolumeID(None)
         appLogic.PropagateVolumeSelection() 
-      elif self.step3C_measuredFiducialSelectionCollapsibleButton.collapsed == False:
+      elif self.step2_2_2_measuredFiducialSelectionCollapsibleButton.collapsed == False:
         if self.measuredVolumeNode != None:
           selectionNode.SetActiveVolumeID(self.measuredVolumeNode.GetID())
         else:
@@ -971,21 +939,28 @@ class GelDosimetryAnalysisSlicelet(object):
         selectionNode.SetSecondaryVolumeID(None)
         appLogic.PropagateVolumeSelection() 
 
-  def onStep3A_ObiFiducialCollectionSelected(self, collapsed):
+  def onStep2_2_1_ObiFiducialCollectionSelected(self, collapsed):
     # Add Markups widget
     if collapsed == False:
-      # TODO: Clean up if possible. Did not work without double nesting (widget disappeared when switched to step 3/C)
+      # TODO: Clean up if possible. Did not work without double nesting (widget disappeared when switched to next step)
       newLayout = qt.QFormLayout()
       newLayout.setMargin(0)
       newLayout.setSpacing(0)
       tempLayoutInner = qt.QVBoxLayout()
       tempLayoutInner.setMargin(0)
       tempLayoutInner.setSpacing(0)
+      
+      # Create instructions label
+      fiducialSelectLabel = qt.QLabel("Scroll to the image plane where the OBI fiducials are located, then click the 'Select fiducials' button below. Next, select the fiducial points in the displayed image plane. The fiducial points will populate the table below.")
+      fiducialSelectLabel.wordWrap = True
+      newLayout.addRow(fiducialSelectLabel)
+      
+      # Create frame for markups widget
       tempFrame = qt.QFrame()
       tempFrame.setLayout(tempLayoutInner)
       tempLayoutInner.addWidget(self.fiducialSelectionWidget)
       newLayout.addRow(tempFrame)
-      self.step3A_obiFiducialSelectionCollapsibleButton.setLayout(newLayout)
+      self.step2_2_1_obiFiducialSelectionCollapsibleButton.setLayout(newLayout)
 
       # Set annotation list node
       appLogic = slicer.app.applicationLogic()
@@ -1014,7 +989,7 @@ class GelDosimetryAnalysisSlicelet(object):
       appLogic.PropagateVolumeSelection() 
     else:
       # Delete temporary layout
-      currentLayout = self.step3A_obiFiducialSelectionCollapsibleButton.layout()
+      currentLayout = self.step2_2_1_obiFiducialSelectionCollapsibleButton.layout()
       if currentLayout:
         currentLayout.deleteLater()
 
@@ -1022,7 +997,7 @@ class GelDosimetryAnalysisSlicelet(object):
       self.markupsLogic.SetAllMarkupsVisibility(self.obiMarkupsFiducialNode, True)
       self.markupsLogic.SetAllMarkupsVisibility(self.measuredMarkupsFiducialNode, True)
 
-  def onStep3C_ObiFiducialCollectionSelected(self, collapsed):
+  def onStep2_2_2_ObiFiducialCollectionSelected(self, collapsed):
     # Add Markups widget
     if collapsed == False:
       # TODO: Clean up if possible. Did not work without double nesting
@@ -1032,11 +1007,18 @@ class GelDosimetryAnalysisSlicelet(object):
       tempLayoutInner = qt.QVBoxLayout()
       tempLayoutInner.setMargin(0)
       tempLayoutInner.setSpacing(0)
+
+      # Create instructions label
+      fiducialSelectLabel = qt.QLabel("Scroll to the image plane where the gel dosimeter fiducials are located, then click the 'Select fiducials' button below. Next, select the fiducial points in the displayed image plane. The fiducial points will populate the table below.")
+      fiducialSelectLabel.wordWrap = True
+      newLayout.addRow(fiducialSelectLabel)
+      
+      # Create frame for markups widget
       tempFrame = qt.QFrame()
       tempFrame.setLayout(tempLayoutInner)
       tempLayoutInner.addWidget(self.fiducialSelectionWidget)
       newLayout.addWidget(tempFrame)
-      self.step3C_measuredFiducialSelectionCollapsibleButton.setLayout(newLayout)
+      self.step2_2_2_measuredFiducialSelectionCollapsibleButton.setLayout(newLayout)
 
       # Set annotation list node
       appLogic = slicer.app.applicationLogic()
@@ -1065,7 +1047,7 @@ class GelDosimetryAnalysisSlicelet(object):
       appLogic.PropagateVolumeSelection() 
     else:
       # Delete temporary layout
-      currentLayout = self.step3C_measuredFiducialSelectionCollapsibleButton.layout()
+      currentLayout = self.step2_2_2_measuredFiducialSelectionCollapsibleButton.layout()
       if currentLayout:
         currentLayout.deleteLater()
 
@@ -1113,7 +1095,7 @@ class GelDosimetryAnalysisSlicelet(object):
     errorRms = self.logic.registerObiToMeasured(self.obiMarkupsFiducialNode.GetID(), self.measuredMarkupsFiducialNode.GetID())
     
     # Show registration error on GUI
-    self.step3D_measuredToObiFiducialRegistrationErrorLabel.setText(errorRms)
+    self.step2_2_3_measuredToObiFiducialRegistrationErrorLabel.setText(errorRms)
 
     # Apply transform to MEASURED volume
     obiToMeasuredTransformNode = slicer.util.getNode(self.logic.obiToMeasuredTransformName)
@@ -1135,28 +1117,6 @@ class GelDosimetryAnalysisSlicelet(object):
         self.step4A_pddLoadStatusLabel.setText('PDD loaded successfully')
         return
     self.step4A_pddLoadStatusLabel.setText('PDD loading failed!')
-
-  def onLoadCalibrationData(self):
-    # In default of clinical mode: open .vff file loader
-    if self.mode == 'Clinical' or self.mode == None:
-      slicer.app.ioManager().connect('newFileLoaded(qSlicerIO::IOProperties)', self.setCalibrationData)
-      slicer.util.openAddDataDialog()
-      slicer.app.ioManager().disconnect('newFileLoaded(qSlicerIO::IOProperties)', self.setCalibrationData)
-    # In preclinical mode: open DICOM loader
-    elif self.mode == 'Preclinical':
-      self.logic.onDicomLoad()
-      
-  def setCalibrationData(self, params):
-    # Gets the last volume node in the scene
-    volumesCollection = slicer.mrmlScene.GetNodesByClass("vtkMRMLScalarVolumeNode")
-    self.calibrationVolumeNode = volumesCollection.GetItemAsObject(volumesCollection.GetNumberOfItems()-1)
-    self.step4A_calibrationVolumeSelector.setCurrentNode(self.calibrationVolumeNode)
-    self.step4A_parseCalibrationVolumeStatusLabel.setText('Volume loaded and set as CALIBRATION')
-
-    # Compute auto window level for optical CT volume
-    import vtkSlicerRtCommon
-    autoWindowLevel = vtkSlicerRtCommon.vtkSlicerAutoWindowLevelLogic()
-    autoWindowLevel.ComputeWindowLevel(self.calibrationVolumeNode)
 
   def onStep4C_PolynomialFittingAndCalibrationSelected(self, collapsed):
     if collapsed == False:
@@ -1721,7 +1681,9 @@ class GelDosimetryAnalysisSlicelet(object):
     qt.QMessageBox.information(None, 'Line profiles values exported', message)
 
   #
+  # -------------------------
   # Testing related functions
+  # -------------------------
   #
   def onSelfTestButtonClicked(self):
     # TODO_ForTesting: Choose the testing method here
@@ -1744,7 +1706,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.logic.delayDisplay('Wait for the slicelet to catch up', 300)
 
     # 2. Register
-    self.step2_obiToPlanCtRegistrationCollapsibleButton.setChecked(True)
+    self.step2_registrationCollapsibleButton.setChecked(True)
     planCTVolumeID = 'vtkMRMLScalarVolumeNode1'
     self.planCTSelector.setCurrentNodeID(planCTVolumeID)
     obiVolumeID = 'vtkMRMLScalarVolumeNode2'
@@ -1757,7 +1719,7 @@ class GelDosimetryAnalysisSlicelet(object):
     slicer.app.processEvents()
 
     # 3. Select fiducials
-    self.step3_measuredDoseToObiRegistrationCollapsibleButton.setChecked(True)
+    self.step2_2_measuredDoseToObiRegistrationCollapsibleButton.setChecked(True)
     obiFiducialsNode = slicer.util.getNode(self.obiMarkupsFiducialNodeName)
     obiFiducialsNode.AddFiducial(76.4, 132.1, -44.8)
     obiFiducialsNode.AddFiducial(173, 118.4, -44.8)
@@ -1765,7 +1727,7 @@ class GelDosimetryAnalysisSlicelet(object):
     obiFiducialsNode.AddFiducial(77.4, 133.6, 23.9)
     obiFiducialsNode.AddFiducial(172.6, 118.9, 23.9)
     obiFiducialsNode.AddFiducial(166.5, 151.3, 23.9)
-    self.step3C_measuredFiducialSelectionCollapsibleButton.setChecked(True)
+    self.step2_2_2_measuredFiducialSelectionCollapsibleButton.setChecked(True)
     measuredFiducialsNode = slicer.util.getNode(self.measuredMarkupsFiducialNodeName)
     measuredFiducialsNode.AddFiducial(-92.25, -25.9, 26.2)
     measuredFiducialsNode.AddFiducial(-31.9, -100.8, 26.2)
@@ -1779,7 +1741,7 @@ class GelDosimetryAnalysisSlicelet(object):
     slicer.util.loadNodeFromFile('d:/devel/_Images/RT/20140123_GelDosimetry_StructureSetIncluded/VFFs/LCV01_HR_plan.vff', 'VffFile', {})
     slicer.app.ioManager().disconnect('newFileLoaded(qSlicerIO::IOProperties)', self.setMeasuredData)
     # Perform fiducial registration
-    self.step3D_measuredToObiRegistrationCollapsibleButton.setChecked(True)
+    self.step2_2_3_measuredToObiRegistrationCollapsibleButton.setChecked(True)
     self.onMeasuredToObiRegistration()
 
     # 4. Calibration
@@ -1854,7 +1816,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.planStructuresNode.SetDisplayVisibilityForBranch(0)
 
     self.measuredVolumeNode = slicer.util.getNode(measuredVolumeNodeName)
-    self.step3D_measuredVolumeSelector.setCurrentNode(self.measuredVolumeNode)
+    self.step2_2_3_measuredVolumeSelector.setCurrentNode(self.measuredVolumeNode)
     self.step4C_measuredVolumeSelector.setCurrentNode(self.measuredVolumeNode)
     self.step5_measuredDoseSelector.setCurrentNode(self.measuredVolumeNode)
 
