@@ -5,6 +5,16 @@ from __main__ import vtk, qt, ctk, slicer
 import GelDosimetryAnalysisLogic
 
 #
+# Gel dosimetry analysis slicelet
+#
+# Streamlined workflow end-user application based on 3D Slicer and SlicerRT to support
+# 3D gel-based radiation dosimetry.
+#
+# The all-caps terms correspond to data objects in the gel dosimetry data flow diagram
+# https://subversion.assembla.com/svn/slicerrt/trunk/GelDosimetryAnalysis/doc/GelDosimetryAnalysis_DataFlow.png
+#
+
+#
 # GelDosimetryAnalysisSliceletWidget
 #
 class GelDosimetryAnalysisSliceletWidget:
@@ -62,7 +72,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.selfTestButton = qt.QPushButton("Run self-test")
     self.sliceletPanelLayout.addWidget(self.selfTestButton)
     self.selfTestButton.connect('clicked()', self.onSelfTestButtonClicked)
-    self.selfTestButton.setVisible(False) # TODO_ForTesting: Should be commented out for testing so the button shows up
+    #self.selfTestButton.setVisible(False) # TODO_ForTesting: Should be commented out for testing so the button shows up
 
     # Initiate and group together all panels
     self.step0_layoutSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
@@ -163,7 +173,7 @@ class GelDosimetryAnalysisSlicelet(object):
 
     # Set up step panels
     self.setup_Step0_LayoutSelection()    
-    self.setup_Step1_LoadPlanningData()
+    self.setup_Step1_LoadData()
     self.setup_Step2_ObiToPlanCtRegistration()
     self.setup_Step3_MeasuredToObiRegistration()
     self.setup_Step4_DoseCalibration()
@@ -201,7 +211,6 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step0_clinicalModeRadioButton.disconnect('toggled(bool)', self.onClinicalModeSelect)
     self.step0_preclinicalModeRadioButton.disconnect('toggled(bool)', self.onPreclinicalModeSelect)
     self.step1_showDicomBrowserButton.disconnect('clicked()', self.logic.onDicomLoad)
-    self.step2_obiAdditionalLoadDataButton.disconnect('clicked()', self.logic.onDicomLoad)
     self.step2_registerObiToPlanCtButton.disconnect('clicked()', self.onObiToPlanCTRegistration)
     self.step3_measuredDoseToObiRegistrationCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep3_MeasuredDoseToObiRegistrationSelected)
     self.step3A_obiFiducialSelectionCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep3A_ObiFiducialCollectionSelected)
@@ -263,10 +272,10 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step0_modeSelectorLayout.addWidget(self.step0_clinicalModeRadioButton, 0, 1)
     self.step0_preclinicalModeRadioButton = qt.QRadioButton('Preclinical MRI readout')
     self.step0_modeSelectorLayout.addWidget(self.step0_preclinicalModeRadioButton, 0, 2)
-    #TODO: Uncomment when preclinical mode works
+    #TODO: Uncomment when preclinical mode works #601
     # self.step0_layoutSelectionCollapsibleButtonLayout.addRow(self.step0_modeSelectorLayout)
-    # self.step0_clinicalModeRadioButton.connect('toggled(bool)', self.onClinicalModeSelect)
-    # self.step0_preclinicalModeRadioButton.connect('toggled(bool)', self.onPreclinicalModeSelect)
+    self.step0_clinicalModeRadioButton.connect('toggled(bool)', self.onClinicalModeSelect)
+    self.step0_preclinicalModeRadioButton.connect('toggled(bool)', self.onPreclinicalModeSelect)
     
     # Add layout widget
     self.layoutWidget = slicer.qMRMLLayoutWidget()
@@ -274,39 +283,33 @@ class GelDosimetryAnalysisSlicelet(object):
     self.parent.layout().addWidget(self.layoutWidget,2)
     self.onViewSelect(0)
 
-  def setup_Step1_LoadPlanningData(self):
+  def setup_Step1_LoadData(self):
     # Step 1: Load data panel
     self.step1_loadDataCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step1_loadDataCollapsibleButton.text = "1. Load planning data"
+    self.step1_loadDataCollapsibleButton.text = "1. Load data"
     self.sliceletPanelLayout.addWidget(self.step1_loadDataCollapsibleButton)
     self.step1_loadDataCollapsibleButtonLayout = qt.QFormLayout(self.step1_loadDataCollapsibleButton)
     self.step1_loadDataCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
     self.step1_loadDataCollapsibleButtonLayout.setSpacing(4)
 
-    # Data loading button
-    self.step1_showDicomBrowserButton = qt.QPushButton("Show DICOM browser")
-    self.step1_showDicomBrowserButton.toolTip = "Load planning data (PlanCT, PlanDose)"
+    # Load data label
+    self.step1_LoadDataLabel = qt.QLabel("Load all DICOM data involved in the workflow.\nNote: Can return to this step later if more data needs to be loaded")
+    self.step1_LoadDataLabel.wordWrap = True
+    self.step1_loadDataCollapsibleButtonLayout.addRow(self.step1_LoadDataLabel)
+
+    # Load DICOM data button
+    self.step1_showDicomBrowserButton = qt.QPushButton("Click here to show DICOM browser")
+    self.step1_showDicomBrowserButton.toolTip = "Load planning data (CT, dose, structures)"
     self.step1_showDicomBrowserButton.name = "showDicomBrowserButton"
-    self.step1_loadDataCollapsibleButtonLayout.addWidget(self.step1_showDicomBrowserButton)
+    self.step1_loadDataCollapsibleButtonLayout.addRow(self.step1_showDicomBrowserButton)
 
-    # Connections
-    self.step1_showDicomBrowserButton.connect('clicked()', self.logic.onDicomLoad)
-
-  def setup_Step2_ObiToPlanCtRegistration(self):
-    # Step 2: OBI to PLANCT registration panel
-    self.step2_obiToPlanCtRegistrationCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step2_obiToPlanCtRegistrationCollapsibleButton.text = "2. Register OBI to PLANCT"
-    self.sliceletPanelLayout.addWidget(self.step2_obiToPlanCtRegistrationCollapsibleButton)
-    self.step2_obiToPlanCtRegistrationCollapsibleButtonLayout = qt.QFormLayout(self.step2_obiToPlanCtRegistrationCollapsibleButton)
-    self.step2_obiToPlanCtRegistrationCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
-    self.step2_obiToPlanCtRegistrationCollapsibleButtonLayout.setSpacing(4)
-
-    # OBI (on board imaging ~ CBCT) load button
-    self.obiAdditionalLoadDataLabel = qt.QLabel("Load OBI data: ")
-    self.step2_obiAdditionalLoadDataButton = qt.QPushButton("Show DICOM browser")
-    self.step2_obiAdditionalLoadDataButton.toolTip = "Load on-board cone beam CT scan if not already loaded"
-    self.step2_obiAdditionalLoadDataButton.name = "step2_obiAdditionalLoadDataButton"
-    self.step2_obiToPlanCtRegistrationCollapsibleButtonLayout.addRow(self.obiAdditionalLoadDataLabel, self.step2_obiAdditionalLoadDataButton)
+    # Add empty row
+    self.step1_loadDataCollapsibleButtonLayout.addRow(' ', None)
+    
+    # Assign data label
+    self.step1_AssignDataLabel = qt.QLabel("Assign loaded DICOM data to roles.Note: If this selection is changed later then all the following steps need to be performed again")
+    self.step1_AssignDataLabel.wordWrap = True
+    self.step1_loadDataCollapsibleButtonLayout.addRow(self.step1_AssignDataLabel)
 
     # PLANCT node selector
     self.planCTSelector = slicer.qMRMLNodeComboBox()
@@ -315,8 +318,8 @@ class GelDosimetryAnalysisSlicelet(object):
     self.planCTSelector.addEnabled = False
     self.planCTSelector.removeEnabled = False
     self.planCTSelector.setMRMLScene( slicer.mrmlScene )
-    self.planCTSelector.setToolTip( "Pick the PLANCT volume for registration." )
-    self.step2_obiToPlanCtRegistrationCollapsibleButtonLayout.addRow('PLANCT volume: ', self.planCTSelector)
+    self.planCTSelector.setToolTip( "Pick the planning CT volume" )
+    self.step1_loadDataCollapsibleButtonLayout.addRow('Planning CT volume: ', self.planCTSelector)
 
     # PLANDOSE node selector
     self.planDoseSelector = slicer.qMRMLNodeComboBox()
@@ -325,8 +328,8 @@ class GelDosimetryAnalysisSlicelet(object):
     self.planDoseSelector.addEnabled = False
     self.planDoseSelector.removeEnabled = False
     self.planDoseSelector.setMRMLScene( slicer.mrmlScene )
-    self.planDoseSelector.setToolTip( "Pick the PLANDOSE volume for registration." )
-    self.step2_obiToPlanCtRegistrationCollapsibleButtonLayout.addRow('PLANDOSE volume: ', self.planDoseSelector)
+    self.planDoseSelector.setToolTip( "Pick the planning dose volume for registration." )
+    self.step1_loadDataCollapsibleButtonLayout.addRow('Plan dose volume: ', self.planDoseSelector)
 
     # PLANSTRUCTURES node selector
     self.planStructuresSelector = slicer.qMRMLNodeComboBox()
@@ -335,8 +338,8 @@ class GelDosimetryAnalysisSlicelet(object):
     self.planStructuresSelector.addEnabled = False
     self.planStructuresSelector.removeEnabled = False
     self.planStructuresSelector.setMRMLScene( slicer.mrmlScene )
-    self.planStructuresSelector.setToolTip( "Pick the PLANSTRUCTURES contour set for registration." )
-    self.step2_obiToPlanCtRegistrationCollapsibleButtonLayout.addRow('PLANSTRUCTURES contour set: ', self.planStructuresSelector)
+    self.planStructuresSelector.setToolTip( "Pick the planning structure set for registration." )
+    self.step1_loadDataCollapsibleButtonLayout.addRow('Structures: ', self.planStructuresSelector)
 
     # OBI node selector
     self.obiSelector = slicer.qMRMLNodeComboBox()
@@ -346,16 +349,34 @@ class GelDosimetryAnalysisSlicelet(object):
     self.obiSelector.removeEnabled = False
     self.obiSelector.setMRMLScene( slicer.mrmlScene )
     self.obiSelector.setToolTip( "Pick the OBI volume for registration." )
-    self.step2_obiToPlanCtRegistrationCollapsibleButtonLayout.addRow('OBI volume: ', self.obiSelector)
+    self.step1_loadDataCollapsibleButtonLayout.addRow('OBI volume: ', self.obiSelector)
+    
+    #TODO: Add VFF file selectors and assign comboboxes #677
+    
+    # Connections
+    self.step1_showDicomBrowserButton.connect('clicked()', self.logic.onDicomLoad)
+
+  def setup_Step2_ObiToPlanCtRegistration(self):
+    # Step 2: OBI to PLANCT registration panel
+    self.step2_obiToPlanCtRegistrationCollapsibleButton.setProperty('collapsedHeight', 4)
+    self.step2_obiToPlanCtRegistrationCollapsibleButton.text = "2. Registration"
+    self.sliceletPanelLayout.addWidget(self.step2_obiToPlanCtRegistrationCollapsibleButton)
+    self.step2_obiToPlanCtRegistrationCollapsibleButtonLayout = qt.QFormLayout(self.step2_obiToPlanCtRegistrationCollapsibleButton)
+    self.step2_obiToPlanCtRegistrationCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
+    self.step2_obiToPlanCtRegistrationCollapsibleButtonLayout.setSpacing(4)
+
+    # Registration label
+    self.step1_RegistrationLabel = qt.QLabel("Automatically register the OBI volume to the planning CT.")
+    self.step1_RegistrationLabel.wordWrap = True
+    self.step2_obiToPlanCtRegistrationCollapsibleButtonLayout.addRow(self.step1_RegistrationLabel)
 
     # OBI to PLANCT registration button
-    self.step2_registerObiToPlanCtButton = qt.QPushButton("Perform registration")
-    self.step2_registerObiToPlanCtButton.toolTip = "Register OBI volume to PLANCT volume"
+    self.step2_registerObiToPlanCtButton = qt.QPushButton("Click here to perform registration")
+    self.step2_registerObiToPlanCtButton.toolTip = "Register OBI volume to planning CT volume"
     self.step2_registerObiToPlanCtButton.name = "step2_registerObiToPlanCtButton"
-    self.step2_obiToPlanCtRegistrationCollapsibleButtonLayout.addRow('Register OBI to PLANCT: ', self.step2_registerObiToPlanCtButton)
+    self.step2_obiToPlanCtRegistrationCollapsibleButtonLayout.addRow(self.step2_registerObiToPlanCtButton)
 
     # Connections
-    self.step2_obiAdditionalLoadDataButton.connect('clicked()', self.logic.onDicomLoad)
     self.step2_registerObiToPlanCtButton.connect('clicked()', self.onObiToPlanCTRegistration)
 
   def setup_Step3_MeasuredToObiRegistration(self):
@@ -470,7 +491,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step4A_pddLoadDataButton = qt.QPushButton("Load file")
     self.step4A_pddLoadDataButton.toolTip = "Load PDD data"
     self.step4A_prepareCalibrationDataCollapsibleButtonLayout.addRow('Percent Depth Dose (PDD) data: ', self.step4A_pddLoadDataButton)
-    # Add empty row
+    # Add placeholder for status label
     self.step4A_pddLoadStatusLabel = qt.QLabel()
     self.step4A_prepareCalibrationDataCollapsibleButtonLayout.addRow(' ', self.step4A_pddLoadStatusLabel)
 
@@ -656,8 +677,8 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step5_planDoseSelector.addEnabled = False
     self.step5_planDoseSelector.removeEnabled = False
     self.step5_planDoseSelector.setMRMLScene( slicer.mrmlScene )
-    self.step5_planDoseSelector.setToolTip( "Pick the PLANDOSE volume for comparison" )
-    self.step5_doseComparisonCollapsibleButtonLayout.addRow('PLANDOSE volume: ', self.step5_planDoseSelector)
+    self.step5_planDoseSelector.setToolTip( "Pick the planning dose volume for comparison" )
+    self.step5_doseComparisonCollapsibleButtonLayout.addRow('Plan dose volume: ', self.step5_planDoseSelector)
 
     # MEASURED dose volume selector
     self.step5_measuredDoseSelector = slicer.qMRMLNodeComboBox()
