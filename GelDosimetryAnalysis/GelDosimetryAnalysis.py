@@ -103,15 +103,17 @@ class GelDosimetryAnalysisSlicelet(object):
     self.gammaScalarBarColorTableName = "GammaScalarBarColorTable"
     self.numberOfGammaLabels = 9
 	
-    # Declare member variables (mainly for documentation)
+    # Declare member variables (selected at certain steps and then from then on for the workflow)
     self.mode = None
     self.planCtVolumeNode = None
     self.planDoseVolumeNode = None
+    self.planStructuresNode = None
     self.obiVolumeNode = None
-    self.obiMarkupsFiducialNode = None
-    self.measuredMarkupsFiducialNode = None
     self.measuredVolumeNode = None
     self.calibrationVolumeNode = None
+
+    self.obiMarkupsFiducialNode = None
+    self.measuredMarkupsFiducialNode = None
     self.calibratedMeasuredVolumeNode = None
     self.maskContourNode = None
     self.gammaVolumeNode = None
@@ -379,6 +381,7 @@ class GelDosimetryAnalysisSlicelet(object):
     # Connections
     self.step1_showDicomBrowserButton.connect('clicked()', self.logic.onDicomLoad)
     self.step1_loadNonDicomDataButton.connect('clicked()', self.onLoadNonDicomData)
+    self.step1_loadDataCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep1_LoadDataCollapsed)
 
   def setup_Step2_Registration(self):
     # Step 2: Registration step
@@ -456,11 +459,15 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step2_2_3_NoteLabel = qt.QLabel("Note: Typical registration error is < 3mm")
     measuredToObiRegistrationCollapsibleButtonLayout.addRow(self.step2_2_3_NoteLabel)
     
-    # Add substeps in a button group
-    self.step2_2_3_measuredToObiRegistrationCollapsibleButtonGroup = qt.QButtonGroup()
-    self.step2_2_3_measuredToObiRegistrationCollapsibleButtonGroup.addButton(self.step2_2_1_obiFiducialSelectionCollapsibleButton)
-    self.step2_2_3_measuredToObiRegistrationCollapsibleButtonGroup.addButton(self.step2_2_2_measuredFiducialSelectionCollapsibleButton)
-    self.step2_2_3_measuredToObiRegistrationCollapsibleButtonGroup.addButton(self.step2_2_3_measuredToObiRegistrationCollapsibleButton)
+    # Add substeps in button groups
+    self.step2_2_registrationCollapsibleButtonGroup = qt.QButtonGroup()
+    self.step2_2_registrationCollapsibleButtonGroup.addButton(self.step2_1_obiToPlanCtRegistrationCollapsibleButton)
+    self.step2_2_registrationCollapsibleButtonGroup.addButton(self.step2_2_measuredDoseToObiRegistrationCollapsibleButton)
+
+    self.step2_2_measuredToObiRegistrationCollapsibleButtonGroup = qt.QButtonGroup()
+    self.step2_2_measuredToObiRegistrationCollapsibleButtonGroup.addButton(self.step2_2_1_obiFiducialSelectionCollapsibleButton)
+    self.step2_2_measuredToObiRegistrationCollapsibleButtonGroup.addButton(self.step2_2_2_measuredFiducialSelectionCollapsibleButton)
+    self.step2_2_measuredToObiRegistrationCollapsibleButtonGroup.addButton(self.step2_2_3_measuredToObiRegistrationCollapsibleButton)
 
     # Connections
     self.step2_1_registerObiToPlanCtButton.connect('clicked()', self.onObiToPlanCTRegistration)
@@ -469,7 +476,8 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step2_2_2_measuredFiducialSelectionCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep2_2_2_ObiFiducialCollectionSelected)
     self.step2_2_3_registerMeasuredToObiButton.connect('clicked()', self.onMeasuredToObiRegistration)
 
-    # Open automatic registration panel when step is first opened
+    # Open first panels when steps are first opened
+    self.step2_2_1_obiFiducialSelectionCollapsibleButton.setProperty('collapsed', False)
     self.step2_1_obiToPlanCtRegistrationCollapsibleButton.setProperty('collapsed', False)
 
   def setup_step3_DoseCalibration(self):
@@ -655,6 +663,11 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step3_2_applyCalibrationStatusLabel = qt.QLabel()
     self.step3_2_applyCalibrationLayout.addRow(' ', self.step3_2_applyCalibrationStatusLabel)
 
+    # Add substeps in a button group
+    self.step3_calibrationCollapsibleButtonGroup = qt.QButtonGroup()
+    self.step3_calibrationCollapsibleButtonGroup.addButton(self.step3_1_calibrationRoutineCollapsibleButton)
+    self.step3_calibrationCollapsibleButtonGroup.addButton(self.step3_2_applyCalibrationCollapsibleButton)
+
     # Connections
     self.step3_1_pddLoadDataButton.connect('clicked()', self.onLoadPddDataRead)
     self.step3_1_alignCalibrationCurvesButton.connect('clicked()', self.onAlignCalibrationCurves)
@@ -831,7 +844,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step4_1_showGammaReportButton.connect('clicked()', self.onShowGammaReport)
 
     # Open gamma dose comparison panel when step is first opened
-    self.step4_1_gammaDoseComparisonCollapsibleButton.setProperty('collapsed',False)
+    #self.step4_1_gammaDoseComparisonCollapsibleButton.setProperty('collapsed',False) #TODO: Uncomment when adding more dose comparisons
     self.step4_1_referenceDoseUseMaximumDoseRadioButton.setChecked(True)
 
   def setup_StepT1_lineProfileCollapsibleButton(self):
@@ -935,6 +948,16 @@ class GelDosimetryAnalysisSlicelet(object):
     
   def onLoadNonDicomData(self):
     slicer.util.openAddDataDialog()
+
+  def onStep1_LoadDataCollapsed(self, collapsed):
+    # Save selections to member variables when switching away from load data step
+    if collapsed == True:
+      self.planCtVolumeNode = self.planCTSelector.currentNode()
+      self.planDoseVolumeNode = self.planDoseSelector.currentNode()
+      self.obiVolumeNode = self.obiSelector.currentNode()
+      self.planStructuresNode = self.planStructuresSelector.currentNode()
+      self.measuredVolumeNode = self.measuredVolumeSelector.currentNode()
+      self.calibrationVolumeNode = self.calibrationVolumeSelector.currentNode()
 
   def onStep2_2_MeasuredDoseToObiRegistrationSelected(self, collapsed):
     # Make sure the functions handling entering the fiducial selection panels are called when entering the outer panel
@@ -1073,16 +1096,10 @@ class GelDosimetryAnalysisSlicelet(object):
       self.markupsLogic.SetAllMarkupsVisibility(self.measuredMarkupsFiducialNode, True)
 
   def onObiToPlanCTRegistration(self):
-    # Save selection for later
-    self.planCtVolumeNode = self.planCTSelector.currentNode()
-    self.planDoseVolumeNode = self.planDoseSelector.currentNode()
-    self.obiVolumeNode = self.obiSelector.currentNode()
-    self.planStructuresNode = self.planStructuresSelector.currentNode()
-
     # Start registration
-    obiVolumeID = self.obiSelector.currentNodeID
-    planCTVolumeID = self.planCTSelector.currentNodeID
-    planDoseVolumeID = self.planDoseSelector.currentNodeID
+    obiVolumeID = self.obiVolumeNode.GetID()
+    planCTVolumeID = self.planCtVolumeNode.GetID()
+    planDoseVolumeID = self.planDoseVolumeNode.GetID()
     planStructuresID = self.planStructuresSelector.currentNodeID
     self.logic.registerObiToPlanCt(obiVolumeID, planCTVolumeID, planDoseVolumeID, planStructuresID)
 
@@ -1480,7 +1497,6 @@ class GelDosimetryAnalysisSlicelet(object):
   def onStep4_DoseComparisonSelected(self, collapsed):
     # Set plan dose volume to selector
     if collapsed == False:
-      self.step4_planDoseSelector.setCurrentNode(self.planDoseVolumeNode)
       gammaScalarBarColorTable = slicer.util.getNode(self.gammaScalarBarColorTableName)
       if gammaScalarBarColorTable != None:
         self.gammaScalarBarWidget.SetEnabled(1)
@@ -1519,7 +1535,6 @@ class GelDosimetryAnalysisSlicelet(object):
 
       self.gammaParameterSetNode = vtkSlicerDoseComparisonModuleLogic.vtkMRMLDoseComparisonNode()
       slicer.mrmlScene.AddNode(self.gammaParameterSetNode)
-      self.gammaParameterSetNode.SetAndObserveReferenceDoseVolumeNode(self.step4_planDoseSelector.currentNode())
       self.gammaParameterSetNode.SetAndObserveCompareDoseVolumeNode(self.step4_measuredDoseSelector.currentNode())
       self.gammaParameterSetNode.SetAndObserveMaskContourNode(self.maskContourNode)
       self.gammaParameterSetNode.SetAndObserveGammaVolumeNode(self.gammaVolumeNode)
@@ -1869,15 +1884,9 @@ class GelDosimetryAnalysisSlicelet(object):
     self.planDoseVolumeNode = slicer.util.getNode(planDoseVolumeNodeName)
     self.planStructuresNode = slicer.util.getNode(planStructuresNodeName)
     self.planStructuresNode.SetDisplayVisibilityForBranch(0)
-
     self.measuredVolumeNode = slicer.util.getNode(measuredVolumeNodeName)
-    self.step2_2_3_measuredVolumeSelector.setCurrentNode(self.measuredVolumeNode)
-    self.step4C_measuredVolumeSelector.setCurrentNode(self.measuredVolumeNode)
-    self.step4_measuredDoseSelector.setCurrentNode(self.measuredVolumeNode)
-
     self.calibrationVolumeNode = slicer.util.getNode(calibrationVolumeNodeName)
-    self.step3_1_calibrationVolumeSelector.setCurrentNode(self.calibrationVolumeNode)
-    
+
     # Parse calibration volume
     self.step3_1_radiusMmFromCentrePixelLineEdit.setText(radiusMmFromCentrePixelMm)
     self.onParseCalibrationVolume()
