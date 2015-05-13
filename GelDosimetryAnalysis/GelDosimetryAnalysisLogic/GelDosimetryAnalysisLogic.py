@@ -32,7 +32,7 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     self.calibrationDataAlignedArray = None # Calibration array registered (X shift) to the Pdd curve (for computation)
     self.calibrationDataAlignedToDisplayArray = None # Calibration array registered (X shift, Y scale, Y shift) to the Pdd curve (for visual alignment)
     self.opticalDensityVsDoseFunction = None
-    self.calibrationPolynomialCoefficients = None
+    self.calibrationPolynomialCoefficients = None # Calibration polynomial coefficients, highest power first
 
     # Set logic instance to the global variable that supplies it to the calibration curve alignment minimizer function
     global gelDosimetryLogicInstanceGlobal
@@ -451,7 +451,7 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     fittingResult = numpy.polyfit(opticalDensityData, doseData, orderOfFittedPolynomial, None, True)
     self.calibrationPolynomialCoefficients = fittingResult[0]
     self.fittingResiduals = fittingResult[1]
-    logging.info('Coefficients of the fitted polynomial: ' + repr(self.calibrationPolynomialCoefficients.tolist()))
+    logging.info('Coefficients of the fitted polynomial (highest order first): ' + repr(self.calibrationPolynomialCoefficients.tolist()))
     logging.info('  Fitting residuals: ' + repr(self.fittingResiduals[0]))
     return self.fittingResiduals
 
@@ -490,9 +490,10 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     with open(fileName, 'w') as fp:
       csvWriter = csv.writer(fp, delimiter=',', lineterminator='\n')
       data = [['Order','Coefficient']]
-      maxOrder = len(self.calibrationPolynomialCoefficients)
-      for order in xrange(maxOrder):
-        data.append([maxOrder-order-1, self.calibrationPolynomialCoefficients[order]])
+      numOfOrders = len(self.calibrationPolynomialCoefficients)
+      # Highest order first in the coefficients list
+      for orderIndex in xrange(numOfOrders):
+        data.append([numOfOrders-orderIndex-1, self.calibrationPolynomialCoefficients[orderIndex]])
       data.append(['Residuals', self.fittingResiduals[0]])
       csvWriter.writerows(data)
     
