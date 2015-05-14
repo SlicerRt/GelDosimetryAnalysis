@@ -15,8 +15,8 @@ set(MODULE_PYTHON_SCRIPTS
   ${MODULE_NAME}Logic/LineProfileLogic
   )
 
-slicerFunctionAddPythonQtResources(MODULE_PYTHON_RESOURCES
-  Resources/${MODULE_NAME}.qrc
+set(MODULE_PYTHON_RESOURCES
+  Resources/icons/${MODULE_NAME}.png
   )
 
 #-----------------------------------------------------------------------------

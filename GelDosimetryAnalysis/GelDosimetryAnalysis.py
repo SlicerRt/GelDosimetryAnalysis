@@ -1451,6 +1451,7 @@ class GelDosimetryAnalysisSlicelet(object):
 
       self.gammaParameterSetNode = vtkSlicerDoseComparisonModuleLogic.vtkMRMLDoseComparisonNode()
       slicer.mrmlScene.AddNode(self.gammaParameterSetNode)
+      self.gammaParameterSetNode.SetAndObserveReferenceDoseVolumeNode(self.planDoseVolumeNode)
       # self.gammaParameterSetNode.SetAndObserveCompareDoseVolumeNode(self.step4_measuredDoseSelector.currentNode())
       self.gammaParameterSetNode.SetAndObserveCompareDoseVolumeNode(self.calibratedMeasuredVolumeNode)
       self.gammaParameterSetNode.SetAndObserveMaskContourNode(self.maskContourNode)
@@ -1752,7 +1753,7 @@ class GelDosimetryAnalysisSlicelet(object):
 
     # Parse calibration volume
     self.step3_1_radiusMmFromCentrePixelLineEdit.setText('5')
-    self.onParseCalibrationVolume()
+
     # Align calibration curves
     self.onAlignCalibrationCurves()
     self.step3_1_xTranslationSpinBox.setValue(1)
@@ -1815,12 +1816,10 @@ class GelDosimetryAnalysisSlicelet(object):
     self.measuredVolumeNode = slicer.util.getNode(measuredVolumeNodeName)
     self.calibrationVolumeNode = slicer.util.getNode(calibrationVolumeNodeName)
 
-    # Parse calibration volume
-    self.step3_1_radiusMmFromCentrePixelLineEdit.setText(radiusMmFromCentrePixelMm)
-    self.onParseCalibrationVolume()
-
     # Calibration
     self.logic.loadPdd(pddFileName)
+
+    self.step3_1_radiusMmFromCentrePixelLineEdit.setText(radiusMmFromCentrePixelMm)
 
     self.onAlignCalibrationCurves()
     self.step3_1_xTranslationSpinBox.setValue(xTranslationSpinBoxValue)
@@ -1866,6 +1865,8 @@ class GelDosimetryAnalysis(ScriptedLoadableModule):
     parent.acknowledgementText = """
     This file was originally developed by Mattea Welch, Jennifer Andrea, and Csaba Pinter (Queen's University). Funding was provided by NSERC-USRA, OCAIRO, Cancer Care Ontario and Queen's University
     """
+    iconPath = os.path.join(os.path.dirname(self.parent.path), 'Resources/Icons', self.moduleName+'.png')
+    parent.icon = qt.QIcon(iconPath)
 
 #
 # GelDosimetryAnalysisWidget
