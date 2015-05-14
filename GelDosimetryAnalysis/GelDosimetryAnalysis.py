@@ -163,7 +163,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step2_1_registerObiToPlanCtButton.disconnect('clicked()', self.onObiToPlanCTRegistration)
     self.step2_2_measuredDoseToObiRegistrationCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep2_2_MeasuredDoseToObiRegistrationSelected)
     self.step2_2_1_obiFiducialSelectionCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep2_2_1_ObiFiducialCollectionSelected)
-    self.step2_2_2_measuredFiducialSelectionCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep2_2_2_ObiFiducialCollectionSelected)
+    self.step2_2_2_measuredFiducialSelectionCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep2_2_2_MeasuredFiducialCollectionSelected)
     self.step1_loadNonDicomDataButton.disconnect('clicked()', self.onLoadNonDicomData)
     self.step2_2_3_registerMeasuredToObiButton.disconnect('clicked()', self.onMeasuredToObiRegistration)
     self.step3_1_pddLoadDataButton.disconnect('clicked()', self.onLoadPddDataRead)
@@ -379,9 +379,16 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step2_2_1_obiFiducialSelectionLayout.setSpacing(4)
 
     # Create instructions label
-    self.obiFiducialSelectionInfoLabel = qt.QLabel("Scroll to the image plane where the OBI fiducials are located, then click the 'Select fiducials' button below. Next, select the fiducial points in the displayed image plane. The fiducial points will populate the table below.")
+    self.step2_2_1_instructionsLayout = qt.QHBoxLayout(self.step2_2_1_obiFiducialSelectionCollapsibleButton)
+    self.obiFiducialSelectionInfoLabel = qt.QLabel("Locate image plane of the OBI fiducials, then click the 'Place fiducials' button (blue arrow with red dot). Next, select the fiducial points in the displayed image plane.")
     self.obiFiducialSelectionInfoLabel.wordWrap = True
-    self.step2_2_1_obiFiducialSelectionLayout.addRow(self.obiFiducialSelectionInfoLabel)
+    self.step2_2_1_helpLabel = qt.QLabel()
+    self.step2_2_1_helpLabel.pixmap = qt.QPixmap(':Icons/Help.png')
+    self.step2_2_1_helpLabel.maximumWidth = 24
+    self.step2_2_1_helpLabel.toolTip = "Hint: Use Shift key for '3D cursor' navigation."
+    self.step2_2_1_instructionsLayout.addWidget(self.obiFiducialSelectionInfoLabel)
+    self.step2_2_1_instructionsLayout.addWidget(self.step2_2_1_helpLabel)
+    self.step2_2_1_obiFiducialSelectionLayout.addRow(self.step2_2_1_instructionsLayout)
 
     # OBI fiducial selector simple markups widget
     self.step2_2_1_obiFiducialList = slicer.qSlicerSimpleMarkupsWidget()
@@ -397,9 +404,16 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step2_2_2_measuredFiducialSelectionLayout.setSpacing(4)
 
     # Create instructions label
-    self.measuredFiducialSelectionInfoLabel = qt.QLabel("Scroll to the image plane where the gel dosimeter fiducials are located, then click the 'Select fiducials' button below. Next, select the fiducial points in the displayed image plane. The fiducial points will populate the table below.")
+    self.step2_2_2_instructionsLayout = qt.QHBoxLayout(self.step2_2_2_measuredFiducialSelectionCollapsibleButton)
+    self.measuredFiducialSelectionInfoLabel = qt.QLabel("Locate image plane of the gel dosimeter fiducials, then click the 'Place fiducials' button (blue arrow with red dot). Next, select the fiducial points in the displayed image plane.")
     self.measuredFiducialSelectionInfoLabel.wordWrap = True
-    self.step2_2_2_measuredFiducialSelectionLayout.addRow(self.measuredFiducialSelectionInfoLabel)
+    self.step2_2_2_helpLabel = qt.QLabel()
+    self.step2_2_2_helpLabel.pixmap = qt.QPixmap(':Icons/Help.png')
+    self.step2_2_2_helpLabel.maximumWidth = 24
+    self.step2_2_2_helpLabel.toolTip = "Hint: Use Shift key for '3D cursor' navigation.\nHint: If gel dosimetry volume is too dark or low contrast, press left mouse button on the image and drag it to change window/level"
+    self.step2_2_2_instructionsLayout.addWidget(self.measuredFiducialSelectionInfoLabel)
+    self.step2_2_2_instructionsLayout.addWidget(self.step2_2_2_helpLabel)
+    self.step2_2_2_measuredFiducialSelectionLayout.addRow(self.step2_2_2_instructionsLayout)
 
     # Measured fiducial selector simple markups widget
     self.step2_2_2_measuredFiducialList = slicer.qSlicerSimpleMarkupsWidget()
@@ -450,7 +464,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step2_1_registerObiToPlanCtButton.connect('clicked()', self.onObiToPlanCTRegistration)
     self.step2_2_measuredDoseToObiRegistrationCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep2_2_MeasuredDoseToObiRegistrationSelected)
     self.step2_2_1_obiFiducialSelectionCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep2_2_1_ObiFiducialCollectionSelected)
-    self.step2_2_2_measuredFiducialSelectionCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep2_2_2_ObiFiducialCollectionSelected)
+    self.step2_2_2_measuredFiducialSelectionCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep2_2_2_MeasuredFiducialCollectionSelected)
     self.step2_2_3_registerMeasuredToObiButton.connect('clicked()', self.onMeasuredToObiRegistration)
 
   def setup_step3_DoseCalibration(self):
@@ -510,7 +524,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step3_1_yScaleLabel = qt.QLabel('  Y scale:')
     self.step3_1_yScaleSpinBox = qt.QDoubleSpinBox()
     self.step3_1_yScaleSpinBox.decimals = 3
-    self.step3_1_yScaleSpinBox.singleStep = 0.25
+    self.step3_1_yScaleSpinBox.singleStep = 0.01
     self.step3_1_yScaleSpinBox.value = 1
     self.step3_1_yScaleSpinBox.minimum = 0
     self.step3_1_yScaleSpinBox.maximum = 1000
@@ -937,22 +951,10 @@ class GelDosimetryAnalysisSlicelet(object):
   def onStep2_2_MeasuredDoseToObiRegistrationSelected(self, collapsed):
     # Make sure the functions handling entering the fiducial selection panels are called when entering the outer panel
     if collapsed == False:
-      appLogic = slicer.app.applicationLogic()
-      selectionNode = appLogic.GetSelectionNode()
       if self.step2_2_1_obiFiducialSelectionCollapsibleButton.collapsed == False:
-        if self.obiVolumeNode != None:
-          selectionNode.SetActiveVolumeID(self.obiVolumeNode.GetID())
-        else:
-          selectionNode.SetActiveVolumeID(None)
-        selectionNode.SetSecondaryVolumeID(None)
-        appLogic.PropagateVolumeSelection() 
+        self.onStep2_2_1_ObiFiducialCollectionSelected(False)
       elif self.step2_2_2_measuredFiducialSelectionCollapsibleButton.collapsed == False:
-        if self.measuredVolumeNode != None:
-          selectionNode.SetActiveVolumeID(self.measuredVolumeNode.GetID())
-        else:
-          selectionNode.SetActiveVolumeID(None)
-        selectionNode.SetSecondaryVolumeID(None)
-        appLogic.PropagateVolumeSelection() 
+        self.onStep2_2_2_MeasuredFiducialCollectionSelected(False)
 
   def onStep2_2_1_ObiFiducialCollectionSelected(self, collapsed):
     appLogic = slicer.app.applicationLogic()
@@ -965,6 +967,7 @@ class GelDosimetryAnalysisSlicelet(object):
 
       # Select OBI fiducials node
       self.step2_2_1_obiFiducialList.setCurrentNode(self.obiMarkupsFiducialNode)
+      self.step2_2_1_obiFiducialList.activate()
 
       # Automatically show OBI volume (show nothing if not present)
       if self.obiVolumeNode != None:
@@ -978,7 +981,7 @@ class GelDosimetryAnalysisSlicelet(object):
       # Turn off fiducial place mode
       interactionNode.SwitchToPersistentPlaceMode()
 
-  def onStep2_2_2_ObiFiducialCollectionSelected(self, collapsed):
+  def onStep2_2_2_MeasuredFiducialCollectionSelected(self, collapsed):
     appLogic = slicer.app.applicationLogic()
     selectionNode = appLogic.GetSelectionNode()
     interactionNode = appLogic.GetInteractionNode()
@@ -989,6 +992,7 @@ class GelDosimetryAnalysisSlicelet(object):
 
       # Select MEASURED fiducials node
       self.step2_2_2_measuredFiducialList.setCurrentNode(self.measuredMarkupsFiducialNode)
+      self.step2_2_2_measuredFiducialList.activate()
 
       # Automatically show MEASURED volume (show nothing if not present)
       if self.measuredVolumeNode != None:
@@ -1055,8 +1059,8 @@ class GelDosimetryAnalysisSlicelet(object):
       success = self.logic.loadPdd(fileName)
       if success == True:
         self.logic.delayDisplay('PDD loaded successfully')
-        return
-    slicer.util.errorDisplay('PDD loading failed!')
+      else:
+        slicer.util.errorDisplay('PDD loading failed!')
 
   def onStep3_1_CalibrationRoutineSelected(self, collapsed):
     if collapsed == False:
@@ -1079,9 +1083,8 @@ class GelDosimetryAnalysisSlicelet(object):
       return False
 
     success = self.logic.getMeanOpticalDensityOfCentralCylinder(self.calibrationVolumeNode.GetID(), radiusOfCentreCircleFloat)
-    if success == True:
-      self.logic.delayDisplay('Calibration volume parsed successfully')
-    slicer.util.errorDisplay('Calibration volume parsing failed!')
+    if success == False:
+      slicer.util.errorDisplay('Calibration volume parsing failed!')
     return success
 
   def createCalibrationCurvesWindow(self):
@@ -1171,11 +1174,15 @@ class GelDosimetryAnalysisSlicelet(object):
     self.calibrationCurveChartView.GetRenderWindow().Start()
 
   def onAlignCalibrationCurves(self):
+    if self.logic.pddDataArray == None or self.logic.pddDataArray.size == 0:
+      slicer.util.errorDisplay('PDD data not loaded!')
+      return
+
     # Parse calibration volume (average optical densities along central cylinder)
     success = self.parseCalibrationVolume()
     if not success:
       return
-    
+
     # Align PDD data and "experimental" (CALIBRATION) data. Allow for horizontal shift
     # and vertical scale (max PDD Y value/max CALIBRATION Y value).
     result = self.logic.alignPddToCalibration()
@@ -1200,14 +1207,10 @@ class GelDosimetryAnalysisSlicelet(object):
     self.showCalibrationCurves()
 
   def onComputeDoseFromPdd(self):
-    rdfInputText = self.step3_1_rdfLineEdit.text
-    monitorUnitsInputText = self.step3_1_monitorUnitsLineEdit.text
-    rdfFloat = 0
-    monitorUnitsFloat = 0
-    if monitorUnitsInputText.isnumeric() and rdfInputText.isnumeric():
-      monitorUnitsFloat = float(monitorUnitsInputText)
-      rdfFloat = float(rdfInputText)
-    else:
+    try:
+      monitorUnitsFloat = float(self.step3_1_monitorUnitsLineEdit.text)
+      rdfFloat = float(self.step3_1_rdfLineEdit.text)
+    except ValueError:
       slicer.util.errorDisplay('Invalid monitor units or RDF!')
       return
 
@@ -1352,14 +1355,20 @@ class GelDosimetryAnalysisSlicelet(object):
     maxOrder = 0
     for order in xrange(5):
       exec("lineEditText = self.step3_2_doseLabel{0}LineEdit.text".format(order))
-      if lineEditText.numeric() and float(lineEditText) != 0:
-        maxOrder = order
+      try:
+        coefficient = float(lineEditText)
+        if coefficient != 0:
+          maxOrder = order
+      except:
+        pass
     # Initialize all coefficients to zero in the coefficients list
     self.logic.calibrationPolynomialCoefficients = [0]*(maxOrder+1)
     for order in xrange(maxOrder+1):
       exec("lineEditText = self.step3_2_doseLabel{0}LineEdit.text".format(order))
-      if lineEditText.numeric():
+      try:
         self.logic.calibrationPolynomialCoefficients[maxOrder-order] = float(lineEditText)
+      except:
+        pass
 
   def onExportCalibration(self):
     # Set calibration polynomial coefficients from input fields to logic
@@ -1399,7 +1408,7 @@ class GelDosimetryAnalysisSlicelet(object):
     calibratedVolumeDisplayNode.SetWindowLevelMinMax(minWindowLevel, maxWindowLevel);
 
     # Set calibrated dose to dose comparison step input
-    self.step4_measuredDoseSelector.setCurrentNode(self.calibratedMeasuredVolumeNode)
+    # self.step4_measuredDoseSelector.setCurrentNode(self.calibratedMeasuredVolumeNode)
 
   def onStep4_DoseComparisonSelected(self, collapsed):
     # Set plan dose volume to selector
@@ -1442,7 +1451,8 @@ class GelDosimetryAnalysisSlicelet(object):
 
       self.gammaParameterSetNode = vtkSlicerDoseComparisonModuleLogic.vtkMRMLDoseComparisonNode()
       slicer.mrmlScene.AddNode(self.gammaParameterSetNode)
-      self.gammaParameterSetNode.SetAndObserveCompareDoseVolumeNode(self.step4_measuredDoseSelector.currentNode())
+      # self.gammaParameterSetNode.SetAndObserveCompareDoseVolumeNode(self.step4_measuredDoseSelector.currentNode())
+      self.gammaParameterSetNode.SetAndObserveCompareDoseVolumeNode(self.calibratedMeasuredVolumeNode)
       self.gammaParameterSetNode.SetAndObserveMaskContourNode(self.maskContourNode)
       self.gammaParameterSetNode.SetAndObserveGammaVolumeNode(self.gammaVolumeNode)
       self.gammaParameterSetNode.SetDtaDistanceToleranceMm(self.step4_1_dtaDistanceToleranceMmSpinBox.value)
@@ -1714,7 +1724,6 @@ class GelDosimetryAnalysisSlicelet(object):
     self.onObiToPlanCTRegistration()
     slicer.app.processEvents()
 
-    return #TODO:
     # Select fiducials
     self.step2_2_measuredDoseToObiRegistrationCollapsibleButton.setChecked(True)
     obiFiducialsNode = slicer.util.getNode(self.obiMarkupsFiducialNodeName)

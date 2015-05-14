@@ -356,8 +356,8 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     while numberOfIterations < maxNumberOfOutlierIterations and numberOfFoundOutliers != 0 and numberOfRows > 0:
       maxValue = self.findMaxValueInArray(arrayToClean)
       meanDifference = self.computeMeanDifferenceOfNeighborsForArray(arrayToClean)
-      # logging.debug('Outlier removel iteration {0}: MeanDifference={1:.2f} (fraction of max value: {2:.4f})'.format(numberOfIterations, meanDifference, meanDifference/maxValue))
-      # logging.debug('  Difference at egdges: first={0:.2f}  last={1:.2f}'.format(abs(arrayToClean[0,1] - arrayToClean[1,1]), abs(arrayToClean[numberOfRows-1,1] - arrayToClean[numberOfRows-2,1])))
+      # logging.debug('Outlier removal iteration {0}: MeanDifference={1:.2f} (fraction of max value: {2:.4f})'.format(numberOfIterations, meanDifference, meanDifference/maxValue))
+      # logging.debug('  Difference at edges: first={0:.2f}  last={1:.2f}'.format(abs(arrayToClean[0,1] - arrayToClean[1,1]), abs(arrayToClean[numberOfRows-1,1] - arrayToClean[numberOfRows-2,1])))
       if meanDifference < maxValue * minimumMeanDifferenceInFractionOfMaxValueThreshold:
         # logging.debug('  MaxValue: {0:.2f} ({1:.4f}), finishing outlier search'.format(maxValue,maxValue*minimumMeanDifferenceInFractionOfMaxValueThreshold))
         break
