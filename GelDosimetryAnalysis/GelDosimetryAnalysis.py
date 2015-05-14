@@ -34,7 +34,7 @@ class GelDosimetryAnalysisSliceletWidget:
 # SliceletMainFrame
 #   Handles the event when the slicelet is hidden (its window closed)
 #
-class SliceletMainFrame(qt.QFrame):
+class SliceletMainFrame(qt.QDialog):
   def setSlicelet(self, slicelet):
     self.slicelet = slicelet
 
@@ -105,6 +105,7 @@ class GelDosimetryAnalysisSlicelet(object):
 	
     # Declare member variables (selected at certain steps and then from then on for the workflow)
     self.mode = None
+
     self.planCtVolumeNode = None
     self.planDoseVolumeNode = None
     self.planStructuresNode = None
@@ -440,16 +441,17 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step2_2_measuredToObiRegistrationCollapsibleButtonGroup.addButton(self.step2_2_2_measuredFiducialSelectionCollapsibleButton)
     self.step2_2_measuredToObiRegistrationCollapsibleButtonGroup.addButton(self.step2_2_3_measuredToObiRegistrationCollapsibleButton)
 
+    # Make sure first panels appear when steps are first opened (done before connections to avoid
+    # executing those steps, which are only needed when actually switching there during the workflow)
+    self.step2_2_1_obiFiducialSelectionCollapsibleButton.setProperty('collapsed', False)
+    self.step2_1_obiToPlanCtRegistrationCollapsibleButton.setProperty('collapsed', False)
+
     # Connections
     self.step2_1_registerObiToPlanCtButton.connect('clicked()', self.onObiToPlanCTRegistration)
     self.step2_2_measuredDoseToObiRegistrationCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep2_2_MeasuredDoseToObiRegistrationSelected)
     self.step2_2_1_obiFiducialSelectionCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep2_2_1_ObiFiducialCollectionSelected)
     self.step2_2_2_measuredFiducialSelectionCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep2_2_2_ObiFiducialCollectionSelected)
     self.step2_2_3_registerMeasuredToObiButton.connect('clicked()', self.onMeasuredToObiRegistration)
-
-    # Open first panels when steps are first opened
-    self.step2_2_1_obiFiducialSelectionCollapsibleButton.setProperty('collapsed', False)
-    self.step2_1_obiToPlanCtRegistrationCollapsibleButton.setProperty('collapsed', False)
 
   def setup_step3_DoseCalibration(self):
     # Step 3: Calibration step
@@ -639,6 +641,10 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step3_calibrationCollapsibleButtonGroup.addButton(self.step3_1_calibrationRoutineCollapsibleButton)
     self.step3_calibrationCollapsibleButtonGroup.addButton(self.step3_2_applyCalibrationCollapsibleButton)
 
+    # Make sure first panels appear when steps are first opened (done before connections to avoid
+    # executing those steps, which are only needed when actually switching there during the workflow)
+    self.step3_1_calibrationRoutineCollapsibleButton.setProperty('collapsed', False)
+
     # Connections
     self.step3_1_pddLoadDataButton.connect('clicked()', self.onLoadPddDataRead)
     self.step3_1_alignCalibrationCurvesButton.connect('clicked()', self.onAlignCalibrationCurves)
@@ -652,9 +658,6 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step3_1_fitPolynomialToOpticalDensityVsDoseCurveButton.connect('clicked()', self.onFitPolynomialToOpticalDensityVsDoseCurve)
     self.step3_2_exportCalibrationToCSV.connect('clicked()', self.onExportCalibration)
     self.step3_2_applyCalibrationButton.connect('clicked()', self.onApplyCalibration)
-
-    # Open prepare calibration data panel when step is first opened
-    self.step3_1_calibrationRoutineCollapsibleButton.setProperty('collapsed', False)
     
   def setup_Step4_DoseComparison(self):
     # Step 4: Dose comparison and analysis
@@ -807,16 +810,17 @@ class GelDosimetryAnalysisSlicelet(object):
     # Scalar bar
     self.gammaScalarBarWidget = vtk.vtkScalarBarWidget()
 
+    # Make sure first panels appear when steps are first opened (done before connections to avoid
+    # executing those steps, which are only needed when actually switching there during the workflow)
+    #self.step4_1_gammaDoseComparisonCollapsibleButton.setProperty('collapsed',False) #TODO: Uncomment when adding more dose comparisons
+    self.step4_1_referenceDoseUseMaximumDoseRadioButton.setChecked(True)
+
     # Connections
     self.step4_doseComparisonCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep4_DoseComparisonSelected)
     self.step4_maskContourSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onStep4_MaskContourSelectionChanged)
     self.step4_1_referenceDoseUseMaximumDoseRadioButton.connect('toggled(bool)', self.onUseMaximumDoseRadioButtonToggled)
     self.step4_1_computeGammaButton.connect('clicked()', self.onGammaDoseComparison)
     self.step4_1_showGammaReportButton.connect('clicked()', self.onShowGammaReport)
-
-    # Open gamma dose comparison panel when step is first opened
-    #self.step4_1_gammaDoseComparisonCollapsibleButton.setProperty('collapsed',False) #TODO: Uncomment when adding more dose comparisons
-    self.step4_1_referenceDoseUseMaximumDoseRadioButton.setChecked(True)
 
   def setup_StepT1_lineProfileCollapsibleButton(self):
     # Step T1: Line profile tool
@@ -951,68 +955,59 @@ class GelDosimetryAnalysisSlicelet(object):
         appLogic.PropagateVolumeSelection() 
 
   def onStep2_2_1_ObiFiducialCollectionSelected(self, collapsed):
+    appLogic = slicer.app.applicationLogic()
+    selectionNode = appLogic.GetSelectionNode()
+    interactionNode = appLogic.GetInteractionNode()
+
     if collapsed == False:
       # Turn on persistent fiducial placement mode
-      appLogic = slicer.app.applicationLogic()
-      selectionNode = appLogic.GetSelectionNode()
-      interactionNode = appLogic.GetInteractionNode()
       interactionNode.SwitchToPersistentPlaceMode()
 
       # Select OBI fiducials node
       self.step2_2_1_obiFiducialList.setCurrentNode(self.obiMarkupsFiducialNode)
-      
-      # # Show only the OBI fiducials in the 3D view
-      # self.markupsLogic.SetAllMarkupsVisibility(self.obiMarkupsFiducialNode, True)
-      # self.markupsLogic.SetAllMarkupsVisibility(self.measuredMarkupsFiducialNode, False)
-
-      # Set OBI fiducial list active
-      # obiFiducialListActiveButton = slicer.util.findChildren(widget=self.step2_2_1_obiFiducialList, className='QPushButton', name='ActiveButton')[0]
-      # obiFiducialListActiveButton.click()
 
       # Automatically show OBI volume (show nothing if not present)
       if self.obiVolumeNode != None:
         selectionNode.SetActiveVolumeID(self.obiVolumeNode.GetID())
       else:
         selectionNode.SetActiveVolumeID(None)
+        slicer.util.errorDisplay('OBI volume not selected!\nPlease return to first step and make the assignment')
       selectionNode.SetSecondaryVolumeID(None)
-      appLogic.PropagateVolumeSelection() 
-
-  def onStep2_2_2_ObiFiducialCollectionSelected(self, collapsed):
-    # Add Markups widget
-    if collapsed == False:
-      # Turn on persistent fiducial placement mode
-      appLogic = slicer.app.applicationLogic()
-      selectionNode = appLogic.GetSelectionNode()
-      interactionNode = appLogic.GetInteractionNode()
+      appLogic.PropagateVolumeSelection()
+    else:
+      # Turn off fiducial place mode
       interactionNode.SwitchToPersistentPlaceMode()
 
-      # # Select MEASURED fiducials node
+  def onStep2_2_2_ObiFiducialCollectionSelected(self, collapsed):
+    appLogic = slicer.app.applicationLogic()
+    selectionNode = appLogic.GetSelectionNode()
+    interactionNode = appLogic.GetInteractionNode()
+
+    if collapsed == False:
+      # Turn on persistent fiducial placement mode
+      interactionNode.SwitchToPersistentPlaceMode()
+
+      # Select MEASURED fiducials node
       self.step2_2_2_measuredFiducialList.setCurrentNode(self.measuredMarkupsFiducialNode)
 
-      # # Show only the OBI fiducials in the 3D view
-      # self.markupsLogic.SetAllMarkupsVisibility(self.measuredMarkupsFiducialNode, True)
-      # self.markupsLogic.SetAllMarkupsVisibility(self.obiMarkupsFiducialNode, False)
-
-      # Set measured fiducial list active
-      # measuredFiducialListActiveButton = slicer.util.findChildren(widget=self.step2_2_2_measuredFiducialList, className='QPushButton', name='ActiveButton')[0]
-      # measuredFiducialListActiveButton.click()
-
       # Automatically show MEASURED volume (show nothing if not present)
-      appLogic = slicer.app.applicationLogic()
-      selectionNode = appLogic.GetSelectionNode()
       if self.measuredVolumeNode != None:
         selectionNode.SetActiveVolumeID(self.measuredVolumeNode.GetID())
       else:
         selectionNode.SetActiveVolumeID(None)
+        slicer.util.errorDisplay('Gel dosimeter volume not selected!\nPlease return to first step and make the assignment')
       selectionNode.SetSecondaryVolumeID(None)
       appLogic.PropagateVolumeSelection() 
+    else:
+      # Turn off fiducial place mode
+      interactionNode.SwitchToPersistentPlaceMode()
 
   def onObiToPlanCTRegistration(self):
     # Start registration
     obiVolumeID = self.obiVolumeNode.GetID()
     planCTVolumeID = self.planCtVolumeNode.GetID()
     planDoseVolumeID = self.planDoseVolumeNode.GetID()
-    planStructuresID = self.planStructuresSelector.currentNodeID
+    planStructuresID = self.planStructuresNode.GetID()
     self.logic.registerObiToPlanCt(obiVolumeID, planCTVolumeID, planDoseVolumeID, planStructuresID)
 
     # Show the two volumes for visual evaluation of the registration
@@ -1673,7 +1668,8 @@ class GelDosimetryAnalysisSlicelet(object):
     # self.performSelfTestFromSavedScene()
 
   def performSelfTestFromScratch(self):
-    # 1. Load test data
+    ### 1. Load test data
+    self.step1_loadDataCollapsibleButton.setChecked(True)
     planCtSeriesInstanceUid = '1.2.246.352.71.2.1706542068.3448830.20131009141316'
     obiSeriesInstanceUid = '1.2.246.352.61.2.5257103442752107062.11507227178299854732'
     planDoseSeriesInstanceUid = '1.2.246.352.71.2.876365306.7756.20140123124241'
@@ -1687,20 +1683,39 @@ class GelDosimetryAnalysisSlicelet(object):
     slicer.app.processEvents()
     self.logic.delayDisplay('Wait for the slicelet to catch up', 300)
 
-    # 2. Register
+    # Load non-DICOM data
+    slicer.util.loadNodeFromFile('d:/devel/_Images/RT/20140123_GelDosimetry_StructureSetIncluded/VFFs/LCV01_HR_plan.vff', 'VffFile', {})
+    slicer.util.loadNodeFromFile('d:/devel/_Images/RT/20140123_GelDosimetry_StructureSetIncluded/VFFs/LCV02_HR_calib.vff', 'VffFile', {})
+
+    # Assign roles
+    planCTVolumeName = '47: ARIA RadOnc Images - Verification Plan Phantom'
+    planDoseVolumeName = '53: RTDOSE: Eclipse Doses: VMAT XM1 LCV'
+    obiVolumeName = '0: Unknown'
+    structureSetNodeName = '52: RTSTRUCT: CT_1_AllStructures_SubjectHierarchy'
+    measuredVolumeName = 'lcv01_hr.vff'
+    calibrationVolumeName = 'lcv02_hr.vff'
+
+    planCTVolume = slicer.util.getNode(planCTVolumeName)
+    self.planCTSelector.setCurrentNode(planCTVolume)
+    planDoseVolume = slicer.util.getNode(planDoseVolumeName)
+    self.planDoseSelector.setCurrentNode(planDoseVolume)
+    obiVolume = slicer.util.getNode(obiVolumeName)
+    self.obiSelector.setCurrentNode(obiVolume)
+    structureSetNode = slicer.util.getNode(structureSetNodeName)
+    self.planStructuresSelector.setCurrentNode(structureSetNode)
+    measuredVolume = slicer.util.getNode(measuredVolumeName)
+    self.measuredVolumeSelector.setCurrentNode(measuredVolume)
+    calibrationVolume = slicer.util.getNode(calibrationVolumeName)
+    self.calibrationVolumeSelector.setCurrentNode(calibrationVolume)
+    slicer.app.processEvents()
+
+    ### 2. Register
     self.step2_registrationCollapsibleButton.setChecked(True)
-    planCTVolumeID = 'vtkMRMLScalarVolumeNode1'
-    self.planCTSelector.setCurrentNodeID(planCTVolumeID)
-    obiVolumeID = 'vtkMRMLScalarVolumeNode2'
-    self.obiSelector.setCurrentNodeID(obiVolumeID)
-    planDoseVolumeID = 'vtkMRMLScalarVolumeNode3'
-    self.planDoseSelector.setCurrentNodeID(planDoseVolumeID)
-    structureSetID = 'vtkMRMLSubjectHierarchyNode6'
-    self.planStructuresSelector.setCurrentNodeID(structureSetID)
     self.onObiToPlanCTRegistration()
     slicer.app.processEvents()
 
-    # 3. Select fiducials
+    return #TODO:
+    # Select fiducials
     self.step2_2_measuredDoseToObiRegistrationCollapsibleButton.setChecked(True)
     obiFiducialsNode = slicer.util.getNode(self.obiMarkupsFiducialNodeName)
     obiFiducialsNode.AddFiducial(76.4, 132.1, -44.8)
@@ -1718,21 +1733,13 @@ class GelDosimetryAnalysisSlicelet(object):
     measuredFiducialsNode.AddFiducial(-32.7, -101, 94)
     measuredFiducialsNode.AddFiducial(-15, -73.6, 94)
 
-    # Load MEASURE Vff
-    slicer.app.ioManager().connect('newFileLoaded(qSlicerIO::IOProperties)', self.setMeasuredData)
-    slicer.util.loadNodeFromFile('d:/devel/_Images/RT/20140123_GelDosimetry_StructureSetIncluded/VFFs/LCV01_HR_plan.vff', 'VffFile', {})
-    slicer.app.ioManager().disconnect('newFileLoaded(qSlicerIO::IOProperties)', self.setMeasuredData)
     # Perform fiducial registration
     self.step2_2_3_measuredToObiRegistrationCollapsibleButton.setChecked(True)
     self.onMeasuredToObiRegistration()
 
-    # 4. Calibration
+    ### 4. Calibration
     self.step3_doseCalibrationCollapsibleButton.setChecked(True)
     self.logic.loadPdd('d:/devel/_Images/RT/20140123_GelDosimetry_StructureSetIncluded/12MeV.csv')
-    # Load CALIBRATION Vff
-    slicer.app.ioManager().connect('newFileLoaded(qSlicerIO::IOProperties)', self.setCalibrationData)
-    slicer.util.loadNodeFromFile('d:/devel/_Images/RT/20140123_GelDosimetry_StructureSetIncluded/VFFs/LCV02_HR_calib.vff', 'VffFile', {})
-    slicer.app.ioManager().disconnect('newFileLoaded(qSlicerIO::IOProperties)', self.setCalibrationData)
 
     # Parse calibration volume
     self.step3_1_radiusMmFromCentrePixelLineEdit.setText('5')
@@ -1875,9 +1882,13 @@ class GelDosimetryAnalysisWidget(ScriptedLoadableModuleWidget):
 
   def onShowSliceletButtonClicked(self):
     mainFrame = SliceletMainFrame()
-    mainFrame.setMinimumWidth(1200)
-    # mainFrame.
+    mainFrame.minimumWidth = 1200
+    mainFrame.windowTitle = "Gel dosimetry analysis"
+    mainFrame.setWindowFlags(qt.Qt.WindowCloseButtonHint | qt.Qt.WindowMaximizeButtonHint | qt.Qt.WindowTitleHint)
+    iconPath = os.path.join(os.path.dirname(slicer.modules.geldosimetryanalysis.path), 'Resources/Icons', self.moduleName+'.png')
+    mainFrame.windowIcon = qt.QIcon(iconPath)
     mainFrame.connect('destroyed()', self.onSliceletClosed)
+    
     slicelet = GelDosimetryAnalysisSlicelet(mainFrame)
     mainFrame.setSlicelet(slicelet)
 
