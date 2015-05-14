@@ -119,43 +119,10 @@ class GelDosimetryAnalysisSlicelet(object):
     self.gammaVolumeNode = None
 
     self.gammaScalarBarWidget = None
+
+    # Get markups logic
+    self.markupsLogic = slicer.modules.markups.logic()
     
-    # Get markups widget and logic
-    try:
-      slicer.modules.markups
-      self.markupsWidget = slicer.modules.markups.widgetRepresentation()
-      self.markupsWidgetLayout = self.markupsWidget.layout()
-      self.markupsLogic = slicer.modules.markups.logic()
-    except Exception, e:
-      import traceback
-      traceback.print_exc()
-      logging.error('Unable to find Markups module!')
-    # Build re-usable markups widget
-    self.markupsWidgetClone = qt.QFrame()
-    self.markupsWidgetClone.setLayout(self.markupsWidgetLayout)
-    self.fiducialSelectionWidget = qt.QFrame()
-    self.fiducialSelectionLayout = qt.QFormLayout()
-    self.fiducialSelectionLayout.setMargin(0)
-    self.fiducialSelectionLayout.setSpacing(0)
-    self.fiducialSelectionWidget.setLayout(self.fiducialSelectionLayout)
-    self.fiducialSelectionButton = slicer.qSlicerMouseModeToolBar()
-    self.fiducialSelectionButton.setApplicationLogic(slicer.app.applicationLogic())
-    self.fiducialSelectionButton.setMRMLScene(slicer.app.mrmlScene())
-    self.fiducialSelectionButton.setPersistence(1)
-    self.fiducialSelectionLayout.addRow(self.markupsWidgetClone)
-    self.fiducialSelectionLayout.addRow('Select fiducials: ', self.fiducialSelectionButton)
-
-    # Make temporary changes in the Markups UI
-    try:
-      advancedCollapsibleButton = slicer.util.findChildren(widget=self.markupsWidgetClone, className='ctkCollapsibleGroupBox', name='advancedCollapsibleButton')[0]
-      advancedCollapsibleButton.setVisible(False)
-      activeMarkupMRMLNodeComboBox = slicer.util.findChildren(widget=self.markupsWidgetClone, className='qMRMLNodeComboBox', name='activeMarkupMRMLNodeComboBox')[0]
-      activeMarkupMRMLNodeComboBox.setEnabled(False)
-    except Exception, e:
-      import traceback
-      traceback.print_exc()
-      logging.error('Failed to correctly reparent the Markups widget!')
-
     # Create or get fiducial nodes
     self.obiMarkupsFiducialNode = slicer.util.getNode(self.obiMarkupsFiducialNodeName)
     if self.obiMarkupsFiducialNode == None:
@@ -184,26 +151,6 @@ class GelDosimetryAnalysisSlicelet(object):
     if widgetClass:
       self.widget = widgetClass(self.parent)
     self.parent.show()
-
-  def __del__(self):
-    self.cleanUp()
-    
-  # Clean up when slicelet is closed
-  def cleanUp(self):
-    logging.debug('Cleaning up')
-    # Show the previously hidden advanced panel in the Markups module UI
-    try:
-      advancedCollapsibleButton = slicer.util.findChildren(widget=self.markupsWidgetClone, className='ctkCollapsibleGroupBox', name='advancedCollapsibleButton')[0]
-      advancedCollapsibleButton.setVisible(True)
-      activeMarkupMRMLNodeComboBox = slicer.util.findChildren(widget=self.markupsWidgetClone, className='qMRMLNodeComboBox', name='activeMarkupMRMLNodeComboBox')[0]
-      activeMarkupMRMLNodeComboBox.setEnabled(True)
-
-      # Return the Markups widget ownership to the Markups module
-      self.markupsWidget.setLayout(self.markupsWidgetLayout)
-    except Exception, e:
-      import traceback
-      traceback.print_exc()
-      logging.error('Cleaning up failed!')
 
   # Disconnect all connections made to the slicelet to enable the garbage collector to destruct the slicelet object on quit
   def disconnect(self):
@@ -426,12 +373,36 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step2_2_1_obiFiducialSelectionCollapsibleButton.setProperty('collapsedHeight', 4)
     self.step2_2_1_obiFiducialSelectionCollapsibleButton.text = "2.2.1 Select OBI fiducial points"
     self.step2_2_measuredDoseToObiRegistrationLayout.addWidget(self.step2_2_1_obiFiducialSelectionCollapsibleButton)
+    self.step2_2_1_obiFiducialSelectionLayout = qt.QFormLayout(self.step2_2_1_obiFiducialSelectionCollapsibleButton)
+    self.step2_2_1_obiFiducialSelectionLayout.setContentsMargins(12,4,4,4)
+    self.step2_2_1_obiFiducialSelectionLayout.setSpacing(4)
+
+    # Create instructions label
+    self.obiFiducialSelectionInfoLabel = qt.QLabel("Scroll to the image plane where the OBI fiducials are located, then click the 'Select fiducials' button below. Next, select the fiducial points in the displayed image plane. The fiducial points will populate the table below.")
+    self.obiFiducialSelectionInfoLabel.wordWrap = True
+    self.step2_2_1_obiFiducialSelectionLayout.addRow(self.obiFiducialSelectionInfoLabel)
+
+    # OBI fiducial selector simple markups widget
+    self.step2_2_1_obiFiducialList = slicer.qSlicerSimpleMarkupsWidget()
+    self.step2_2_1_obiFiducialSelectionLayout.addRow(self.step2_2_1_obiFiducialList)
 
     # Step 2.2.2: Select MEASURED fiducials on MEASURED dose volume
     self.step2_2_2_measuredFiducialSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
     self.step2_2_2_measuredFiducialSelectionCollapsibleButton.setProperty('collapsedHeight', 4)
     self.step2_2_2_measuredFiducialSelectionCollapsibleButton.text = "2.2.2 Select measured gel dosimeter fiducial points"
     self.step2_2_measuredDoseToObiRegistrationLayout.addWidget(self.step2_2_2_measuredFiducialSelectionCollapsibleButton)
+    self.step2_2_2_measuredFiducialSelectionLayout = qt.QFormLayout(self.step2_2_2_measuredFiducialSelectionCollapsibleButton)
+    self.step2_2_2_measuredFiducialSelectionLayout.setContentsMargins(12,4,4,4)
+    self.step2_2_2_measuredFiducialSelectionLayout.setSpacing(4)
+
+    # Create instructions label
+    self.measuredFiducialSelectionInfoLabel = qt.QLabel("Scroll to the image plane where the gel dosimeter fiducials are located, then click the 'Select fiducials' button below. Next, select the fiducial points in the displayed image plane. The fiducial points will populate the table below.")
+    self.measuredFiducialSelectionInfoLabel.wordWrap = True
+    self.step2_2_2_measuredFiducialSelectionLayout.addRow(self.measuredFiducialSelectionInfoLabel)
+
+    # Measured fiducial selector simple markups widget
+    self.step2_2_2_measuredFiducialList = slicer.qSlicerSimpleMarkupsWidget()
+    self.step2_2_2_measuredFiducialSelectionLayout.addRow(self.step2_2_2_measuredFiducialList)
 
     # Step 2.2.3: Perform registration
     self.step2_2_3_measuredToObiRegistrationCollapsibleButton = ctk.ctkCollapsibleButton()
@@ -980,45 +951,23 @@ class GelDosimetryAnalysisSlicelet(object):
         appLogic.PropagateVolumeSelection() 
 
   def onStep2_2_1_ObiFiducialCollectionSelected(self, collapsed):
-    # Add Markups widget
     if collapsed == False:
-      #TODO: Clean up if possible. Did not work without double nesting (widget disappeared when switched to next step)
-      newLayout = qt.QFormLayout()
-      newLayout.setMargin(0)
-      newLayout.setSpacing(0)
-      tempLayoutInner = qt.QVBoxLayout()
-      tempLayoutInner.setMargin(0)
-      tempLayoutInner.setSpacing(0)
-      
-      # Create instructions label
-      fiducialSelectLabel = qt.QLabel("Scroll to the image plane where the OBI fiducials are located, then click the 'Select fiducials' button below. Next, select the fiducial points in the displayed image plane. The fiducial points will populate the table below.")
-      fiducialSelectLabel.wordWrap = True
-      newLayout.addRow(fiducialSelectLabel)
-      
-      # Create frame for markups widget
-      tempFrame = qt.QFrame()
-      tempFrame.setLayout(tempLayoutInner)
-      tempLayoutInner.addWidget(self.fiducialSelectionWidget)
-      newLayout.addRow(tempFrame)
-      self.step2_2_1_obiFiducialSelectionCollapsibleButton.setLayout(newLayout)
-
-      # Set annotation list node
+      # Turn on persistent fiducial placement mode
       appLogic = slicer.app.applicationLogic()
       selectionNode = appLogic.GetSelectionNode()
-      selectionNode.SetActivePlaceNodeID(self.obiMarkupsFiducialNode.GetID())
-      # interactionNode = appLogic.GetInteractionNode()
-      # interactionNode.SwitchToSinglePlaceMode()
-      # Switch to place fiducial mode
-      selectionNode.SetReferenceActivePlaceNodeClassName("vtkMRMLMarkupsFiducialNode")
+      interactionNode = appLogic.GetInteractionNode()
+      interactionNode.SwitchToPersistentPlaceMode()
 
       # Select OBI fiducials node
-      activeMarkupMrmlNodeCombobox = slicer.util.findChildren(widget=self.markupsWidgetClone, className='qMRMLNodeComboBox', name='activeMarkupMRMLNodeComboBox')[0]
-      activeMarkupMrmlNodeCombobox.setCurrentNode(self.obiMarkupsFiducialNode)
-      self.markupsWidget.onActiveMarkupMRMLNodeChanged(self.obiMarkupsFiducialNode)
+      self.step2_2_1_obiFiducialList.setCurrentNode(self.obiMarkupsFiducialNode)
       
-      # Show only the OBI fiducials in the 3D view
-      self.markupsLogic.SetAllMarkupsVisibility(self.obiMarkupsFiducialNode, True)
-      self.markupsLogic.SetAllMarkupsVisibility(self.measuredMarkupsFiducialNode, False)
+      # # Show only the OBI fiducials in the 3D view
+      # self.markupsLogic.SetAllMarkupsVisibility(self.obiMarkupsFiducialNode, True)
+      # self.markupsLogic.SetAllMarkupsVisibility(self.measuredMarkupsFiducialNode, False)
+
+      # Set OBI fiducial list active
+      # obiFiducialListActiveButton = slicer.util.findChildren(widget=self.step2_2_1_obiFiducialList, className='QPushButton', name='ActiveButton')[0]
+      # obiFiducialListActiveButton.click()
 
       # Automatically show OBI volume (show nothing if not present)
       if self.obiVolumeNode != None:
@@ -1027,73 +976,36 @@ class GelDosimetryAnalysisSlicelet(object):
         selectionNode.SetActiveVolumeID(None)
       selectionNode.SetSecondaryVolumeID(None)
       appLogic.PropagateVolumeSelection() 
-    else:
-      # Delete temporary layout
-      currentLayout = self.step2_2_1_obiFiducialSelectionCollapsibleButton.layout()
-      if currentLayout:
-        currentLayout.deleteLater()
-
-      # Show both fiducial lists in the 3D view
-      self.markupsLogic.SetAllMarkupsVisibility(self.obiMarkupsFiducialNode, True)
-      self.markupsLogic.SetAllMarkupsVisibility(self.measuredMarkupsFiducialNode, True)
 
   def onStep2_2_2_ObiFiducialCollectionSelected(self, collapsed):
     # Add Markups widget
     if collapsed == False:
-      #TODO: Clean up if possible. Did not work without double nesting
-      newLayout = qt.QFormLayout()
-      newLayout.setMargin(0)
-      newLayout.setSpacing(0)
-      tempLayoutInner = qt.QVBoxLayout()
-      tempLayoutInner.setMargin(0)
-      tempLayoutInner.setSpacing(0)
-
-      # Create instructions label
-      fiducialSelectLabel = qt.QLabel("Scroll to the image plane where the gel dosimeter fiducials are located, then click the 'Select fiducials' button below. Next, select the fiducial points in the displayed image plane. The fiducial points will populate the table below.")
-      fiducialSelectLabel.wordWrap = True
-      newLayout.addRow(fiducialSelectLabel)
-      
-      # Create frame for markups widget
-      tempFrame = qt.QFrame()
-      tempFrame.setLayout(tempLayoutInner)
-      tempLayoutInner.addWidget(self.fiducialSelectionWidget)
-      newLayout.addWidget(tempFrame)
-      self.step2_2_2_measuredFiducialSelectionCollapsibleButton.setLayout(newLayout)
-
-      # Set annotation list node
+      # Turn on persistent fiducial placement mode
       appLogic = slicer.app.applicationLogic()
       selectionNode = appLogic.GetSelectionNode()
-      selectionNode.SetActivePlaceNodeID(self.measuredMarkupsFiducialNode.GetID())
-      # interactionNode = appLogic.GetInteractionNode()
-      # interactionNode.SwitchToSinglePlaceMode()
-      # Switch to place fiducial mode
-      selectionNode.SetReferenceActivePlaceNodeClassName("vtkMRMLMarkupsFiducialNode")
+      interactionNode = appLogic.GetInteractionNode()
+      interactionNode.SwitchToPersistentPlaceMode()
 
-      # Select MEASURED fiducials node
-      activeMarkupMrmlNodeCombobox = slicer.util.findChildren(widget=self.markupsWidgetClone, className='qMRMLNodeComboBox', name='activeMarkupMRMLNodeComboBox')[0]
-      activeMarkupMrmlNodeCombobox.setCurrentNode(self.measuredMarkupsFiducialNode)
-      self.markupsWidget.onActiveMarkupMRMLNodeChanged(self.measuredMarkupsFiducialNode)
+      # # Select MEASURED fiducials node
+      self.step2_2_2_measuredFiducialList.setCurrentNode(self.measuredMarkupsFiducialNode)
 
-      # Show only the OBI fiducials in the 3D view
-      self.markupsLogic.SetAllMarkupsVisibility(self.measuredMarkupsFiducialNode, True)
-      self.markupsLogic.SetAllMarkupsVisibility(self.obiMarkupsFiducialNode, False)
+      # # Show only the OBI fiducials in the 3D view
+      # self.markupsLogic.SetAllMarkupsVisibility(self.measuredMarkupsFiducialNode, True)
+      # self.markupsLogic.SetAllMarkupsVisibility(self.obiMarkupsFiducialNode, False)
+
+      # Set measured fiducial list active
+      # measuredFiducialListActiveButton = slicer.util.findChildren(widget=self.step2_2_2_measuredFiducialList, className='QPushButton', name='ActiveButton')[0]
+      # measuredFiducialListActiveButton.click()
 
       # Automatically show MEASURED volume (show nothing if not present)
+      appLogic = slicer.app.applicationLogic()
+      selectionNode = appLogic.GetSelectionNode()
       if self.measuredVolumeNode != None:
         selectionNode.SetActiveVolumeID(self.measuredVolumeNode.GetID())
       else:
         selectionNode.SetActiveVolumeID(None)
       selectionNode.SetSecondaryVolumeID(None)
       appLogic.PropagateVolumeSelection() 
-    else:
-      # Delete temporary layout
-      currentLayout = self.step2_2_2_measuredFiducialSelectionCollapsibleButton.layout()
-      if currentLayout:
-        currentLayout.deleteLater()
-
-      # Show both fiducial lists in the 3D view
-      self.markupsLogic.SetAllMarkupsVisibility(self.obiMarkupsFiducialNode, True)
-      self.markupsLogic.SetAllMarkupsVisibility(self.measuredMarkupsFiducialNode, True)
 
   def onObiToPlanCTRegistration(self):
     # Start registration
@@ -1932,7 +1844,7 @@ class GelDosimetryAnalysis(ScriptedLoadableModule):
     ScriptedLoadableModule.__init__(self, parent) 
     parent.title = "Gel Dosimetry Analysis"
     parent.categories = ["Slicelets"]
-    parent.dependencies = ["GelDosimetryAnalysisAlgo", "DicomRtImportExport", "BRAINSFit", "BRAINSResample", "DoseComparison"]
+    parent.dependencies = ["GelDosimetryAnalysisAlgo", "DicomRtImportExport", "BRAINSFit", "BRAINSResample", "Markups", "DoseComparison"]
     parent.contributors = ["Csaba Pinter (Queen's University), Mattea Welch (Queen's University), Jennifer Andrea (Queen's University), Kevin Alexander (Kingston General Hospital)"] # replace with "Firstname Lastname (Org)"
     parent.helpText = "Slicelet for gel dosimetry analysis"
     parent.acknowledgementText = """
@@ -1954,6 +1866,7 @@ class GelDosimetryAnalysisWidget(ScriptedLoadableModuleWidget):
     # Show slicelet button
     launchSliceletButton = qt.QPushButton("Show slicelet")
     launchSliceletButton.toolTip = "Launch the slicelet"
+    self.layout.addWidget(qt.QLabel(' '))
     self.layout.addWidget(launchSliceletButton)
     launchSliceletButton.connect('clicked()', self.onShowSliceletButtonClicked)
 
@@ -1963,6 +1876,7 @@ class GelDosimetryAnalysisWidget(ScriptedLoadableModuleWidget):
   def onShowSliceletButtonClicked(self):
     mainFrame = SliceletMainFrame()
     mainFrame.setMinimumWidth(1200)
+    # mainFrame.
     mainFrame.connect('destroyed()', self.onSliceletClosed)
     slicelet = GelDosimetryAnalysisSlicelet(mainFrame)
     mainFrame.setSlicelet(slicelet)
