@@ -45,11 +45,11 @@ class SliceletMainFrame(qt.QDialog):
     import gc
     refs = gc.get_referrers(self.slicelet)
     if len(refs) > 1:
-      logging.debug('Stuck slicelet references (' + repr(len(refs)) + '):\n' + repr(refs))
+      # logging.debug('Stuck slicelet references (' + repr(len(refs)) + '):\n' + repr(refs))
+      pass
 
     slicer.gelDosimetrySliceletInstance = None
-    # self.slicelet.parent = None #TODO: Comment out these two lines because they cause a crash now when slicelet is closed
-    # self.slicelet = None
+    self.slicelet = None
     self.deleteLater()
 
 #
@@ -75,7 +75,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.selfTestButton = qt.QPushButton("Run self-test")
     self.sliceletPanelLayout.addWidget(self.selfTestButton)
     self.selfTestButton.connect('clicked()', self.onSelfTestButtonClicked)
-    #self.selfTestButton.setVisible(False) # TODO_ForTesting: Should be commented out for testing so the button shows up
+    self.selfTestButton.setVisible(False) # TODO_ForTesting: Should be commented out for testing so the button shows up
 
     # Initiate and group together all panels
     self.step0_layoutSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
@@ -139,6 +139,15 @@ class GelDosimetryAnalysisSlicelet(object):
     for compositeNode in compositeNodes.values():
       compositeNode.SetSliceIntersectionVisibility(1)
 
+    # Add layout widget
+    self.layoutWidget = slicer.qMRMLLayoutWidget()
+    self.layoutWidget.setMRMLScene(slicer.mrmlScene)
+    self.parent.layout().addWidget(self.layoutWidget,2)
+    self.onViewSelect(0)
+
+    # Create slice annotations for scalar bar support
+    self.sliceAnnotations = DataProbeLib.SliceAnnotations(self.layoutWidget.layoutManager())
+
     # Set up step panels
     self.setup_Step0_LayoutSelection()    
     self.setup_Step1_LoadData()
@@ -150,6 +159,9 @@ class GelDosimetryAnalysisSlicelet(object):
     if widgetClass:
       self.widget = widgetClass(self.parent)
     self.parent.show()
+
+  def __del__(self):
+    self.sliceAnnotations.layoutManager = None
 
   # Disconnect all connections made to the slicelet to enable the garbage collector to destruct the slicelet object on quit
   def disconnect(self):
@@ -221,15 +233,6 @@ class GelDosimetryAnalysisSlicelet(object):
     # self.step0_layoutSelectionCollapsibleButtonLayout.addRow(self.step0_modeSelectorLayout)
     self.step0_clinicalModeRadioButton.connect('toggled(bool)', self.onClinicalModeSelect)
     self.step0_preclinicalModeRadioButton.connect('toggled(bool)', self.onPreclinicalModeSelect)
-    
-    # Add layout widget
-    self.layoutWidget = slicer.qMRMLLayoutWidget()
-    self.layoutWidget.setMRMLScene(slicer.mrmlScene)
-    self.parent.layout().addWidget(self.layoutWidget,2)
-    self.onViewSelect(0)
-
-    # Create slice annotations for scalar bar support
-    self.sliceAnnotations = DataProbeLib.SliceAnnotations(self.layoutWidget.layoutManager())
 
   def setup_Step1_LoadData(self):
     # Step 1: Load data panel
@@ -708,13 +711,13 @@ class GelDosimetryAnalysisSlicelet(object):
     # Collapsible buttons for substeps
     self.step4_1_gammaDoseComparisonCollapsibleButton = ctk.ctkCollapsibleButton()
     self.step4_1_gammaDoseComparisonCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step4_1_gammaDoseComparisonCollapsibleButton.setVisible(False) # TODO
+    self.step4_1_gammaDoseComparisonCollapsibleButton.setVisible(False) # TODO:
     self.step4_2_chiDoseComparisonCollapsibleButton = ctk.ctkCollapsibleButton() #TODO:
     self.step4_2_chiDoseComparisonCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step4_2_chiDoseComparisonCollapsibleButton.setVisible(False) # TODO
+    self.step4_2_chiDoseComparisonCollapsibleButton.setVisible(False) # TODO:
     self.step4_3_doseDifferenceComparisonCollapsibleButton = ctk.ctkCollapsibleButton() #TODO:
     self.step4_3_doseDifferenceComparisonCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step4_3_doseDifferenceComparisonCollapsibleButton.setVisible(False) # TODO
+    self.step4_3_doseDifferenceComparisonCollapsibleButton.setVisible(False) # TODO:
 
     self.collapsibleButtonsGroupForDoseComparisonAndAnalysis = qt.QButtonGroup()
     self.collapsibleButtonsGroupForDoseComparisonAndAnalysis.addButton(self.step4_1_gammaDoseComparisonCollapsibleButton)
@@ -1640,11 +1643,12 @@ class GelDosimetryAnalysisSlicelet(object):
   #
   def onSelfTestButtonClicked(self):
     #TODO_ForTesting: Choose the testing method here
-    # self.performSelfTestFromScratch()
-    self.performSelfTestFromSavedScene()
+    self.performSelfTestFromScratch()
+    # self.performSelfTestFromSavedScene()
 
   def performSelfTestFromScratch(self):
     ### 1. Load test data
+    self.mode = 'Clinical'
     self.step1_loadDataCollapsibleButton.setChecked(True)
     planCtSeriesInstanceUid = '1.2.246.352.71.2.1706542068.3448830.20131009141316'
     obiSeriesInstanceUid = '1.2.246.352.61.2.5257103442752107062.11507227178299854732'
@@ -1745,7 +1749,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step4_1_gammaVolumeSelector.addNode()
     maskContourNodeID = 'vtkMRMLContourNode7'
     self.step4_maskContourSelector.setCurrentNodeID(maskContourNodeID)
-    # self.onGammaDoseComparison() # Uncomment if needed, takes a lot of time (~10s)
+    self.onGammaDoseComparison()
 
   def performSelfTestFromSavedScene(self):
     # Set variables. Only this section needs to be changed when testing new dataset
@@ -1808,7 +1812,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step4_doseComparisonCollapsibleButton.setChecked(True)
     self.step4_1_gammaVolumeSelector.addNode()
     self.step4_maskContourSelector.setCurrentNodeID(maskContourNodeID)
-    self.onGammaDoseComparison() #TODO: Uncomment if needed, takes a lot of time (~10s)
+    self.onGammaDoseComparison()
     
     qt.QApplication.restoreOverrideCursor()
 
@@ -1868,7 +1872,6 @@ class GelDosimetryAnalysisWidget(ScriptedLoadableModuleWidget):
     mainFrame.setSlicelet(slicelet)
 
     # Make the slicelet reachable from the Slicer python interactor for testing
-    # TODO_ForTesting: Should be uncommented for testing
     slicer.gelDosimetrySliceletInstance = slicelet
 
   def onSliceletClosed(self):
