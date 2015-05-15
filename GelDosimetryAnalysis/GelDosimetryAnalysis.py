@@ -5,7 +5,8 @@ from __main__ import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
 import logging
 import GelDosimetryAnalysisLogic
- 
+import DataProbeLib
+
 #
 # Gel dosimetry analysis slicelet
 #
@@ -100,7 +101,6 @@ class GelDosimetryAnalysisSlicelet(object):
     # Set up constants
     self.obiMarkupsFiducialNodeName = "OBI fiducials"
     self.measuredMarkupsFiducialNodeName = "MEASURED fiducials"
-    self.gammaScalarBarColorTableName = "GammaScalarBarColorTable"
     self.numberOfGammaLabels = 9
 	
     # Declare member variables (selected at certain steps and then from then on for the workflow)
@@ -118,8 +118,6 @@ class GelDosimetryAnalysisSlicelet(object):
     self.calibratedMeasuredVolumeNode = None
     self.maskContourNode = None
     self.gammaVolumeNode = None
-
-    self.gammaScalarBarWidget = None
 
     # Get markups logic
     self.markupsLogic = slicer.modules.markups.logic()
@@ -229,6 +227,9 @@ class GelDosimetryAnalysisSlicelet(object):
     self.layoutWidget.setMRMLScene(slicer.mrmlScene)
     self.parent.layout().addWidget(self.layoutWidget,2)
     self.onViewSelect(0)
+
+    # Create slice annotations for scalar bar support
+    self.sliceAnnotations = DataProbeLib.SliceAnnotations(self.layoutWidget.layoutManager())
 
   def setup_Step1_LoadData(self):
     # Step 1: Load data panel
@@ -343,7 +344,7 @@ class GelDosimetryAnalysisSlicelet(object):
     # Step 2.1: OBI to PLANCT registration panel    
     self.step2_1_obiToPlanCtRegistrationCollapsibleButton = ctk.ctkCollapsibleButton()
     self.step2_1_obiToPlanCtRegistrationCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step2_1_obiToPlanCtRegistrationCollapsibleButton.text = "2.1. Register OBI to planning CT"
+    self.step2_1_obiToPlanCtRegistrationCollapsibleButton.text = "2.1. Register planning CT to OBI"
     self.step2_registrationCollapsibleButtonLayout.addWidget(self.step2_1_obiToPlanCtRegistrationCollapsibleButton)
     self.step2_1_obiToPlanCtRegistrationLayout = qt.QFormLayout(self.step2_1_obiToPlanCtRegistrationCollapsibleButton)
     self.step2_1_obiToPlanCtRegistrationLayout.setContentsMargins(12,4,4,4)
@@ -356,7 +357,7 @@ class GelDosimetryAnalysisSlicelet(object):
 
     # OBI to PLANCT registration button
     self.step2_1_registerObiToPlanCtButton = qt.QPushButton("Perform registration")
-    self.step2_1_registerObiToPlanCtButton.toolTip = "Register OBI volume to planning CT volume"
+    self.step2_1_registerObiToPlanCtButton.toolTip = "Register planning CT volume to OBI volume"
     self.step2_1_registerObiToPlanCtButton.name = "step2_1_registerObiToPlanCtButton"
     self.step2_1_obiToPlanCtRegistrationLayout.addRow(self.step2_1_registerObiToPlanCtButton)
 
@@ -405,12 +406,12 @@ class GelDosimetryAnalysisSlicelet(object):
 
     # Create instructions label
     self.step2_2_2_instructionsLayout = qt.QHBoxLayout(self.step2_2_2_measuredFiducialSelectionCollapsibleButton)
-    self.measuredFiducialSelectionInfoLabel = qt.QLabel("Locate image plane of the gel dosimeter fiducials, then click the 'Place fiducials' button (blue arrow with red dot). Next, select the fiducial points in the displayed image plane.")
+    self.measuredFiducialSelectionInfoLabel = qt.QLabel("Select the fiducial points in the gel dosimeter volume in the same order as the OBI fiducials were selected.")
     self.measuredFiducialSelectionInfoLabel.wordWrap = True
     self.step2_2_2_helpLabel = qt.QLabel()
     self.step2_2_2_helpLabel.pixmap = qt.QPixmap(':Icons/Help.png')
     self.step2_2_2_helpLabel.maximumWidth = 24
-    self.step2_2_2_helpLabel.toolTip = "Hint: Use Shift key for '3D cursor' navigation.\nHint: If gel dosimetry volume is too dark or low contrast, press left mouse button on the image and drag it to change window/level"
+    self.step2_2_2_helpLabel.toolTip = "Hint: Use Shift key for '3D cursor' navigation.\nHint: If gel dosimeter volume is too dark or low contrast, press left mouse button on the image and drag it to change window/level"
     self.step2_2_2_instructionsLayout.addWidget(self.measuredFiducialSelectionInfoLabel)
     self.step2_2_2_instructionsLayout.addWidget(self.step2_2_2_helpLabel)
     self.step2_2_2_measuredFiducialSelectionLayout.addRow(self.step2_2_2_instructionsLayout)
@@ -484,6 +485,9 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step3_1_calibrationRoutineLayout = qt.QFormLayout(self.step3_1_calibrationRoutineCollapsibleButton)
     self.step3_1_calibrationRoutineLayout.setContentsMargins(12,4,4,4)
     self.step3_1_calibrationRoutineLayout.setSpacing(4)
+
+    # Info label
+    self.step3_1_calibrationRoutineLayout.addRow(qt.QLabel('Hint: Skip this step if calibration function is already available'))
 
     # Load Pdd data
     self.step3_1_pddLoadDataButton = qt.QPushButton("Load reference percent depth dose (PDD) data from CSV file")
@@ -604,34 +608,34 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step3_2_applyCalibrationLayout.addRow(self.step3_2_calibrationFunctionLabel)
 
     # Dose calibration function input fields
-    self.step3_2_calibrationFunctionLayout = qt.QHBoxLayout(self.step3_1_calibrationRoutineCollapsibleButton)
-    self.step3_2_doseLabel = qt.QLabel('Dose: ')
-    self.step3_2_doseLabel0LineEdit = qt.QLineEdit()
-    self.step3_2_doseLabel0LineEdit.maximumWidth = 32
-    self.step3_2_doseLabel0Label = qt.QLabel(' OD<span style=" font-size:8pt; vertical-align:super;">0</span> + ')
-    self.step3_2_doseLabel1LineEdit = qt.QLineEdit()
-    self.step3_2_doseLabel1LineEdit.maximumWidth = 32
-    self.step3_2_doseLabel1Label = qt.QLabel(' OD<span style=" font-size:8pt; vertical-align:super;">1</span> + ')
-    self.step3_2_doseLabel2LineEdit = qt.QLineEdit()
-    self.step3_2_doseLabel2LineEdit.maximumWidth = 32
-    self.step3_2_doseLabel2Label = qt.QLabel(' OD<span style=" font-size:8pt; vertical-align:super;">2</span> + ')
-    self.step3_2_doseLabel3LineEdit = qt.QLineEdit()
-    self.step3_2_doseLabel3LineEdit.maximumWidth = 32
-    self.step3_2_doseLabel3Label = qt.QLabel(' OD<span style=" font-size:8pt; vertical-align:super;">3</span> + ')
-    self.step3_2_doseLabel4LineEdit = qt.QLineEdit()
-    self.step3_2_doseLabel4LineEdit.maximumWidth = 32
-    self.step3_2_doseLabel4Label = qt.QLabel(' OD<span style=" font-size:8pt; vertical-align:super;">4</span>')
-    self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_doseLabel)
-    self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_doseLabel0LineEdit)
-    self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_doseLabel0Label)
-    self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_doseLabel1LineEdit)
-    self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_doseLabel1Label)
-    self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_doseLabel2LineEdit)
-    self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_doseLabel2Label)
-    self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_doseLabel3LineEdit)
-    self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_doseLabel3Label)
-    self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_doseLabel4LineEdit)
-    self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_doseLabel4Label)
+    self.step3_2_calibrationFunctionLayout = qt.QGridLayout(self.step3_1_calibrationRoutineCollapsibleButton)
+    self.step3_2_doseLabel = qt.QLabel('Dose (Gy) = ')
+    self.step3_2_calibrationFunctionOrder0LineEdit = qt.QLineEdit()
+    self.step3_2_calibrationFunctionOrder0LineEdit.maximumWidth = 64
+    self.step3_2_calibrationFunctionOrder0Label = qt.QLabel(' OD<span style=" font-size:8pt; vertical-align:super;">0</span> + ')
+    self.step3_2_calibrationFunctionOrder1LineEdit = qt.QLineEdit()
+    self.step3_2_calibrationFunctionOrder1LineEdit.maximumWidth = 64
+    self.step3_2_calibrationFunctionOrder1Label = qt.QLabel(' OD<span style=" font-size:8pt; vertical-align:super;">1</span> + ')
+    self.step3_2_calibrationFunctionOrder2LineEdit = qt.QLineEdit()
+    self.step3_2_calibrationFunctionOrder2LineEdit.maximumWidth = 64
+    self.step3_2_calibrationFunctionOrder2Label = qt.QLabel(' OD<span style=" font-size:8pt; vertical-align:super;">2</span> + ')
+    self.step3_2_calibrationFunctionOrder3LineEdit = qt.QLineEdit()
+    self.step3_2_calibrationFunctionOrder3LineEdit.maximumWidth = 64
+    self.step3_2_calibrationFunctionOrder3Label = qt.QLabel(' OD<span style=" font-size:8pt; vertical-align:super;">3</span> + ')
+    self.step3_2_calibrationFunctionOrder4LineEdit = qt.QLineEdit()
+    self.step3_2_calibrationFunctionOrder4LineEdit.maximumWidth = 64
+    self.step3_2_calibrationFunctionOrder4Label = qt.QLabel(' OD<span style=" font-size:8pt; vertical-align:super;">4</span>')
+    self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_doseLabel,0,0)
+    self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_calibrationFunctionOrder0LineEdit,0,1)
+    self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_calibrationFunctionOrder0Label,0,2)
+    self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_calibrationFunctionOrder1LineEdit,0,3)
+    self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_calibrationFunctionOrder1Label,0,4)
+    self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_calibrationFunctionOrder2LineEdit,0,5)
+    self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_calibrationFunctionOrder2Label,0,6)
+    self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_calibrationFunctionOrder3LineEdit,1,1)
+    self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_calibrationFunctionOrder3Label,1,2)
+    self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_calibrationFunctionOrder4LineEdit,1,3)
+    self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_calibrationFunctionOrder4Label,1,4)
     self.step3_2_applyCalibrationLayout.addRow(self.step3_2_calibrationFunctionLayout)
 
     # Export calibration polynomial coefficients to CSV
@@ -682,6 +686,14 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step4_doseComparisonCollapsibleButtonLayout = qt.QFormLayout(self.step4_doseComparisonCollapsibleButton)
     self.step4_doseComparisonCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
     self.step4_doseComparisonCollapsibleButtonLayout.setSpacing(4)
+
+    # Info label
+    self.step4_doseComparisonReferenceVolumeLabel = qt.QLabel('Calibration has not been performed!')
+    self.step4_doseComparisonReferenceVolumeLabel.wordWrap = True
+    self.step4_doseComparisonCollapsibleButtonLayout.addRow('Plan dose volume (reference):', self.step4_doseComparisonReferenceVolumeLabel)
+    self.step4_doseComparisonEvaluatedVolumeLabel = qt.QLabel('Calibration has not been performed!')
+    self.step4_doseComparisonEvaluatedVolumeLabel.wordWrap = True
+    self.step4_doseComparisonCollapsibleButtonLayout.addRow('Calibrated gel volume (evaluated):', self.step4_doseComparisonEvaluatedVolumeLabel)
 
     # Mask contour selector
     self.step4_maskContourSelector = slicer.qMRMLNodeComboBox()
@@ -820,9 +832,6 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step4_doseComparisonCollapsibleButtonLayout.addRow(self.step4_3_doseDifferenceComparisonCollapsibleButton)
     self.step4_3_doseDifferenceComparisonCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
     self.step4_3_doseDifferenceComparisonCollapsibleButtonLayout.setSpacing(4)
-
-    # Scalar bar
-    self.gammaScalarBarWidget = vtk.vtkScalarBarWidget()
 
     # Make sure first panels appear when steps are first opened (done before connections to avoid
     # executing those steps, which are only needed when actually switching there during the workflow)
@@ -1040,7 +1049,7 @@ class GelDosimetryAnalysisSlicelet(object):
     errorRms = self.logic.registerObiToMeasured(self.obiMarkupsFiducialNode.GetID(), self.measuredMarkupsFiducialNode.GetID())
     
     # Show registration error on GUI
-    self.step2_2_3_measuredToObiFiducialRegistrationErrorLabel.setText(errorRms)
+    self.step2_2_3_measuredToObiFiducialRegistrationErrorLabel.setText(str(errorRms) + ' mm')
 
     # Apply transform to MEASURED volume
     obiToMeasuredTransformNode = slicer.util.getNode(self.logic.obiToMeasuredTransformName)
@@ -1307,11 +1316,11 @@ class GelDosimetryAnalysisSlicelet(object):
 
     # Clear line edits
     for order in xrange(5):
-      exec("self.step3_2_doseLabel{0}LineEdit.text = ''".format(order))
+      exec("self.step3_2_calibrationFunctionOrder{0}LineEdit.text = ''".format(order))
     # Show polynomial on GUI (highest order first in the coefficients list)
     for orderIndex in xrange(maxOrder+1):
       order = maxOrder-orderIndex
-      exec("self.step3_2_doseLabel{0}LineEdit.text = {1}".format(order,p[orderIndex]))
+      exec("self.step3_2_calibrationFunctionOrder{0}LineEdit.text = {1:.6f}".format(order,p[orderIndex]))
     # Show residuals
     self.step3_1_fitPolynomialResidualsLabel.text = "Residuals of the least-squares fit of the polynomial: {0:.3f}".format(residuals[0])
 
@@ -1354,7 +1363,7 @@ class GelDosimetryAnalysisSlicelet(object):
     # Determine the number of orders based on the input fields
     maxOrder = 0
     for order in xrange(5):
-      exec("lineEditText = self.step3_2_doseLabel{0}LineEdit.text".format(order))
+      exec("lineEditText = self.step3_2_calibrationFunctionOrder{0}LineEdit.text".format(order))
       try:
         coefficient = float(lineEditText)
         if coefficient != 0:
@@ -1362,9 +1371,9 @@ class GelDosimetryAnalysisSlicelet(object):
       except:
         pass
     # Initialize all coefficients to zero in the coefficients list
-    self.logic.calibrationPolynomialCoefficients = [0]*(maxOrder+1)
+    self.logic.calibrationPolynomialCoefficients = numpy.zeros(maxOrder+1)
     for order in xrange(maxOrder+1):
-      exec("lineEditText = self.step3_2_doseLabel{0}LineEdit.text".format(order))
+      exec("lineEditText = self.step3_2_calibrationFunctionOrder{0}LineEdit.text".format(order))
       try:
         self.logic.calibrationPolynomialCoefficients[maxOrder-order] = float(lineEditText)
       except:
@@ -1373,7 +1382,7 @@ class GelDosimetryAnalysisSlicelet(object):
   def onExportCalibration(self):
     # Set calibration polynomial coefficients from input fields to logic
     self.setCalibrationFunctionCoefficientsToLogic()
-    
+
     # Export
     result = self.logic.exportCalibrationToCSV()
     qt.QMessageBox.information(None, 'Calibration values exported', result)
@@ -1398,28 +1407,36 @@ class GelDosimetryAnalysisSlicelet(object):
     appLogic.PropagateVolumeSelection() 
 
     # Set window/level options for the calibrated dose
-    calibratedVolumeDisplayNode = self.calibratedMeasuredVolumeNode.GetDisplayNode()
-    odVsDoseNumberOfRows = self.logic.opticalDensityVsDoseFunction.shape[0]
-    minDose = self.logic.opticalDensityVsDoseFunction[0, 1]
-    maxDose = self.logic.opticalDensityVsDoseFunction[odVsDoseNumberOfRows-1, 1]
-    minWindowLevel = minDose - (maxDose-minDose)*0.2
-    maxWindowLevel = maxDose + (maxDose-minDose)*0.2
-    calibratedVolumeDisplayNode.AutoWindowLevelOff();
-    calibratedVolumeDisplayNode.SetWindowLevelMinMax(minWindowLevel, maxWindowLevel);
+    if self.logic.opticalDensityVsDoseFunction != None:
+      calibratedVolumeDisplayNode = self.calibratedMeasuredVolumeNode.GetDisplayNode()
+      odVsDoseNumberOfRows = self.logic.opticalDensityVsDoseFunction.shape[0]
+      minDose = self.logic.opticalDensityVsDoseFunction[0, 1]
+      maxDose = self.logic.opticalDensityVsDoseFunction[odVsDoseNumberOfRows-1, 1]
+      minWindowLevel = minDose - (maxDose-minDose)*0.2
+      maxWindowLevel = maxDose + (maxDose-minDose)*0.2
+      calibratedVolumeDisplayNode.AutoWindowLevelOff();
+      calibratedVolumeDisplayNode.SetWindowLevelMinMax(minWindowLevel, maxWindowLevel);
 
     # Set calibrated dose to dose comparison step input
-    # self.step4_measuredDoseSelector.setCurrentNode(self.calibratedMeasuredVolumeNode)
+    self.refreshDoseComparisonInfoLabel()
+    
+  def refreshDoseComparisonInfoLabel(self):
+    if self.planDoseVolumeNode == None:
+      self.step4_doseComparisonReferenceVolumeLabel.text = 'Invalid plan dose volume!'
+    else:
+      self.step4_doseComparisonReferenceVolumeLabel.text = self.planDoseVolumeNode.GetName()
+    if self.calibratedMeasuredVolumeNode == None:
+      self.step4_doseComparisonEvaluatedVolumeLabel.text = 'Invalid calibrated gel dosimeter volume!'
+    else:
+      self.step4_doseComparisonEvaluatedVolumeLabel.text = self.calibratedMeasuredVolumeNode.GetName()
 
   def onStep4_DoseComparisonSelected(self, collapsed):
-    # Set plan dose volume to selector
+    # Turn scalar bar on/off
     if collapsed == False:
-      gammaScalarBarColorTable = slicer.util.getNode(self.gammaScalarBarColorTableName)
-      if gammaScalarBarColorTable != None:
-        self.gammaScalarBarWidget.SetEnabled(1)
-        self.gammaScalarBarWidget.Render()
+      self.sliceAnnotations.showColorScalarBar = 1
     else:
-      self.gammaScalarBarWidget.SetEnabled(0)
-      self.gammaScalarBarWidget.Render()
+      self.sliceAnnotations.showColorScalarBar = 0
+    self.sliceAnnotations.updateSliceViewFromGUI()
 
   def onStep4_MaskContourSelectionChanged(self, node):
     # Use subject hierarchy to properly toggle visibility, slice intersections and all
@@ -1452,7 +1469,6 @@ class GelDosimetryAnalysisSlicelet(object):
       self.gammaParameterSetNode = vtkSlicerDoseComparisonModuleLogic.vtkMRMLDoseComparisonNode()
       slicer.mrmlScene.AddNode(self.gammaParameterSetNode)
       self.gammaParameterSetNode.SetAndObserveReferenceDoseVolumeNode(self.planDoseVolumeNode)
-      # self.gammaParameterSetNode.SetAndObserveCompareDoseVolumeNode(self.step4_measuredDoseSelector.currentNode())
       self.gammaParameterSetNode.SetAndObserveCompareDoseVolumeNode(self.calibratedMeasuredVolumeNode)
       self.gammaParameterSetNode.SetAndObserveMaskContourNode(self.maskContourNode)
       self.gammaParameterSetNode.SetAndObserveGammaVolumeNode(self.gammaVolumeNode)
@@ -1488,7 +1504,7 @@ class GelDosimetryAnalysisSlicelet(object):
       from vtkSlicerSubjectHierarchyModuleMRML import vtkMRMLSubjectHierarchyNode
       maskContourShNode = vtkMRMLSubjectHierarchyNode.GetAssociatedSubjectHierarchyNode(self.maskContourNode)
       maskContourShNode.SetDisplayVisibilityForBranch(1)
-      
+
       # Show gamma slice in 3D view
       layoutManager = self.layoutWidget.layoutManager()
       sliceViewerNames = layoutManager.sliceViewNames()
@@ -1506,58 +1522,6 @@ class GelDosimetryAnalysisSlicelet(object):
       gammaDisplayNode.ApplyThresholdOn()
       gammaDisplayNode.AutoThresholdOff()
       gammaDisplayNode.SetLowerThreshold(0.001)
-
-      # Create scalar bar
-      import vtkSlicerColorsModuleVTKWidgets
-      gammaScalarBarActor = vtkSlicerColorsModuleVTKWidgets.vtkSlicerScalarBarActor()
-      gammaScalarBarActor.SetOrientationToVertical()
-      gammaScalarBarActor.SetNumberOfLabels(self.numberOfGammaLabels)
-      gammaScalarBarTitleTextProps = gammaScalarBarActor.GetTitleTextProperty()
-      gammaScalarBarTitleTextProps.SetFontSize(8)
-      gammaScalarBarActor.SetTitleTextProperty(gammaScalarBarTitleTextProps)
-      gammaScalarBarActor.SetTitle('gamma')
-      gammaScalarBarActor.SetLabelFormat('%.8s')
-      gammaScalarBarActor.SetPosition(0.1, 0.1)
-      gammaScalarBarActor.SetWidth(0.1)
-      gammaScalarBarActor.SetHeight(0.8)
-      
-      # Add scalar bar
-      layoutManager = self.layoutWidget.layoutManager()
-      sliceViewerNames = layoutManager.sliceViewNames()
-      sliceViewerWidgetRed = layoutManager.sliceWidget(sliceViewerNames[0])
-      sliceViewRed = sliceViewerWidgetRed.sliceView()
-      sliceViewerWidgetRedInteractorStyle = sliceViewerWidgetRed.interactorStyle()
-      self.gammaScalarBarWidget.SetInteractor(sliceViewerWidgetRedInteractorStyle.GetInteractor())
-
-      # Setup scalar bar colors and labels
-      gammaColorTable = slicer.util.getNode('Gamma_Color*')
-      if gammaColorTable != None:
-        gammaScalarBarColorTable = slicer.util.getNode(self.gammaScalarBarColorTableName)
-        if gammaScalarBarColorTable == None:
-          gammaScalarBarColorTable = slicer.vtkMRMLColorTableNode()
-          gammaScalarBarColorTable.SetName(self.gammaScalarBarColorTableName)
-          gammaScalarBarColorTable.SetTypeToUser()
-          gammaScalarBarColorTable.SetAttribute('Category','GelDosimetry')
-          gammaScalarBarColorTable.HideFromEditorsOn()
-          slicer.mrmlScene.AddNode(gammaScalarBarColorTable)
-        gammaScalarBarColorTable.SetNumberOfColors(self.numberOfGammaLabels)
-        gammaScalarBarColorTableLookupTable = gammaScalarBarColorTable.GetLookupTable()
-        gammaScalarBarColorTableLookupTable.SetTableRange(0,self.numberOfGammaLabels-1)
-        gammaLookupTable = gammaColorTable.GetLookupTable()
-        for colorIndex in xrange(self.numberOfGammaLabels):
-          interpolatedColor = [0]*3
-          gammaLookupTable.GetColor(256*colorIndex/(self.numberOfGammaLabels-1), interpolatedColor)
-          colorName = '{0:.2f}'.format(maximumGamma*colorIndex/(self.numberOfGammaLabels-1))
-          gammaScalarBarColorTableLookupTable.SetAnnotation(colorIndex, colorName)
-          gammaScalarBarColorTable.AddColor(colorName, interpolatedColor[0], interpolatedColor[1], interpolatedColor[2])
-          # logging.debug('Name: ' + colorName + '  Color' + repr(interpolatedColor)) #TODO remove
-        gammaScalarBarActor.UseAnnotationAsLabelOn()
-        gammaScalarBarActor.SetLookupTable(gammaScalarBarColorTableLookupTable)
-        self.gammaScalarBarWidget.SetScalarBarActor(gammaScalarBarActor)
-        self.gammaScalarBarWidget.SetEnabled(1)
-        self.gammaScalarBarWidget.Render()
-      else:
-        logging.error('Unable to find gamma color table!')
 
       # Center 3D view
       layoutManager = self.layoutWidget.layoutManager()
@@ -1577,25 +1541,26 @@ class GelDosimetryAnalysisSlicelet(object):
       qt.QMessageBox.information(None, 'Gamma computation report missing', 'No report available!')
     
   def onStepT1_LineProfileSelected(self, collapsed):
+    appLogic = slicer.app.applicationLogic()
+    selectionNode = appLogic.GetSelectionNode()
+
     # Change to quantitative view on enter, change back on leave
     if collapsed == False:
       self.currentLayoutIndex = self.step0_viewSelectorComboBox.currentIndex
       self.onViewSelect(5)
+
+      # Switch to place ruler mode
+      selectionNode.SetReferenceActivePlaceNodeClassName("vtkMRMLAnnotationRulerNode")
     else:
       self.onViewSelect(self.currentLayoutIndex)
 
     # Show dose volumes
-    appLogic = slicer.app.applicationLogic()
-    selectionNode = appLogic.GetSelectionNode()
     if self.planDoseVolumeNode:
       selectionNode.SetActiveVolumeID(self.planDoseVolumeNode.GetID())
     if self.calibratedMeasuredVolumeNode:
       selectionNode.SetSecondaryVolumeID(self.calibratedMeasuredVolumeNode.GetID())
     appLogic = slicer.app.applicationLogic()
     appLogic.PropagateVolumeSelection()
-
-    # Switch to place ruler mode
-    selectionNode.SetReferenceActivePlaceNodeClassName("vtkMRMLAnnotationRulerNode")
 
   def onCreateLineProfileButton(self):
     # Create array nodes for the results
@@ -1674,9 +1639,9 @@ class GelDosimetryAnalysisSlicelet(object):
   # -------------------------
   #
   def onSelfTestButtonClicked(self):
-    # TODO_ForTesting: Choose the testing method here
-    self.performSelfTestFromScratch()
-    # self.performSelfTestFromSavedScene()
+    #TODO_ForTesting: Choose the testing method here
+    # self.performSelfTestFromScratch()
+    self.performSelfTestFromSavedScene()
 
   def performSelfTestFromScratch(self):
     ### 1. Load test data
@@ -1859,7 +1824,7 @@ class GelDosimetryAnalysis(ScriptedLoadableModule):
     ScriptedLoadableModule.__init__(self, parent) 
     parent.title = "Gel Dosimetry Analysis"
     parent.categories = ["Slicelets"]
-    parent.dependencies = ["GelDosimetryAnalysisAlgo", "DicomRtImportExport", "BRAINSFit", "BRAINSResample", "Markups", "DoseComparison"]
+    parent.dependencies = ["GelDosimetryAnalysisAlgo", "DicomRtImportExport", "BRAINSFit", "BRAINSResample", "Markups", "DataProbe", "DoseComparison"]
     parent.contributors = ["Csaba Pinter (Queen's University), Mattea Welch (Queen's University), Jennifer Andrea (Queen's University), Kevin Alexander (Kingston General Hospital)"] # replace with "Firstname Lastname (Org)"
     parent.helpText = "Slicelet for gel dosimetry analysis"
     parent.acknowledgementText = """

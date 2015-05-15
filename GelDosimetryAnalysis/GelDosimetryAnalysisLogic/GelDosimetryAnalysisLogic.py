@@ -76,9 +76,9 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
 
       waitCount = 0
       while cliBrainsFitRigidNode.GetStatusString() != 'Completed' and waitCount < 200:
-        self.delayDisplay( "Register OBI to PlanCT using rigid registration... %d" % waitCount )
+        self.delayDisplay( "Register PlanCT to OBI using rigid registration... %d" % waitCount )
         waitCount += 1
-      self.delayDisplay("Register OBI to PlanCT using rigid registration finished")
+      self.delayDisplay("Register PlanCT to OBI using rigid registration finished")
       qt.QApplication.restoreOverrideCursor()
 
       # Invert output transform (planToObi) to get the desired obiToPlan transform
@@ -463,21 +463,21 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     self.outputDir = slicer.app.temporaryPath + '/GelDosimetry'
     if not os.access(self.outputDir, os.F_OK):
       os.mkdir(self.outputDir)
-    if not hasattr(self, 'opticalDensityVsDoseFunction'):
-      return 'Optical density to dose values (calibration curve) not computed yet!\nClick Show in step 4/B to compute the curve.\n'
 
     # Assemble file name for calibration curve points file
     from time import gmtime, strftime
     fileName = self.outputDir + '/' + strftime("%Y%m%d_%H%M%S_", gmtime()) + 'ODvsDosePoints.csv'
 
     # Write calibration curve points CSV file
-    message = 'Optical density to dose values saved in file\n' + fileName + '\n\n'
-    with open(fileName, 'w') as fp:
-      csvWriter = csv.writer(fp, delimiter=',', lineterminator='\n')
-      data = [['OpticalDensity','Dose']]
-      for odVsDosePoint in self.opticalDensityVsDoseFunction:
-        data.append(odVsDosePoint)
-      csvWriter.writerows(data)
+    message = ''
+    if self.opticalDensityVsDoseFunction != None:
+      message = 'Optical density to dose values saved in file\n' + fileName + '\n\n'
+      with open(fileName, 'w') as fp:
+        csvWriter = csv.writer(fp, delimiter=',', lineterminator='\n')
+        data = [['OpticalDensity','Dose']]
+        for odVsDosePoint in self.opticalDensityVsDoseFunction:
+          data.append(odVsDosePoint)
+        csvWriter.writerows(data)
 
     # Assemble file name for polynomial coefficients
     if not hasattr(self, 'calibrationPolynomialCoefficients'):
@@ -494,7 +494,8 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
       # Highest order first in the coefficients list
       for orderIndex in xrange(numOfOrders):
         data.append([numOfOrders-orderIndex-1, self.calibrationPolynomialCoefficients[orderIndex]])
-      data.append(['Residuals', self.fittingResiduals[0]])
+      if hasattr(self,'fittingResiduals'):
+        data.append(['Residuals', self.fittingResiduals[0]])
       csvWriter.writerows(data)
     
     return message
@@ -519,7 +520,7 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
       calibratedVolume.SetAndObserveTransformNodeID(measuredVolume.GetParentTransformNode().GetID())
 
     coefficients = numpy_support.numpy_to_vtk(self.calibrationPolynomialCoefficients)
-    
+
     import vtkSlicerGelDosimetryAnalysisAlgoModuleLogic
     if slicer.modules.geldosimetryanalysisalgo.logic().ApplyPolynomialFunctionOnVolume(calibratedVolume, coefficients) == False:
       logging.error('Calibration failed!')
