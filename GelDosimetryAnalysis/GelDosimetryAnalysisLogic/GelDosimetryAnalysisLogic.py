@@ -98,13 +98,8 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
       
       # Apply transform to plan structures
       planStructuresNode = slicer.mrmlScene.GetNodeByID(planStructuresID)
-      childrenContours = vtk.vtkCollection()
       if planStructuresNode != None:
-        planStructuresNode.GetAssociatedChildrenNodes(childrenContours)
-      for contourIndex in xrange(childrenContours.GetNumberOfItems()):
-        contour = childrenContours.GetItemAsObject(contourIndex)
-        if contour.IsA('vtkMRMLContourNode'): # There is one color table node in the collection, ignore it
-          contour.SetAndObserveTransformNodeID(obiToPlanTransformNode.GetID())
+        planStructuresNode.SetAndObserveTransformNodeID(obiToPlanTransformNode.GetID())
 
     except Exception, e:
       import traceback

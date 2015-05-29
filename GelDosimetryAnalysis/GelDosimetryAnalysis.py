@@ -116,7 +116,8 @@ class GelDosimetryAnalysisSlicelet(object):
     self.obiMarkupsFiducialNode = None
     self.measuredMarkupsFiducialNode = None
     self.calibratedMeasuredVolumeNode = None
-    self.maskContourNode = None
+    self.maskSegmentationNode = None
+    self.maskSegmentID = None
     self.gammaVolumeNode = None
 
     # Get markups logic
@@ -186,7 +187,8 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step3_2_exportCalibrationToCSV.disconnect('clicked()', self.onExportCalibration)
     self.step3_2_applyCalibrationButton.disconnect('clicked()', self.onApplyCalibration)
     self.step4_doseComparisonCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep4_DoseComparisonSelected)
-    self.step4_maskContourSelector.disconnect('currentNodeChanged(vtkMRMLNode*)', self.onStep4_MaskContourSelectionChanged)
+    self.step4_maskSegmentationSelector.disconnect('currentNodeChanged(vtkMRMLNode*)', self.onStep4_MaskSegmentationSelectionChanged)
+    self.step4_maskSegmentationSelector.disconnect('currentSegmentChanged(QString)', self.onStep4_MaskSegmentSelectionChanged)
     self.step4_1_referenceDoseUseMaximumDoseRadioButton.disconnect('toggled(bool)', self.onUseMaximumDoseRadioButtonToggled)
     self.step4_1_computeGammaButton.disconnect('clicked()', self.onGammaDoseComparison)
     self.step4_1_showGammaReportButton.disconnect('clicked()', self.onShowGammaReport)
@@ -268,7 +270,6 @@ class GelDosimetryAnalysisSlicelet(object):
     # PLANCT node selector
     self.planCTSelector = slicer.qMRMLNodeComboBox()
     self.planCTSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
-    self.planCTSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 0 )
     self.planCTSelector.addEnabled = False
     self.planCTSelector.removeEnabled = False
     self.planCTSelector.setMRMLScene( slicer.mrmlScene )
@@ -278,7 +279,6 @@ class GelDosimetryAnalysisSlicelet(object):
     # PLANDOSE node selector
     self.planDoseSelector = slicer.qMRMLNodeComboBox()
     self.planDoseSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
-    self.planDoseSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 0 )
     self.planDoseSelector.addEnabled = False
     self.planDoseSelector.removeEnabled = False
     self.planDoseSelector.setMRMLScene( slicer.mrmlScene )
@@ -287,8 +287,7 @@ class GelDosimetryAnalysisSlicelet(object):
 
     # PLANSTRUCTURES node selector
     self.planStructuresSelector = slicer.qMRMLNodeComboBox()
-    self.planStructuresSelector.nodeTypes = ( ("vtkMRMLSubjectHierarchyNode"), "" )
-    self.planStructuresSelector.addAttribute( "vtkMRMLSubjectHierarchyNode", "DicomRtImport.ContourHierarchy", 1 )
+    self.planStructuresSelector.nodeTypes = ( ("vtkMRMLSegmentationNode"), "" )
     self.planStructuresSelector.noneEnabled = True
     self.planStructuresSelector.addEnabled = False
     self.planStructuresSelector.removeEnabled = False
@@ -299,7 +298,6 @@ class GelDosimetryAnalysisSlicelet(object):
     # OBI node selector
     self.obiSelector = slicer.qMRMLNodeComboBox()
     self.obiSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
-    self.obiSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 0 )
     self.obiSelector.addEnabled = False
     self.obiSelector.removeEnabled = False
     self.obiSelector.setMRMLScene( slicer.mrmlScene )
@@ -309,7 +307,6 @@ class GelDosimetryAnalysisSlicelet(object):
     # MEASURED node selector
     self.measuredVolumeSelector = slicer.qMRMLNodeComboBox()
     self.measuredVolumeSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
-    self.measuredVolumeSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 0 )
     self.measuredVolumeSelector.addEnabled = False
     self.measuredVolumeSelector.removeEnabled = False
     self.measuredVolumeSelector.setMRMLScene( slicer.mrmlScene )
@@ -319,7 +316,6 @@ class GelDosimetryAnalysisSlicelet(object):
     # CALIBRATION node selector
     self.calibrationVolumeSelector = slicer.qMRMLNodeComboBox()
     self.calibrationVolumeSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
-    self.calibrationVolumeSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 0 )
     self.calibrationVolumeSelector.noneEnabled = True
     self.calibrationVolumeSelector.addEnabled = False
     self.calibrationVolumeSelector.removeEnabled = False
@@ -695,15 +691,12 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step4_doseComparisonEvaluatedVolumeLabel.wordWrap = True
     self.step4_doseComparisonCollapsibleButtonLayout.addRow('Calibrated gel volume (evaluated):', self.step4_doseComparisonEvaluatedVolumeLabel)
 
-    # Mask contour selector
-    self.step4_maskContourSelector = slicer.qMRMLNodeComboBox()
-    self.step4_maskContourSelector.nodeTypes = ( ("vtkMRMLContourNode"), "" )
-    self.step4_maskContourSelector.addEnabled = False
-    self.step4_maskContourSelector.removeEnabled = False
-    self.step4_maskContourSelector.noneEnabled = True
-    self.step4_maskContourSelector.setMRMLScene( slicer.mrmlScene )
-    self.step4_maskContourSelector.setToolTip( "Pick the mask contour that determines the considered region for comparison." )
-    self.step4_doseComparisonCollapsibleButtonLayout.addRow("Mask contour: ", self.step4_maskContourSelector)
+    # Mask segmentation selector
+    from qSlicerSegmentationsModuleWidgetsPythonQt import qMRMLSegmentSelectorWidget
+    self.step4_maskSegmentationSelector = qMRMLSegmentSelectorWidget()
+    self.step4_maskSegmentationSelector.setMRMLScene(slicer.mrmlScene)
+    self.step4_maskSegmentationSelector.noneEnabled = True
+    self.step4_doseComparisonCollapsibleButtonLayout.addRow("Mask structure: ", self.step4_maskSegmentationSelector)
 
     # Collapsible buttons for substeps
     self.step4_1_gammaDoseComparisonCollapsibleButton = ctk.ctkCollapsibleButton()
@@ -840,7 +833,8 @@ class GelDosimetryAnalysisSlicelet(object):
 
     # Connections
     self.step4_doseComparisonCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep4_DoseComparisonSelected)
-    self.step4_maskContourSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onStep4_MaskContourSelectionChanged)
+    self.step4_maskSegmentationSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onStep4_MaskSegmentationSelectionChanged)
+    self.step4_maskSegmentationSelector.connect('currentSegmentChanged(QString)', self.onStep4_MaskSegmentSelectionChanged)
     self.step4_1_referenceDoseUseMaximumDoseRadioButton.connect('toggled(bool)', self.onUseMaximumDoseRadioButtonToggled)
     self.step4_1_computeGammaButton.connect('clicked()', self.onGammaDoseComparison)
     self.step4_1_showGammaReportButton.connect('clicked()', self.onShowGammaReport)
@@ -988,7 +982,7 @@ class GelDosimetryAnalysisSlicelet(object):
       appLogic.PropagateVolumeSelection()
     else:
       # Turn off fiducial place mode
-      interactionNode.SwitchToPersistentPlaceMode()
+      interactionNode.SwitchToViewTransformMode()
 
   def onStep2_2_2_MeasuredFiducialCollectionSelected(self, collapsed):
     appLogic = slicer.app.applicationLogic()
@@ -1013,7 +1007,7 @@ class GelDosimetryAnalysisSlicelet(object):
       appLogic.PropagateVolumeSelection() 
     else:
       # Turn off fiducial place mode
-      interactionNode.SwitchToPersistentPlaceMode()
+      interactionNode.SwitchToViewTransformMode()
 
   def onObiToPlanCTRegistration(self):
     # Start registration
@@ -1039,7 +1033,7 @@ class GelDosimetryAnalysisSlicelet(object):
       compositeNode.SetForegroundOpacity(0.5)
     # Hide structures for sake of speed
     if self.planStructuresNode != None:
-      self.planStructuresNode.SetDisplayVisibilityForBranch(0)
+      self.planStructuresNode.GetDisplayNode().SetVisibility(0)
     # Hide beam models
     beamModelsParent = slicer.util.getNode('*_BeamModels_SubjectHierarchy')
     if beamModelsParent != None:
@@ -1438,20 +1432,35 @@ class GelDosimetryAnalysisSlicelet(object):
       self.sliceAnnotations.showColorScalarBar = 0
     self.sliceAnnotations.updateSliceViewFromGUI()
 
-  def onStep4_MaskContourSelectionChanged(self, node):
-    # Use subject hierarchy to properly toggle visibility, slice intersections and all
-    from vtkSlicerSubjectHierarchyModuleMRML import vtkMRMLSubjectHierarchyNode
-    # Hide previously selected mask contour
-    if self.maskContourNode != None:
-      maskContourShNode = vtkMRMLSubjectHierarchyNode.GetAssociatedSubjectHierarchyNode(self.maskContourNode)
-      maskContourShNode.SetDisplayVisibilityForBranch(0)
-    # Set new mask contour
-    self.maskContourNode = node
-    # Show new mask contour
-    if self.maskContourNode != None:
-      maskContourShNode = vtkMRMLSubjectHierarchyNode.GetAssociatedSubjectHierarchyNode(self.maskContourNode)
-      maskContourShNode.SetDisplayVisibilityForBranch(1)
+  def onStep4_MaskSegmentationSelectionChanged(self, node):
+    # Hide previously selected mask segmentation
+    if self.maskSegmentationNode != None:
+      self.maskSegmentationNode.GetDisplayNode().SetVisibility(0)
+    # Set new mask segmentation
+    self.maskSegmentationNode = node
+    self.onStep4_MaskSegmentSelectionChanged(self.step4_maskSegmentationSelector.currentSegmentID())
+    # Show new mask segmentation
+    if self.maskSegmentationNode != None:
+      self.maskSegmentationNode.GetDisplayNode().SetVisibility(1)
 
+  def onStep4_MaskSegmentSelectionChanged(self, segmentID):
+    if self.maskSegmentationNode == None:
+      return
+    # Set new mask segment
+    self.maskSegmentID = segmentID
+    # Show new mask segment
+    if self.maskSegmentID != None and self.maskSegmentID != '':
+      # Hide other segments
+      import vtkSegmentationCore
+      segmentIDs = vtk.vtkStringArray()
+      self.maskSegmentationNode.GetSegmentation().GetSegmentIDs(segmentIDs)
+      for segmentIndex in xrange(0,segmentIDs.GetNumberOfValues()):
+        currentSegmentID = segmentIDs.GetValue(segmentIndex)
+        self.maskSegmentationNode.GetDisplayNode().SetSegmentVisibility(currentSegmentID, False)
+      # Show only selected segment, make it semi-transparent
+      self.maskSegmentationNode.GetDisplayNode().SetSegmentVisibility(self.maskSegmentID, True)
+      self.maskSegmentationNode.GetDisplayNode().SetSegmentPolyDataOpacity(self.maskSegmentID, 0.5)      
+    
   def onUseMaximumDoseRadioButtonToggled(self, toggled):
     self.step4_1_referenceDoseCustomValueCGySpinBox.setEnabled(not toggled)
 
@@ -1470,7 +1479,9 @@ class GelDosimetryAnalysisSlicelet(object):
       slicer.mrmlScene.AddNode(self.gammaParameterSetNode)
       self.gammaParameterSetNode.SetAndObserveReferenceDoseVolumeNode(self.planDoseVolumeNode)
       self.gammaParameterSetNode.SetAndObserveCompareDoseVolumeNode(self.calibratedMeasuredVolumeNode)
-      self.gammaParameterSetNode.SetAndObserveMaskContourNode(self.maskContourNode)
+      self.gammaParameterSetNode.SetAndObserveMaskSegmentationNode(self.maskSegmentationNode)
+      if self.maskSegmentID != None and self.maskSegmentID != '':
+        self.gammaParameterSetNode.SetMaskSegmentID(self.maskSegmentID)
       self.gammaParameterSetNode.SetAndObserveGammaVolumeNode(self.gammaVolumeNode)
       self.gammaParameterSetNode.SetDtaDistanceToleranceMm(self.step4_1_dtaDistanceToleranceMmSpinBox.value)
       self.gammaParameterSetNode.SetDoseDifferenceTolerancePercent(self.step4_1_doseDifferenceTolerancePercentSpinBox.value)
@@ -1482,7 +1493,7 @@ class GelDosimetryAnalysisSlicelet(object):
 
       qt.QApplication.setOverrideCursor(qt.QCursor(qt.Qt.BusyCursor))
       slicer.modules.dosecomparison.logic().SetAndObserveDoseComparisonNode(self.gammaParameterSetNode)
-      slicer.modules.dosecomparison.logic().ComputeGammaDoseDifference()
+      errorMessage = slicer.modules.dosecomparison.logic().ComputeGammaDoseDifference()
       qt.QApplication.restoreOverrideCursor()
 
       if self.gammaParameterSetNode.GetResultsValid():
@@ -1490,7 +1501,7 @@ class GelDosimetryAnalysisSlicelet(object):
         self.step4_1_showGammaReportButton.enabled = True
         self.gammaReport = self.gammaParameterSetNode.GetReportString()
       else:
-        self.step4_1_gammaStatusLabel.setText('Gamma dose comparison failed!')
+        self.step4_1_gammaStatusLabel.setText(errorMessage)
         self.step4_1_showGammaReportButton.enabled = False
 
       # Show gamma volume
@@ -1500,15 +1511,16 @@ class GelDosimetryAnalysisSlicelet(object):
       selectionNode.SetSecondaryVolumeID(None)
       appLogic.PropagateVolumeSelection()
 
-      # Show contour (use subject hierarchy to properly toggle visibility, slice intersections and all)
-      from vtkSlicerSubjectHierarchyModuleMRML import vtkMRMLSubjectHierarchyNode
-      maskContourShNode = vtkMRMLSubjectHierarchyNode.GetAssociatedSubjectHierarchyNode(self.maskContourNode)
-      maskContourShNode.SetDisplayVisibilityForBranch(1)
+      # Show mask structure with some transparency
+      if self.maskSegmentationNode:
+        self.maskSegmentationNode.GetDisplayNode().SetVisibility(1)
+        if self.maskSegmentID:
+          self.maskSegmentationNode.GetDisplayNode().SetSegmentVisibility(self.maskSegmentID, True)
+          self.maskSegmentationNode.GetDisplayNode().SetSegmentPolyDataOpacity(self.maskSegmentID, 0.5)
 
       # Show gamma slice in 3D view
       layoutManager = self.layoutWidget.layoutManager()
-      sliceViewerNames = layoutManager.sliceViewNames()
-      sliceViewerWidgetRed = layoutManager.sliceWidget(sliceViewerNames[0])
+      sliceViewerWidgetRed = layoutManager.sliceWidget('Red')
       sliceLogicRed = sliceViewerWidgetRed.sliceLogic()
       sliceLogicRed.StartSliceNodeInteraction(slicer.vtkMRMLSliceNode.SliceVisibleFlag)
       sliceLogicRed.GetSliceNode().SetSliceVisible(1)
@@ -1668,7 +1680,7 @@ class GelDosimetryAnalysisSlicelet(object):
     planCTVolumeName = '47: ARIA RadOnc Images - Verification Plan Phantom'
     planDoseVolumeName = '53: RTDOSE: Eclipse Doses: VMAT XM1 LCV'
     obiVolumeName = '0: Unknown'
-    structureSetNodeName = '52: RTSTRUCT: CT_1_AllStructures_SubjectHierarchy'
+    structureSetNodeName = '52: RTSTRUCT: CT_1'
     measuredVolumeName = 'lcv01_hr.vff'
     calibrationVolumeName = 'lcv02_hr.vff'
 
@@ -1744,24 +1756,29 @@ class GelDosimetryAnalysisSlicelet(object):
     self.logic.delayDisplay('Wait for the slicelet to catch up', 300)
     self.step4_doseComparisonCollapsibleButton.setChecked(True)
     self.step4_1_gammaVolumeSelector.addNode()
-    maskContourNodeID = 'vtkMRMLContourNode7'
-    self.step4_maskContourSelector.setCurrentNodeID(maskContourNodeID)
+    maskSegmentationNodeID = 'vtkMRMLSegmentationNode1'
+    maskSegmentID = 'Jar_crop'
+    self.step4_maskSegmentationSelector.setCurrentNodeID(maskSegmentationNodeID)
+    self.step4_maskSegmentationSelector.setCurrentSegmentID(maskSegmentID)
     self.onGammaDoseComparison()
 
   def performSelfTestFromSavedScene(self):
+    #TODO: This does not work until segmentations storage is done
+    return
     # Set variables. Only this section needs to be changed when testing new dataset
     scenePath = 'c:/Slicer_Data/20140820_GelDosimetry_StructureSetIncluded/2014-08-20-Scene.mrml'
     planCtVolumeNodeName = '*ARIA RadOnc Images - Verification Plan Phantom'
     obiVolumeNodeName = '0: Unknown'
     planDoseVolumeNodeName = '53: RTDOSE: Eclipse Doses: '
-    planStructuresNodeName = '52: RTSTRUCT: CT_1_AllStructures_SubjectHierarchy'
+    planStructuresNodeName = '52: RTSTRUCT: CT_1'
     measuredVolumeNodeName = 'lcv01_hr.vff'
     calibrationVolumeNodeName = 'lcv02_hr.vff'
     radiusMmFromCentrePixelMm = '5'
     pddFileName = 'd:/devel/_Images/RT/20140123_GelDosimetry_StructureSetIncluded/12MeV.csv'
     rdf = '0.989'
     monitorUnits = '1850'
-    maskContourNodeID = 'vtkMRMLContourNode7'
+    maskSegmentationNodeID = 'vtkMRMLSegmentationNode1'
+    maskSegmentID = 'Jar_crop'
     xTranslationSpinBoxValue = 1
     yScaleSpinBoxValue = 1.162
     yTranslationSpinBoxValue = 1.28
@@ -1778,7 +1795,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.obiVolumeNode = slicer.util.getNode(obiVolumeNodeName)
     self.planDoseVolumeNode = slicer.util.getNode(planDoseVolumeNodeName)
     self.planStructuresNode = slicer.util.getNode(planStructuresNodeName)
-    self.planStructuresNode.SetDisplayVisibilityForBranch(0)
+    self.planStructuresNode.GetDisplayNode().SetVisibility(0)
     self.measuredVolumeNode = slicer.util.getNode(measuredVolumeNodeName)
     self.calibrationVolumeNode = slicer.util.getNode(calibrationVolumeNodeName)
 
@@ -1808,7 +1825,8 @@ class GelDosimetryAnalysisSlicelet(object):
     # Dose comparison
     self.step4_doseComparisonCollapsibleButton.setChecked(True)
     self.step4_1_gammaVolumeSelector.addNode()
-    self.step4_maskContourSelector.setCurrentNodeID(maskContourNodeID)
+    self.step4_maskSegmentationSelector.setCurrentNodeID(maskSegmentationNodeID)
+    self.step4_maskSegmentationSelector.setCurrentSegmentID(maskSegmentID)
     self.onGammaDoseComparison()
     
     qt.QApplication.restoreOverrideCursor()
