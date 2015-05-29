@@ -160,9 +160,6 @@ class GelDosimetryAnalysisSlicelet(object):
       self.widget = widgetClass(self.parent)
     self.parent.show()
 
-  def __del__(self):
-    self.sliceAnnotations.layoutManager = None
-
   # Disconnect all connections made to the slicelet to enable the garbage collector to destruct the slicelet object on quit
   def disconnect(self):
     self.selfTestButton.disconnect('clicked()', self.onSelfTestButtonClicked)
