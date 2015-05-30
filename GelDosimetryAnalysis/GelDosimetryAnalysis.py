@@ -6,6 +6,7 @@ from slicer.ScriptedLoadableModule import *
 import logging
 import GelDosimetryAnalysisLogic
 import DataProbeLib
+from slicer.util import VTKObservationMixin
 
 #
 # Gel dosimetry analysis slicelet
@@ -55,8 +56,9 @@ class SliceletMainFrame(qt.QDialog):
 #
 # GelDosimetryAnalysisSlicelet
 #
-class GelDosimetryAnalysisSlicelet(object):
+class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
   def __init__(self, parent, widgetClass=None):
+    VTKObservationMixin.__init__(self)
     # Set up main frame
     self.parent = parent
     self.parent.setLayout(qt.QHBoxLayout())
@@ -1504,6 +1506,7 @@ class GelDosimetryAnalysisSlicelet(object):
       else:
         self.gammaVolumeNode = self.step4_1_gammaVolumeSelector.currentNode()
 
+      # Set up gamma computation parameters
       self.gammaParameterSetNode = vtkSlicerDoseComparisonModuleLogic.vtkMRMLDoseComparisonNode()
       slicer.mrmlScene.AddNode(self.gammaParameterSetNode)
       self.gammaParameterSetNode.SetAndObserveReferenceDoseVolumeNode(self.planDoseVolumeNode)
@@ -1520,9 +1523,25 @@ class GelDosimetryAnalysisSlicelet(object):
       self.gammaParameterSetNode.SetAnalysisThresholdPercent(self.step4_1_analysisThresholdPercentSpinBox.value)
       self.gammaParameterSetNode.SetMaximumGamma(self.step4_1_maximumGammaSpinBox.value)
 
+      # Create progress bar
+      from vtkSlicerRtCommon import SlicerRtCommon
+      doseComparisonLogic = slicer.modules.dosecomparison.logic()
+      self.addObserver(doseComparisonLogic, SlicerRtCommon.ProgressUpdated, self.onGammaProgressUpdated)
+      self.GammaProgressDialog = qt.QProgressDialog(self.parent)#slicer.util.mainWindow()) #TODO:
+      self.GammaProgressDialog.setModal(True)
+      self.GammaProgressDialog.setMinimumDuration(150)
+      self.GammaProgressDialog.labelText = "Computing gamma dose difference..."
+      self.GammaProgressDialog.show()
+      slicer.app.processEvents()
+      
+      # Perform gamma comparison
       qt.QApplication.setOverrideCursor(qt.QCursor(qt.Qt.BusyCursor))
-      slicer.modules.dosecomparison.logic().SetAndObserveDoseComparisonNode(self.gammaParameterSetNode)
-      errorMessage = slicer.modules.dosecomparison.logic().ComputeGammaDoseDifference()
+      doseComparisonLogic.SetAndObserveDoseComparisonNode(self.gammaParameterSetNode)
+      errorMessage = doseComparisonLogic.ComputeGammaDoseDifference()
+      
+      self.GammaProgressDialog.hide()
+      self.GammaProgressDialog = None
+      self.removeObserver(doseComparisonLogic, SlicerRtCommon.ProgressUpdated, self.onGammaProgressUpdated)
       qt.QApplication.restoreOverrideCursor()
 
       if self.gammaParameterSetNode.GetResultsValid():
@@ -1574,6 +1593,11 @@ class GelDosimetryAnalysisSlicelet(object):
       import traceback
       traceback.print_exc()
       logging.error('Failed to perform gamma dose comparison!')
+
+  def onGammaProgressUpdated(self, logic, event):
+    if self.GammaProgressDialog:
+      self.GammaProgressDialog.value = logic.GetProgress() * 100.0
+      slicer.app.processEvents()
 
   def onShowGammaReport(self):
     if hasattr(self,"gammaReport"):
