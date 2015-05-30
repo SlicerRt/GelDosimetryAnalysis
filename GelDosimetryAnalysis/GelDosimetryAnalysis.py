@@ -169,6 +169,7 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step0_preclinicalModeRadioButton.disconnect('toggled(bool)', self.onPreclinicalModeSelect)
     self.step1_showDicomBrowserButton.disconnect('clicked()', self.logic.onDicomLoad)
     self.step2_1_registerObiToPlanCtButton.disconnect('clicked()', self.onObiToPlanCTRegistration)
+    self.step2_1_translationSliders.disconnect('valuesChanged()', self.step2_1_rotationSliders.resetUnactiveSliders())
     self.step2_2_measuredDoseToObiRegistrationCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep2_2_MeasuredDoseToObiRegistrationSelected)
     self.step2_2_1_obiFiducialSelectionCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep2_2_1_ObiFiducialCollectionSelected)
     self.step2_2_2_measuredFiducialSelectionCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep2_2_2_MeasuredFiducialCollectionSelected)
@@ -357,6 +358,29 @@ class GelDosimetryAnalysisSlicelet(object):
     self.step2_1_registerObiToPlanCtButton.name = "step2_1_registerObiToPlanCtButton"
     self.step2_1_obiToPlanCtRegistrationLayout.addRow(self.step2_1_registerObiToPlanCtButton)
 
+    # Add empty row
+    self.step2_1_obiToPlanCtRegistrationLayout.addRow(' ', None)
+
+    # Transform fine-tune controls
+    self.step2_1_transformSlidersInfoLabel = qt.QLabel("Adjust result registration transform if needed:")
+    self.step2_1_transformSlidersInfoLabel.wordWrap = True
+    self.step2_1_translationSliders = slicer.qMRMLTransformSliders()
+    #self.step2_1_translationSliders.CoordinateReference = slicer.qMRMLTransformSliders.LOCAL # This would make the sliders always start form 0 (then min/max would also not be needed)
+    translationGroupBox = slicer.util.findChildren(widget=self.step2_1_translationSliders, className='ctkCollapsibleGroupBox')[0]
+    translationGroupBox.collapsed  = True # Collapse by default
+    self.step2_1_translationSliders.setMRMLScene(slicer.mrmlScene)
+    self.step2_1_rotationSliders = slicer.qMRMLTransformSliders()
+    self.step2_1_rotationSliders.minMaxVisible = False
+    self.step2_1_rotationSliders.TypeOfTransform = slicer.qMRMLTransformSliders.ROTATION
+    self.step2_1_rotationSliders.Title = "Rotation"
+    self.step2_1_rotationSliders.CoordinateReference = slicer.qMRMLTransformSliders.LOCAL
+    rotationGroupBox = slicer.util.findChildren(widget=self.step2_1_rotationSliders, className='ctkCollapsibleGroupBox')[0]
+    rotationGroupBox.collapsed  = True # Collapse by default
+    # self.step2_1_rotationSliders.setMRMLScene(slicer.mrmlScene) # If scene is set, then mm appears instead of degrees
+    self.step2_1_obiToPlanCtRegistrationLayout.addRow(self.step2_1_transformSlidersInfoLabel)
+    self.step2_1_obiToPlanCtRegistrationLayout.addRow(self.step2_1_translationSliders)
+    self.step2_1_obiToPlanCtRegistrationLayout.addRow(self.step2_1_rotationSliders)
+
     # Step 2.2: Gel CT scan to cone beam CT registration panel
     self.step2_2_measuredDoseToObiRegistrationCollapsibleButton = ctk.ctkCollapsibleButton()
     self.step2_2_measuredDoseToObiRegistrationCollapsibleButton.setProperty('collapsedHeight', 4)
@@ -377,13 +401,13 @@ class GelDosimetryAnalysisSlicelet(object):
 
     # Create instructions label
     self.step2_2_1_instructionsLayout = qt.QHBoxLayout(self.step2_2_1_obiFiducialSelectionCollapsibleButton)
-    self.obiFiducialSelectionInfoLabel = qt.QLabel("Locate image plane of the OBI fiducials, then click the 'Place fiducials' button (blue arrow with red dot). Next, select the fiducial points in the displayed image plane.")
-    self.obiFiducialSelectionInfoLabel.wordWrap = True
+    self.step2_2_1_obiFiducialSelectionInfoLabel = qt.QLabel("Locate image plane of the OBI fiducials, then click the 'Place fiducials' button (blue arrow with red dot). Next, select the fiducial points in the displayed image plane.")
+    self.step2_2_1_obiFiducialSelectionInfoLabel.wordWrap = True
     self.step2_2_1_helpLabel = qt.QLabel()
     self.step2_2_1_helpLabel.pixmap = qt.QPixmap(':Icons/Help.png')
     self.step2_2_1_helpLabel.maximumWidth = 24
     self.step2_2_1_helpLabel.toolTip = "Hint: Use Shift key for '3D cursor' navigation."
-    self.step2_2_1_instructionsLayout.addWidget(self.obiFiducialSelectionInfoLabel)
+    self.step2_2_1_instructionsLayout.addWidget(self.step2_2_1_obiFiducialSelectionInfoLabel)
     self.step2_2_1_instructionsLayout.addWidget(self.step2_2_1_helpLabel)
     self.step2_2_1_obiFiducialSelectionLayout.addRow(self.step2_2_1_instructionsLayout)
 
@@ -402,13 +426,13 @@ class GelDosimetryAnalysisSlicelet(object):
 
     # Create instructions label
     self.step2_2_2_instructionsLayout = qt.QHBoxLayout(self.step2_2_2_measuredFiducialSelectionCollapsibleButton)
-    self.measuredFiducialSelectionInfoLabel = qt.QLabel("Select the fiducial points in the gel dosimeter volume in the same order as the OBI fiducials were selected.")
-    self.measuredFiducialSelectionInfoLabel.wordWrap = True
+    self.step2_2_2_measuredFiducialSelectionInfoLabel = qt.QLabel("Select the fiducial points in the gel dosimeter volume in the same order as the OBI fiducials were selected.")
+    self.step2_2_2_measuredFiducialSelectionInfoLabel.wordWrap = True
     self.step2_2_2_helpLabel = qt.QLabel()
     self.step2_2_2_helpLabel.pixmap = qt.QPixmap(':Icons/Help.png')
     self.step2_2_2_helpLabel.maximumWidth = 24
     self.step2_2_2_helpLabel.toolTip = "Hint: Use Shift key for '3D cursor' navigation.\nHint: If gel dosimeter volume is too dark or low contrast, press left mouse button on the image and drag it to change window/level"
-    self.step2_2_2_instructionsLayout.addWidget(self.measuredFiducialSelectionInfoLabel)
+    self.step2_2_2_instructionsLayout.addWidget(self.step2_2_2_measuredFiducialSelectionInfoLabel)
     self.step2_2_2_instructionsLayout.addWidget(self.step2_2_2_helpLabel)
     self.step2_2_2_measuredFiducialSelectionLayout.addRow(self.step2_2_2_instructionsLayout)
 
@@ -459,6 +483,7 @@ class GelDosimetryAnalysisSlicelet(object):
 
     # Connections
     self.step2_1_registerObiToPlanCtButton.connect('clicked()', self.onObiToPlanCTRegistration)
+    self.step2_1_translationSliders.connect('valuesChanged()', self.step2_1_rotationSliders.resetUnactiveSliders)
     self.step2_2_measuredDoseToObiRegistrationCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep2_2_MeasuredDoseToObiRegistrationSelected)
     self.step2_2_1_obiFiducialSelectionCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep2_2_1_ObiFiducialCollectionSelected)
     self.step2_2_2_measuredFiducialSelectionCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep2_2_2_MeasuredFiducialCollectionSelected)
@@ -1015,7 +1040,7 @@ class GelDosimetryAnalysisSlicelet(object):
     planCTVolumeID = self.planCtVolumeNode.GetID()
     planDoseVolumeID = self.planDoseVolumeNode.GetID()
     planStructuresID = self.planStructuresNode.GetID()
-    self.logic.registerObiToPlanCt(obiVolumeID, planCTVolumeID, planDoseVolumeID, planStructuresID)
+    obiToPlanTransformNode = self.logic.registerObiToPlanCt(obiVolumeID, planCTVolumeID, planDoseVolumeID, planStructuresID)
 
     # Show the two volumes for visual evaluation of the registration
     appLogic = slicer.app.applicationLogic()
@@ -1038,6 +1063,10 @@ class GelDosimetryAnalysisSlicelet(object):
     beamModelsParent = slicer.util.getNode('*_BeamModels_SubjectHierarchy')
     if beamModelsParent != None:
       beamModelsParent.SetDisplayVisibilityForBranch(0)
+      
+    # Set transforms to slider widgets
+    self.step2_1_translationSliders.setMRMLTransformNode(obiToPlanTransformNode)
+    self.step2_1_rotationSliders.setMRMLTransformNode(obiToPlanTransformNode)
 
   def onMeasuredToObiRegistration(self):
     errorRms = self.logic.registerObiToMeasured(self.obiMarkupsFiducialNode.GetID(), self.measuredMarkupsFiducialNode.GetID())

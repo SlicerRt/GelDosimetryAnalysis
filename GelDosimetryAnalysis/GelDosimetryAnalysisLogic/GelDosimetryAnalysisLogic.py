@@ -100,6 +100,8 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
       planStructuresNode = slicer.mrmlScene.GetNodeByID(planStructuresID)
       if planStructuresNode != None:
         planStructuresNode.SetAndObserveTransformNodeID(obiToPlanTransformNode.GetID())
+        
+      return obiToPlanTransformNode
 
     except Exception, e:
       import traceback
