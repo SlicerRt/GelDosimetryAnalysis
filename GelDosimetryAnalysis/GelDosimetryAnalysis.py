@@ -77,7 +77,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.selfTestButton = qt.QPushButton("Run self-test")
     self.sliceletPanelLayout.addWidget(self.selfTestButton)
     self.selfTestButton.connect('clicked()', self.onSelfTestButtonClicked)
-    self.selfTestButton.setVisible(False) # TODO_ForTesting: Should be commented out for testing so the button shows up
+    # self.selfTestButton.setVisible(False) # TODO_ForTesting: Should be commented out for testing so the button shows up
 
     # Initiate and group together all panels
     self.step0_layoutSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
@@ -1519,7 +1519,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       self.gammaParameterSetNode.SetDoseDifferenceTolerancePercent(self.step4_1_doseDifferenceTolerancePercentSpinBox.value)
       self.gammaParameterSetNode.SetUseMaximumDose(self.step4_1_referenceDoseUseMaximumDoseRadioButton.isChecked())
       self.gammaParameterSetNode.SetUseLinearInterpolation(self.step4_1_useLinearInterpolationCheckBox.isChecked())
-      self.gammaParameterSetNode.SetReferenceDoseGy(self.step4_1_referenceDoseCustomValueCGySpinBox.value)
+      self.gammaParameterSetNode.SetReferenceDoseGy(self.step4_1_referenceDoseCustomValueCGySpinBox.value / 100.0)
       self.gammaParameterSetNode.SetAnalysisThresholdPercent(self.step4_1_analysisThresholdPercentSpinBox.value)
       self.gammaParameterSetNode.SetMaximumGamma(self.step4_1_maximumGammaSpinBox.value)
 
