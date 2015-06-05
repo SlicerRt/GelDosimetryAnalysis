@@ -1070,6 +1070,11 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step2_1_translationSliders.setMRMLTransformNode(obiToPlanTransformNode)
     self.step2_1_rotationSliders.setMRMLTransformNode(obiToPlanTransformNode)
 
+    # Change single step size to 0.5mm in the translation controls
+    sliders = slicer.util.findChildren(widget=self.step2_1_translationSliders, className='qMRMLLinearTransformSlider')
+    for slider in sliders:
+      slider.singleStep = 0.5
+
   def onMeasuredToObiRegistration(self):
     errorRms = self.logic.registerObiToMeasured(self.obiMarkupsFiducialNode.GetID(), self.measuredMarkupsFiducialNode.GetID())
     
