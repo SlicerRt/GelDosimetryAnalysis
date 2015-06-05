@@ -554,7 +554,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step3_1_yScaleSpinBox.singleStep = 0.01
     self.step3_1_yScaleSpinBox.value = 1
     self.step3_1_yScaleSpinBox.minimum = 0
-    self.step3_1_yScaleSpinBox.maximum = 1000
+    self.step3_1_yScaleSpinBox.maximum = 100000
     self.step3_1_yScaleSpinBox.maximumWidth = 60
     self.step3_1_yTranslationLabel = qt.QLabel('  Y shift:')
     self.step3_1_yTranslationSpinBox = qt.QDoubleSpinBox()

@@ -5,8 +5,8 @@ set(EXTENSION_NAME GelDosimetryAnalysis)
 
 # ------------------------------------------------------------------------
 set(GELDOSIMETRY_VERSION_MAJOR "0")
-set(GELDOSIMETRY_VERSION_MINOR "2")
-set(GELDOSIMETRY_VERSION_PATCH "2")
+set(GELDOSIMETRY_VERSION_MINOR "3")
+set(GELDOSIMETRY_VERSION_PATCH "0")
 set(GELDOSIMETRY_VERSION ${GELDOSIMETRY_VERSION_MAJOR}.${GELDOSIMETRY_VERSION_MINOR}.${GELDOSIMETRY_VERSION_PATCH})
 
 #-----------------------------------------------------------------------------
