@@ -272,7 +272,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # PLANCT node selector
     self.planCTSelector = slicer.qMRMLNodeComboBox()
-    self.planCTSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
+    self.planCTSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
     self.planCTSelector.addEnabled = False
     self.planCTSelector.removeEnabled = False
     self.planCTSelector.setMRMLScene( slicer.mrmlScene )
@@ -281,7 +281,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # PLANDOSE node selector
     self.planDoseSelector = slicer.qMRMLNodeComboBox()
-    self.planDoseSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
+    self.planDoseSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
     self.planDoseSelector.addEnabled = False
     self.planDoseSelector.removeEnabled = False
     self.planDoseSelector.setMRMLScene( slicer.mrmlScene )
@@ -290,7 +290,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # PLANSTRUCTURES node selector
     self.planStructuresSelector = slicer.qMRMLNodeComboBox()
-    self.planStructuresSelector.nodeTypes = ( ("vtkMRMLSegmentationNode"), "" )
+    self.planStructuresSelector.nodeTypes = ["vtkMRMLSegmentationNode"]
     self.planStructuresSelector.noneEnabled = True
     self.planStructuresSelector.addEnabled = False
     self.planStructuresSelector.removeEnabled = False
@@ -300,7 +300,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # OBI node selector
     self.obiSelector = slicer.qMRMLNodeComboBox()
-    self.obiSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
+    self.obiSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
     self.obiSelector.addEnabled = False
     self.obiSelector.removeEnabled = False
     self.obiSelector.setMRMLScene( slicer.mrmlScene )
@@ -309,7 +309,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # MEASURED node selector
     self.measuredVolumeSelector = slicer.qMRMLNodeComboBox()
-    self.measuredVolumeSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
+    self.measuredVolumeSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
     self.measuredVolumeSelector.addEnabled = False
     self.measuredVolumeSelector.removeEnabled = False
     self.measuredVolumeSelector.setMRMLScene( slicer.mrmlScene )
@@ -318,7 +318,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # CALIBRATION node selector
     self.calibrationVolumeSelector = slicer.qMRMLNodeComboBox()
-    self.calibrationVolumeSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
+    self.calibrationVolumeSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
     self.calibrationVolumeSelector.noneEnabled = True
     self.calibrationVolumeSelector.addEnabled = False
     self.calibrationVolumeSelector.removeEnabled = False
@@ -814,8 +814,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Gamma volume selector
     self.step4_1_gammaVolumeSelectorLayout = qt.QHBoxLayout(self.step4_1_gammaDoseComparisonCollapsibleButton)
     self.step4_1_gammaVolumeSelector = slicer.qMRMLNodeComboBox()
-    self.step4_1_gammaVolumeSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
-    self.step4_1_gammaVolumeSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 0 )
+    self.step4_1_gammaVolumeSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
     self.step4_1_gammaVolumeSelector.addEnabled = True
     self.step4_1_gammaVolumeSelector.removeEnabled = False
     self.step4_1_gammaVolumeSelector.setMRMLScene( slicer.mrmlScene )
@@ -884,7 +883,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # Input ruler selector
     self.stepT1_inputRulerSelector = slicer.qMRMLNodeComboBox()
-    self.stepT1_inputRulerSelector.nodeTypes = ( ("vtkMRMLAnnotationRulerNode"), "" )
+    self.stepT1_inputRulerSelector.nodeTypes = ["vtkMRMLAnnotationRulerNode"]
     self.stepT1_inputRulerSelector.selectNodeUponCreation = True
     self.stepT1_inputRulerSelector.addEnabled = False
     self.stepT1_inputRulerSelector.removeEnabled = False
