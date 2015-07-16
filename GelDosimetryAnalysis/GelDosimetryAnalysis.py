@@ -103,7 +103,6 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Set up constants
     self.obiMarkupsFiducialNodeName = "OBI fiducials"
     self.measuredMarkupsFiducialNodeName = "MEASURED fiducials"
-    self.numberOfGammaLabels = 9
 	
     # Declare member variables (selected at certain steps and then from then on for the workflow)
     self.mode = None
