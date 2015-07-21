@@ -57,7 +57,7 @@ class SliceletMainFrame(qt.QDialog):
 # GelDosimetryAnalysisSlicelet
 #
 class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
-  def __init__(self, parent, widgetClass=None):
+  def __init__(self, parent, developerMode=False, widgetClass=None):
     VTKObservationMixin.__init__(self)
     # Set up main frame
     self.parent = parent
@@ -73,11 +73,12 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.sliceletPanelLayout.setSpacing(0)
     self.layout.addWidget(self.sliceletPanel,1)
 
-    # For testing only
+    # For testing only (it is only visible when in developer mode)
     self.selfTestButton = qt.QPushButton("Run self-test")
     self.sliceletPanelLayout.addWidget(self.selfTestButton)
     self.selfTestButton.connect('clicked()', self.onSelfTestButtonClicked)
-    self.selfTestButton.setVisible(False) # TODO_ForTesting: Should be commented out for testing so the button shows up
+    if not developerMode:
+      self.selfTestButton.setVisible(False)
 
     # Initiate and group together all panels
     self.step0_layoutSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
@@ -183,9 +184,9 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step3_1_yTranslationSpinBox.disconnect('valueChanged(double)', self.onAdjustAlignmentValueChanged)
     self.step3_1_computeDoseFromPddButton.disconnect('clicked()', self.onComputeDoseFromPdd)
     self.step3_1_calibrationRoutineCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep3_1_CalibrationRoutineSelected)
-    self.step3_1_showOpticalDensityVsDoseCurveButton.disconnect('clicked()', self.onShowOpticalDensityVsDoseCurve)
-    self.step3_1_removeSelectedPointsFromOpticalDensityVsDoseCurveButton.disconnect('clicked()', self.onRemoveSelectedPointsFromOpticalDensityVsDoseCurve)
-    self.step3_1_fitPolynomialToOpticalDensityVsDoseCurveButton.disconnect('clicked()', self.onFitPolynomialToOpticalDensityVsDoseCurve)
+    self.step3_1_showOpticalAttenuationVsDoseCurveButton.disconnect('clicked()', self.onShowOpticalAttenuationVsDoseCurve)
+    self.step3_1_removeSelectedPointsFromOpticalAttenuationVsDoseCurveButton.disconnect('clicked()', self.onRemoveSelectedPointsFromOpticalAttenuationVsDoseCurve)
+    self.step3_1_fitPolynomialToOpticalAttenuationVsDoseCurveButton.disconnect('clicked()', self.onFitPolynomialToOpticalAttenuationVsDoseCurve)
     self.step3_2_exportCalibrationToCSV.disconnect('clicked()', self.onExportCalibration)
     self.step3_2_applyCalibrationButton.disconnect('clicked()', self.onApplyCalibration)
     self.step4_doseComparisonCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep4_DoseComparisonSelected)
@@ -529,12 +530,12 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # Averaging radius
     self.step3_1_radiusMmFromCentrePixelLineEdit = qt.QLineEdit()
-    self.step3_1_radiusMmFromCentrePixelLineEdit.toolTip = "Radius of the cylinder that is extracted around central axis to get optical density values per depth"
+    self.step3_1_radiusMmFromCentrePixelLineEdit.toolTip = "Radius of the cylinder that is extracted around central axis to get optical attenuation values per depth"
     self.step3_1_calibrationRoutineLayout.addRow('Averaging radius (mm): ', self.step3_1_radiusMmFromCentrePixelLineEdit)
 
     # Align Pdd data and CALIBRATION data based on region of interest selected
     self.step3_1_alignCalibrationCurvesButton = qt.QPushButton("Plot reference and gel PDD data")
-    self.step3_1_alignCalibrationCurvesButton.toolTip = "Align PDD data optical density values with experimental optical density values (coming from calibration gel volume)"
+    self.step3_1_alignCalibrationCurvesButton.toolTip = "Align PDD data optical attenuation values with experimental optical attenuation values (coming from calibration gel volume)"
     self.step3_1_calibrationRoutineLayout.addRow(self.step3_1_alignCalibrationCurvesButton)
 
     # Controls to adjust alignment
@@ -582,20 +583,20 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Empty row
     self.step3_1_calibrationRoutineLayout.addRow(' ', None)
 
-    # Show chart of optical density vs. dose curve and remove selected points
-    self.step3_1_odVsDoseCurveControlsLayout = qt.QHBoxLayout(self.step3_1_calibrationRoutineCollapsibleButton)
-    self.step3_1_showOpticalDensityVsDoseCurveButton = qt.QPushButton("Plot optical density vs dose")
-    self.step3_1_showOpticalDensityVsDoseCurveButton.toolTip = "Show optical density vs. Dose curve to determine the order of polynomial to fit."
-    self.step3_1_removeSelectedPointsFromOpticalDensityVsDoseCurveButton = qt.QPushButton("Optional: Remove selected points from plot")
-    self.step3_1_removeSelectedPointsFromOpticalDensityVsDoseCurveButton.toolTip = "Removes the selected points (typically outliers) from the OD vs Dose curve so that they are omitted during polynomial fitting.\nTo select points, hold down the right mouse button and draw a selection rectangle in the chart view."
+    # Show chart of optical attenuation vs. dose curve and remove selected points
+    self.step3_1_oaVsDoseCurveControlsLayout = qt.QHBoxLayout(self.step3_1_calibrationRoutineCollapsibleButton)
+    self.step3_1_showOpticalAttenuationVsDoseCurveButton = qt.QPushButton("Plot optical attenuation vs dose")
+    self.step3_1_showOpticalAttenuationVsDoseCurveButton.toolTip = "Show optical attenuation vs. Dose curve to determine the order of polynomial to fit."
+    self.step3_1_removeSelectedPointsFromOpticalAttenuationVsDoseCurveButton = qt.QPushButton("Optional: Remove selected points from plot")
+    self.step3_1_removeSelectedPointsFromOpticalAttenuationVsDoseCurveButton.toolTip = "Removes the selected points (typically outliers) from the OA vs Dose curve so that they are omitted during polynomial fitting.\nTo select points, hold down the right mouse button and draw a selection rectangle in the chart view."
     self.step3_1_helpLabel = qt.QLabel()
     self.step3_1_helpLabel.pixmap = qt.QPixmap(':Icons/Help.png')
     self.step3_1_helpLabel.maximumWidth = 24
     self.step3_1_helpLabel.toolTip = "To select points in the plot, hold down the right mouse button and draw a selection rectangle in the chart view."
-    self.step3_1_odVsDoseCurveControlsLayout.addWidget(self.step3_1_showOpticalDensityVsDoseCurveButton)
-    self.step3_1_odVsDoseCurveControlsLayout.addWidget(self.step3_1_removeSelectedPointsFromOpticalDensityVsDoseCurveButton)
-    self.step3_1_odVsDoseCurveControlsLayout.addWidget(self.step3_1_helpLabel)
-    self.step3_1_calibrationRoutineLayout.addRow(self.step3_1_odVsDoseCurveControlsLayout)
+    self.step3_1_oaVsDoseCurveControlsLayout.addWidget(self.step3_1_showOpticalAttenuationVsDoseCurveButton)
+    self.step3_1_oaVsDoseCurveControlsLayout.addWidget(self.step3_1_removeSelectedPointsFromOpticalAttenuationVsDoseCurveButton)
+    self.step3_1_oaVsDoseCurveControlsLayout.addWidget(self.step3_1_helpLabel)
+    self.step3_1_calibrationRoutineLayout.addRow(self.step3_1_oaVsDoseCurveControlsLayout)
     
     # Add empty row
     self.step3_1_calibrationRoutineLayout.addRow(' ', None)
@@ -608,9 +609,9 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step3_1_selectOrderOfPolynomialFitButton.addItem('4')
     self.step3_1_calibrationRoutineLayout.addRow('Fit with what order polynomial function:', self.step3_1_selectOrderOfPolynomialFitButton)
     
-    self.step3_1_fitPolynomialToOpticalDensityVsDoseCurveButton = qt.QPushButton("Fit data and determine calibration function")
-    self.step3_1_fitPolynomialToOpticalDensityVsDoseCurveButton.toolTip = "Finds the line of best fit based on the data and polynomial order provided"
-    self.step3_1_calibrationRoutineLayout.addRow(self.step3_1_fitPolynomialToOpticalDensityVsDoseCurveButton)
+    self.step3_1_fitPolynomialToOpticalAttenuationVsDoseCurveButton = qt.QPushButton("Fit data and determine calibration function")
+    self.step3_1_fitPolynomialToOpticalAttenuationVsDoseCurveButton.toolTip = "Finds the line of best fit based on the data and polynomial order provided"
+    self.step3_1_calibrationRoutineLayout.addRow(self.step3_1_fitPolynomialToOpticalAttenuationVsDoseCurveButton)
 
     self.step3_1_fitPolynomialResidualsLabel = qt.QLabel()
     self.step3_1_calibrationRoutineLayout.addRow(self.step3_1_fitPolynomialResidualsLabel)
@@ -634,19 +635,19 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step3_2_doseLabel = qt.QLabel('Dose (Gy) = ')
     self.step3_2_calibrationFunctionOrder0LineEdit = qt.QLineEdit()
     self.step3_2_calibrationFunctionOrder0LineEdit.maximumWidth = 64
-    self.step3_2_calibrationFunctionOrder0Label = qt.QLabel(' OD<span style=" font-size:8pt; vertical-align:super;">0</span> + ')
+    self.step3_2_calibrationFunctionOrder0Label = qt.QLabel(' OA<span style=" font-size:8pt; vertical-align:super;">0</span> + ')
     self.step3_2_calibrationFunctionOrder1LineEdit = qt.QLineEdit()
     self.step3_2_calibrationFunctionOrder1LineEdit.maximumWidth = 64
-    self.step3_2_calibrationFunctionOrder1Label = qt.QLabel(' OD<span style=" font-size:8pt; vertical-align:super;">1</span> + ')
+    self.step3_2_calibrationFunctionOrder1Label = qt.QLabel(' OA<span style=" font-size:8pt; vertical-align:super;">1</span> + ')
     self.step3_2_calibrationFunctionOrder2LineEdit = qt.QLineEdit()
     self.step3_2_calibrationFunctionOrder2LineEdit.maximumWidth = 64
-    self.step3_2_calibrationFunctionOrder2Label = qt.QLabel(' OD<span style=" font-size:8pt; vertical-align:super;">2</span> + ')
+    self.step3_2_calibrationFunctionOrder2Label = qt.QLabel(' OA<span style=" font-size:8pt; vertical-align:super;">2</span> + ')
     self.step3_2_calibrationFunctionOrder3LineEdit = qt.QLineEdit()
     self.step3_2_calibrationFunctionOrder3LineEdit.maximumWidth = 64
-    self.step3_2_calibrationFunctionOrder3Label = qt.QLabel(' OD<span style=" font-size:8pt; vertical-align:super;">3</span> + ')
+    self.step3_2_calibrationFunctionOrder3Label = qt.QLabel(' OA<span style=" font-size:8pt; vertical-align:super;">3</span> + ')
     self.step3_2_calibrationFunctionOrder4LineEdit = qt.QLineEdit()
     self.step3_2_calibrationFunctionOrder4LineEdit.maximumWidth = 64
-    self.step3_2_calibrationFunctionOrder4Label = qt.QLabel(' OD<span style=" font-size:8pt; vertical-align:super;">4</span>')
+    self.step3_2_calibrationFunctionOrder4Label = qt.QLabel(' OA<span style=" font-size:8pt; vertical-align:super;">4</span>')
     self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_doseLabel,0,0)
     self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_calibrationFunctionOrder0LineEdit,0,1)
     self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_calibrationFunctionOrder0Label,0,2)
@@ -662,7 +663,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # Export calibration polynomial coefficients to CSV
     self.step3_2_exportCalibrationToCSV = qt.QPushButton("Optional: Export calibration points to a CSV file")
-    self.step3_2_exportCalibrationToCSV.toolTip = "Export optical density to dose calibration plot points (if points were removed, those are not exported).\nIf polynomial fitting has been done, export the coefficients as well."
+    self.step3_2_exportCalibrationToCSV.toolTip = "Export optical attenuation to dose calibration plot points (if points were removed, those are not exported).\nIf polynomial fitting has been done, export the coefficients as well."
     self.step3_2_applyCalibrationLayout.addRow(self.step3_2_exportCalibrationToCSV)
     
     # Empty row
@@ -693,9 +694,9 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step3_1_yTranslationSpinBox.connect('valueChanged(double)', self.onAdjustAlignmentValueChanged)
     self.step3_1_computeDoseFromPddButton.connect('clicked()', self.onComputeDoseFromPdd)
     self.step3_1_calibrationRoutineCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep3_1_CalibrationRoutineSelected)
-    self.step3_1_showOpticalDensityVsDoseCurveButton.connect('clicked()', self.onShowOpticalDensityVsDoseCurve)
-    self.step3_1_removeSelectedPointsFromOpticalDensityVsDoseCurveButton.connect('clicked()', self.onRemoveSelectedPointsFromOpticalDensityVsDoseCurve)
-    self.step3_1_fitPolynomialToOpticalDensityVsDoseCurveButton.connect('clicked()', self.onFitPolynomialToOpticalDensityVsDoseCurve)
+    self.step3_1_showOpticalAttenuationVsDoseCurveButton.connect('clicked()', self.onShowOpticalAttenuationVsDoseCurve)
+    self.step3_1_removeSelectedPointsFromOpticalAttenuationVsDoseCurveButton.connect('clicked()', self.onRemoveSelectedPointsFromOpticalAttenuationVsDoseCurve)
+    self.step3_1_fitPolynomialToOpticalAttenuationVsDoseCurveButton.connect('clicked()', self.onFitPolynomialToOpticalAttenuationVsDoseCurve)
     self.step3_2_exportCalibrationToCSV.connect('clicked()', self.onExportCalibration)
     self.step3_2_applyCalibrationButton.connect('clicked()', self.onApplyCalibration)
     
@@ -952,16 +953,16 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       self.mode = 'Clinical'
             
       # Step 3.1. Label for plot visibility
-      self.step3_1_showOpticalDensityVsDoseCurveButton.setText("Plot optical density vs dose")
-      self.step3_1_showOpticalDensityVsDoseCurveButton.toolTip = "Show optical density vs. Dose curve to determine the order of polynomial to fit."
+      self.step3_1_showOpticalAttenuationVsDoseCurveButton.setText("Plot optical attenuation vs dose")
+      self.step3_1_showOpticalAttenuationVsDoseCurveButton.toolTip = "Show optical attenuation vs. Dose curve to determine the order of polynomial to fit."
   
   def onPreclinicalModeSelect(self, toggled):
     if self.step0_preclinicalModeRadioButton.isChecked() == True:
       self.mode = 'Preclinical'
             
       # Step 3.1. Label for plot visibility
-      self.step3_1_showOpticalDensityVsDoseCurveButton.setText("Plot R1 vs dose")
-      self.step3_1_showOpticalDensityVsDoseCurveButton.toolTip = "Show Relaxation Rates vs. Dose curve to determine the order of polynomial to fit."
+      self.step3_1_showOpticalAttenuationVsDoseCurveButton.setText("Plot R1 vs dose")
+      self.step3_1_showOpticalAttenuationVsDoseCurveButton.toolTip = "Show Relaxation Rates vs. Dose curve to determine the order of polynomial to fit."
     
   def onLoadNonDicomData(self):
     slicer.util.openAddDataDialog()
@@ -1119,7 +1120,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       slicer.util.errorDisplay('Invalid averaging radius!')
       return False
 
-    success = self.logic.getMeanOpticalDensityOfCentralCylinder(self.calibrationVolumeNode.GetID(), radiusOfCentreCircleFloat)
+    success = self.logic.getMeanOpticalAttenuationOfCentralCylinder(self.calibrationVolumeNode.GetID(), radiusOfCentreCircleFloat)
     if success == False:
       slicer.util.errorDisplay('Calibration volume parsing failed!')
     return success
@@ -1132,16 +1133,16 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.calibrationCurveChartView.GetScene().AddItem(self.calibrationCurveChart)
     
   def showCalibrationCurves(self):
-    # Create CALIBRATION mean optical density plot
+    # Create CALIBRATION mean optical attenuation plot
     self.calibrationCurveDataTable = vtk.vtkTable()
     calibrationNumberOfRows = self.logic.calibrationDataArray.shape[0]
 
     calibrationDepthArray = vtk.vtkDoubleArray()
     calibrationDepthArray.SetName("Depth (cm)")
     self.calibrationCurveDataTable.AddColumn(calibrationDepthArray)
-    calibrationMeanOpticalDensityArray = vtk.vtkDoubleArray()
-    calibrationMeanOpticalDensityArray.SetName("Calibration data (mean optical density)")
-    self.calibrationCurveDataTable.AddColumn(calibrationMeanOpticalDensityArray)
+    calibrationMeanOpticalAttenuationArray = vtk.vtkDoubleArray()
+    calibrationMeanOpticalAttenuationArray.SetName("Calibration data (mean optical attenuation, cm^-1)")
+    self.calibrationCurveDataTable.AddColumn(calibrationMeanOpticalAttenuationArray)
 
     self.calibrationCurveDataTable.SetNumberOfRows(calibrationNumberOfRows)
     for rowIndex in xrange(calibrationNumberOfRows):
@@ -1149,12 +1150,12 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       self.calibrationCurveDataTable.SetValue(rowIndex, 1, self.logic.calibrationDataArray[rowIndex, 1])
       # self.calibrationCurveDataTable.SetValue(rowIndex, 2, self.logic.calibrationDataArray[rowIndex, 2])
 
-    if hasattr(self, 'calibrationMeanOpticalDensityLine'):
-      self.calibrationCurveChart.RemovePlotInstance(self.calibrationMeanOpticalDensityLine)
-    self.calibrationMeanOpticalDensityLine = self.calibrationCurveChart.AddPlot(vtk.vtkChart.LINE)
-    self.calibrationMeanOpticalDensityLine.SetInputData(self.calibrationCurveDataTable, 0, 1)
-    self.calibrationMeanOpticalDensityLine.SetColor(255, 0, 0, 255)
-    self.calibrationMeanOpticalDensityLine.SetWidth(2.0)
+    if hasattr(self, 'calibrationMeanOpticalAttenuationLine'):
+      self.calibrationCurveChart.RemovePlotInstance(self.calibrationMeanOpticalAttenuationLine)
+    self.calibrationMeanOpticalAttenuationLine = self.calibrationCurveChart.AddPlot(vtk.vtkChart.LINE)
+    self.calibrationMeanOpticalAttenuationLine.SetInputData(self.calibrationCurveDataTable, 0, 1)
+    self.calibrationMeanOpticalAttenuationLine.SetColor(255, 0, 0, 255)
+    self.calibrationMeanOpticalAttenuationLine.SetWidth(2.0)
 
     # Create Pdd plot
     self.pddDataTable = vtk.vtkTable()
@@ -1202,7 +1203,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # Show chart
     self.calibrationCurveChart.GetAxis(1).SetTitle('Depth (cm) - select region using right mouse button to be considered for calibration')
-    self.calibrationCurveChart.GetAxis(0).SetTitle('Percent Depth Dose / Optical Density')
+    self.calibrationCurveChart.GetAxis(0).SetTitle('Percent Depth Dose / Optical Attenuation')
     self.calibrationCurveChart.SetShowLegend(True)
     self.calibrationCurveChart.SetTitle('PDD vs Calibration data')
     self.calibrationCurveChartView.GetInteractor().Initialize()
@@ -1257,7 +1258,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     else:
       slicer.util.errorDisplay('Dose calculation from PDD failed!')
 
-  def onShowOpticalDensityVsDoseCurve(self):
+  def onShowOpticalAttenuationVsDoseCurve(self):
     # Get selection from PDD vs Calibration chart
     selection = self.pddLine.GetSelection()
     if selection != None and selection.GetNumberOfTuples() > 0:
@@ -1268,52 +1269,52 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       pddRangeMax = 1000
     logging.info('Selected Pdd range: {0} - {1}'.format(pddRangeMin,pddRangeMax))
 
-    # Create optical density vs dose function
-    self.logic.createOpticalDensityVsDoseFunction(pddRangeMin, pddRangeMax)
+    # Create optical attenuation vs dose function
+    self.logic.createOpticalAttenuationVsDoseFunction(pddRangeMin, pddRangeMax)
 
-    self.odVsDoseChartView = vtk.vtkContextView()
-    self.odVsDoseChartView.GetRenderer().SetBackground(1,1,1)
-    self.odVsDoseChart = vtk.vtkChartXY()
-    self.odVsDoseChartView.GetScene().AddItem(self.odVsDoseChart)
+    self.oaVsDoseChartView = vtk.vtkContextView()
+    self.oaVsDoseChartView.GetRenderer().SetBackground(1,1,1)
+    self.oaVsDoseChart = vtk.vtkChartXY()
+    self.oaVsDoseChartView.GetScene().AddItem(self.oaVsDoseChart)
 
-    # Create optical density vs dose plot
-    self.odVsDoseDataTable = vtk.vtkTable()
-    odVsDoseNumberOfRows = self.logic.opticalDensityVsDoseFunction.shape[0]
+    # Create optical attenuation vs dose plot
+    self.oaVsDoseDataTable = vtk.vtkTable()
+    oaVsDoseNumberOfRows = self.logic.opticalAttenuationVsDoseFunction.shape[0]
 
-    opticalDensityArray = vtk.vtkDoubleArray()
-    opticalDensityArray.SetName("Optical density")
-    self.odVsDoseDataTable.AddColumn(opticalDensityArray)
+    opticalAttenuationArray = vtk.vtkDoubleArray()
+    opticalAttenuationArray.SetName("Optical attenuation (cm^-1)")
+    self.oaVsDoseDataTable.AddColumn(opticalAttenuationArray)
     doseArray = vtk.vtkDoubleArray()
     doseArray.SetName("Dose (GY)")
-    self.odVsDoseDataTable.AddColumn(doseArray)
+    self.oaVsDoseDataTable.AddColumn(doseArray)
 
-    self.odVsDoseDataTable.SetNumberOfRows(odVsDoseNumberOfRows)
-    for rowIndex in xrange(odVsDoseNumberOfRows):
-      self.odVsDoseDataTable.SetValue(rowIndex, 0, self.logic.opticalDensityVsDoseFunction[rowIndex, 0])
-      self.odVsDoseDataTable.SetValue(rowIndex, 1, self.logic.opticalDensityVsDoseFunction[rowIndex, 1])
+    self.oaVsDoseDataTable.SetNumberOfRows(oaVsDoseNumberOfRows)
+    for rowIndex in xrange(oaVsDoseNumberOfRows):
+      self.oaVsDoseDataTable.SetValue(rowIndex, 0, self.logic.opticalAttenuationVsDoseFunction[rowIndex, 0])
+      self.oaVsDoseDataTable.SetValue(rowIndex, 1, self.logic.opticalAttenuationVsDoseFunction[rowIndex, 1])
 
-    self.odVsDoseLinePoint = self.odVsDoseChart.AddPlot(vtk.vtkChart.POINTS)
-    self.odVsDoseLinePoint.SetInputData(self.odVsDoseDataTable, 0, 1)
-    self.odVsDoseLinePoint.SetColor(0, 0, 255, 255)
-    self.odVsDoseLinePoint.SetMarkerSize(10)
-    self.odVsDoseLineInnerPoint = self.odVsDoseChart.AddPlot(vtk.vtkChart.POINTS)
-    self.odVsDoseLineInnerPoint.SetInputData(self.odVsDoseDataTable, 0, 1)
-    self.odVsDoseLineInnerPoint.SetColor(255, 255, 255, 223)
-    self.odVsDoseLineInnerPoint.SetMarkerSize(8)
+    self.oaVsDoseLinePoint = self.oaVsDoseChart.AddPlot(vtk.vtkChart.POINTS)
+    self.oaVsDoseLinePoint.SetInputData(self.oaVsDoseDataTable, 0, 1)
+    self.oaVsDoseLinePoint.SetColor(0, 0, 255, 255)
+    self.oaVsDoseLinePoint.SetMarkerSize(10)
+    self.oaVsDoseLineInnerPoint = self.oaVsDoseChart.AddPlot(vtk.vtkChart.POINTS)
+    self.oaVsDoseLineInnerPoint.SetInputData(self.oaVsDoseDataTable, 0, 1)
+    self.oaVsDoseLineInnerPoint.SetColor(255, 255, 255, 223)
+    self.oaVsDoseLineInnerPoint.SetMarkerSize(8)
 
     # Show chart
-    self.odVsDoseChart.GetAxis(1).SetTitle('Optical density')
-    self.odVsDoseChart.GetAxis(0).SetTitle('Dose (GY)')
-    self.odVsDoseChart.SetTitle('Optical density vs Dose')
-    self.odVsDoseChartView.GetInteractor().Initialize()
-    self.odVsDoseChartView.GetRenderWindow().SetSize(800,550)
-    self.odVsDoseChartView.GetRenderWindow().SetWindowName('Optical density vs Dose chart')
-    self.odVsDoseChartView.GetRenderWindow().Start()
+    self.oaVsDoseChart.GetAxis(1).SetTitle('Optical attenuation (cm^-1)')
+    self.oaVsDoseChart.GetAxis(0).SetTitle('Dose (GY)')
+    self.oaVsDoseChart.SetTitle('Optical attenuation vs Dose')
+    self.oaVsDoseChartView.GetInteractor().Initialize()
+    self.oaVsDoseChartView.GetRenderWindow().SetSize(800,550)
+    self.oaVsDoseChartView.GetRenderWindow().SetWindowName('Optical attenuation vs Dose chart')
+    self.oaVsDoseChartView.GetRenderWindow().Start()
 
-  def onRemoveSelectedPointsFromOpticalDensityVsDoseCurve(self):
-    outlierSelection = self.odVsDoseLineInnerPoint.GetSelection()
+  def onRemoveSelectedPointsFromOpticalAttenuationVsDoseCurve(self):
+    outlierSelection = self.oaVsDoseLineInnerPoint.GetSelection()
     if outlierSelection == None:
-      outlierSelection = self.odVsDoseLinePoint.GetSelection()
+      outlierSelection = self.oaVsDoseLinePoint.GetSelection()
     if outlierSelection != None and outlierSelection.GetNumberOfTuples() > 0:
       # Get outlier indices in descending order
       outlierIndices = []
@@ -1323,23 +1324,23 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       outlierIndices.sort()
       outlierIndices.reverse()
       for outlierIndex in outlierIndices:
-        self.odVsDoseDataTable.RemoveRow(outlierIndex)
-        self.logic.opticalDensityVsDoseFunction = numpy.delete(self.logic.opticalDensityVsDoseFunction, outlierIndex, 0)
+        self.oaVsDoseDataTable.RemoveRow(outlierIndex)
+        self.logic.opticalAttenuationVsDoseFunction = numpy.delete(self.logic.opticalAttenuationVsDoseFunction, outlierIndex, 0)
 
       # De-select former points
       emptySelectionArray = vtk.vtkIdTypeArray()
-      self.odVsDoseLinePoint.SetSelection(emptySelectionArray)
-      self.odVsDoseLineInnerPoint.SetSelection(emptySelectionArray)
+      self.oaVsDoseLinePoint.SetSelection(emptySelectionArray)
+      self.oaVsDoseLineInnerPoint.SetSelection(emptySelectionArray)
       if hasattr(self, 'polynomialLine') and self.polynomialLine != None:
         self.polynomialLine.SetSelection(emptySelectionArray)
       # Update chart view
-      self.odVsDoseDataTable.Modified()
-      self.odVsDoseChartView.Render()
+      self.oaVsDoseDataTable.Modified()
+      self.oaVsDoseChartView.Render()
     
-  def onFitPolynomialToOpticalDensityVsDoseCurve(self):
+  def onFitPolynomialToOpticalAttenuationVsDoseCurve(self):
     orderSelectionComboboxCurrentIndex = self.step3_1_selectOrderOfPolynomialFitButton.currentIndex
     maxOrder = int(self.step3_1_selectOrderOfPolynomialFitButton.itemText(orderSelectionComboboxCurrentIndex))
-    residuals = self.logic.fitCurveToOpticalDensityVsDoseFunctionArray(maxOrder)
+    residuals = self.logic.fitCurveToOpticalAttenuationVsDoseFunctionArray(maxOrder)
     p = self.logic.calibrationPolynomialCoefficients
 
     # Clear line edits
@@ -1353,11 +1354,11 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step3_1_fitPolynomialResidualsLabel.text = "Residuals of the least-squares fit of the polynomial: {0:.3f}".format(residuals[0])
 
     # Compute points to display for the fitted polynomial
-    odVsDoseNumberOfRows = self.logic.opticalDensityVsDoseFunction.shape[0]
-    minOd = self.logic.opticalDensityVsDoseFunction[0, 0]
-    maxOd = self.logic.opticalDensityVsDoseFunction[odVsDoseNumberOfRows-1, 0]
-    minPolynomial = minOd - (maxOd-minOd)*0.2
-    maxPolynomial = maxOd + (maxOd-minOd)*0.2
+    oaVsDoseNumberOfRows = self.logic.opticalAttenuationVsDoseFunction.shape[0]
+    minOA = self.logic.opticalAttenuationVsDoseFunction[0, 0]
+    maxOA = self.logic.opticalAttenuationVsDoseFunction[oaVsDoseNumberOfRows-1, 0]
+    minPolynomial = minOA - (maxOA-minOA)*0.2
+    maxPolynomial = maxOA + (maxOA-minOA)*0.2
 
     # Create table to display polynomial
     self.polynomialTable = vtk.vtkTable()
@@ -1367,8 +1368,8 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     polynomialYArray = vtk.vtkDoubleArray()
     polynomialYArray.SetName("Y")
     self.polynomialTable.AddColumn(polynomialYArray)
-    # The displayed polynomial is 4 times as dense as the OD VS dose curve
-    polynomialNumberOfRows = odVsDoseNumberOfRows * 4
+    # The displayed polynomial is 4 times as dense as the OA VS dose curve
+    polynomialNumberOfRows = oaVsDoseNumberOfRows * 4
     self.polynomialTable.SetNumberOfRows(polynomialNumberOfRows)
     for rowIndex in xrange(polynomialNumberOfRows):
       x = minPolynomial + (maxPolynomial-minPolynomial)*rowIndex/polynomialNumberOfRows
@@ -1380,9 +1381,9 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       self.polynomialTable.SetValue(rowIndex, 1, y)
 
     if hasattr(self, 'polynomialLine') and self.polynomialLine != None:
-      self.odVsDoseChart.RemovePlotInstance(self.polynomialLine)
+      self.oaVsDoseChart.RemovePlotInstance(self.polynomialLine)
 
-    self.polynomialLine = self.odVsDoseChart.AddPlot(vtk.vtkChart.LINE)
+    self.polynomialLine = self.oaVsDoseChart.AddPlot(vtk.vtkChart.LINE)
     self.polynomialLine.SetInputData(self.polynomialTable, 0, 1)
     self.polynomialLine.SetColor(192, 0, 0, 255)
     self.polynomialLine.SetWidth(2)
@@ -1435,11 +1436,11 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     appLogic.PropagateVolumeSelection() 
 
     # Set window/level options for the calibrated dose
-    if self.logic.opticalDensityVsDoseFunction != None:
+    if self.logic.opticalAttenuationVsDoseFunction != None:
       calibratedVolumeDisplayNode = self.calibratedMeasuredVolumeNode.GetDisplayNode()
-      odVsDoseNumberOfRows = self.logic.opticalDensityVsDoseFunction.shape[0]
-      minDose = self.logic.opticalDensityVsDoseFunction[0, 1]
-      maxDose = self.logic.opticalDensityVsDoseFunction[odVsDoseNumberOfRows-1, 1]
+      oaVsDoseNumberOfRows = self.logic.opticalAttenuationVsDoseFunction.shape[0]
+      minDose = self.logic.opticalAttenuationVsDoseFunction[0, 1]
+      maxDose = self.logic.opticalAttenuationVsDoseFunction[oaVsDoseNumberOfRows-1, 1]
       minWindowLevel = minDose - (maxDose-minDose)*0.2
       maxWindowLevel = maxDose + (maxDose-minDose)*0.2
       calibratedVolumeDisplayNode.AutoWindowLevelOff();
@@ -1530,11 +1531,11 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       from vtkSlicerRtCommon import SlicerRtCommon
       doseComparisonLogic = slicer.modules.dosecomparison.logic()
       self.addObserver(doseComparisonLogic, SlicerRtCommon.ProgressUpdated, self.onGammaProgressUpdated)
-      self.GammaProgressDialog = qt.QProgressDialog(self.parent)#slicer.util.mainWindow()) #TODO:
-      self.GammaProgressDialog.setModal(True)
-      self.GammaProgressDialog.setMinimumDuration(150)
-      self.GammaProgressDialog.labelText = "Computing gamma dose difference..."
-      self.GammaProgressDialog.show()
+      self.gammaProgressDialog = qt.QProgressDialog(self.parent)
+      self.gammaProgressDialog.setModal(True)
+      self.gammaProgressDialog.setMinimumDuration(150)
+      self.gammaProgressDialog.labelText = "Computing gamma dose difference..."
+      self.gammaProgressDialog.show()
       slicer.app.processEvents()
       
       # Perform gamma comparison
@@ -1542,8 +1543,8 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       doseComparisonLogic.SetAndObserveDoseComparisonNode(self.gammaParameterSetNode)
       errorMessage = doseComparisonLogic.ComputeGammaDoseDifference()
       
-      self.GammaProgressDialog.hide()
-      self.GammaProgressDialog = None
+      self.gammaProgressDialog.hide()
+      self.gammaProgressDialog = None
       self.removeObserver(doseComparisonLogic, SlicerRtCommon.ProgressUpdated, self.onGammaProgressUpdated)
       qt.QApplication.restoreOverrideCursor()
 
@@ -1598,8 +1599,8 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       logging.error('Failed to perform gamma dose comparison!')
 
   def onGammaProgressUpdated(self, logic, event):
-    if self.GammaProgressDialog:
-      self.GammaProgressDialog.value = logic.GetProgress() * 100.0
+    if self.gammaProgressDialog:
+      self.gammaProgressDialog.value = logic.GetProgress() * 100.0
       slicer.app.processEvents()
 
   def onShowGammaReport(self):
@@ -1793,17 +1794,17 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step3_1_xTranslationSpinBox.setValue(1)
     self.step3_1_yScaleSpinBox.setValue(1.162)
     self.step3_1_yTranslationSpinBox.setValue(1.28)
-
+    return #TODO:####################
     # Generate dose information
     self.step3_doseCalibrationCollapsibleButton.setChecked(True)
     self.step3_1_rdfLineEdit.setText('0.989')
     self.step3_1_monitorUnitsLineEdit.setText('1850')
     self.onComputeDoseFromPdd()
-    # Show optical density VS dose curve
+    # Show optical attenuation VS dose curve
     self.step3_1_calibrationRoutineCollapsibleButton.setChecked(True)
-    self.onShowOpticalDensityVsDoseCurve()
-    # Fit polynomial on OD VS dose curve
-    self.onFitPolynomialToOpticalDensityVsDoseCurve()
+    self.onShowOpticalAttenuationVsDoseCurve()
+    # Fit polynomial on OA VS dose curve
+    self.onFitPolynomialToOpticalAttenuationVsDoseCurve()
     # Calibrate
     self.onApplyCalibration()
 
@@ -1869,8 +1870,8 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step3_1_monitorUnitsLineEdit.setText(monitorUnits)
     self.onComputeDoseFromPdd()
 
-    self.onShowOpticalDensityVsDoseCurve()
-    self.onFitPolynomialToOpticalDensityVsDoseCurve()
+    self.onShowOpticalAttenuationVsDoseCurve()
+    self.onFitPolynomialToOpticalAttenuationVsDoseCurve()
 
     slicer.app.processEvents()
     self.onApplyCalibration()
@@ -1917,7 +1918,6 @@ class GelDosimetryAnalysisWidget(ScriptedLoadableModuleWidget):
   """
 
   def setup(self):
-    self.developerMode = True
     ScriptedLoadableModuleWidget.setup(self) 
 
     # Show slicelet button
@@ -1939,7 +1939,7 @@ class GelDosimetryAnalysisWidget(ScriptedLoadableModuleWidget):
     mainFrame.windowIcon = qt.QIcon(iconPath)
     mainFrame.connect('destroyed()', self.onSliceletClosed)
     
-    slicelet = GelDosimetryAnalysisSlicelet(mainFrame)
+    slicelet = GelDosimetryAnalysisSlicelet(mainFrame, self.developerMode)
     mainFrame.setSlicelet(slicelet)
 
     # Make the slicelet reachable from the Slicer python interactor for testing

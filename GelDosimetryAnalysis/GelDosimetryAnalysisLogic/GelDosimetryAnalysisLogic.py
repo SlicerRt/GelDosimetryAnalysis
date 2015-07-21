@@ -31,7 +31,7 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     self.calibrationDataArray = None
     self.calibrationDataAlignedArray = None # Calibration array registered (X shift) to the Pdd curve (for computation)
     self.calibrationDataAlignedToDisplayArray = None # Calibration array registered (X shift, Y scale, Y shift) to the Pdd curve (for visual alignment)
-    self.opticalDensityVsDoseFunction = None
+    self.opticalAttenuationVsDoseFunction = None
     self.calibrationPolynomialCoefficients = None # Calibration polynomial coefficients, highest power first
 
     # Set logic instance to the global variable that supplies it to the calibration curve alignment minimizer function
@@ -177,9 +177,9 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     return True
 
   # ---------------------------------------------------------------------------
-  def getMeanOpticalDensityOfCentralCylinder(self, calibrationVolumeNodeID, centralRadiusMm):
+  def getMeanOpticalAttenuationOfCentralCylinder(self, calibrationVolumeNodeID, centralRadiusMm):
     # Format of output array: the following values are provided for each slice:
-    #   depth (cm), mean optical density on the slice at depth, std.dev. of optical density
+    #   depth (cm), mean optical attenuation on the slice at depth, std.dev. of optical attenuation
     qt.QApplication.setOverrideCursor(qt.QCursor(qt.Qt.BusyCursor))
 
     calibrationVolume = slicer.util.getNode(calibrationVolumeNodeID)
@@ -188,7 +188,7 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     # Get image properties needed for the calculation
     calibrationVolumeSliceThicknessCm = calibrationVolume.GetSpacing()[2] / 10.0
     if calibrationVolume.GetSpacing()[0] != calibrationVolume.GetSpacing()[1]:
-      logging.warning('Image data X and Y spacing differ! This is not supported, the mean optical density data may be skewed!')
+      logging.warning('Image data X and Y spacing differ! This is not supported, the mean optical attenuation data may be skewed!')
     calibrationVolumeInPlaneSpacing = calibrationVolume.GetSpacing()[0]
 
     centralRadiusPixel = int(numpy.ceil(centralRadiusMm / calibrationVolumeInPlaneSpacing))
@@ -204,42 +204,42 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     numpyImageDataArray = numpy_support.vtk_to_numpy(calibrationVolumeImageDataAsScalars)
     numpyImageDataArray = numpy.reshape(numpyImageDataArray, (calibrationVolumeImageData.GetExtent()[1]+1, calibrationVolumeImageData.GetExtent()[3]+1, calibrationVolumeImageData.GetExtent()[5]+1), 'F')
     
-    opticalDensityOfCentralCylinderTable = numpy.zeros((numberOfSlices, 3))
+    opticalAttenuationOfCentralCylinderTable = numpy.zeros((numberOfSlices, 3))
     sliceNumber = 0
     z = calibrationVolumeImageData.GetExtent()[5]
     zMin = calibrationVolumeImageData.GetExtent()[4]
     while z  >= zMin:
       totalPixels = 0
-      totalOpticalDensity = 0
+      totalOpticalAttenuation = 0
       listOfOpticalDensities = []
-      meanOpticalDensity = 0
+      meanOpticalAttenuation = 0
 
       for y in xrange(centerYCoordinate - centralRadiusPixel, centerYCoordinate + centralRadiusPixel):
         for x in xrange(centerXCoordinate - centralRadiusPixel, centerXCoordinate + centralRadiusPixel):
           distanceOfX = abs(x - centerXCoordinate)
           distanceOfY = abs(y - centerYCoordinate)
           if ((distanceOfX + distanceOfY) <= centralRadiusPixel) or ((pow(distanceOfX, 2) + pow(distanceOfY, 2)) <= pow(centralRadiusPixel, 2)):
-            currentOpticalDensity = numpyImageDataArray[x, y, z]
-            listOfOpticalDensities.append(currentOpticalDensity)
-            totalOpticalDensity = totalOpticalDensity + currentOpticalDensity
+            currentOpticalAttenuation = numpyImageDataArray[x, y, z]
+            listOfOpticalDensities.append(currentOpticalAttenuation)
+            totalOpticalAttenuation = totalOpticalAttenuation + currentOpticalAttenuation
             totalPixels+=1
       
-      meanOpticalDensity = totalOpticalDensity / totalPixels
-      standardDeviationOpticalDensity	= 0
-      for currentOpticalDensityValue in xrange(totalPixels):
-        standardDeviationOpticalDensity += pow((listOfOpticalDensities[currentOpticalDensityValue] - meanOpticalDensity), 2)
-      standardDeviationOpticalDensity = sqrt(standardDeviationOpticalDensity / totalPixels)
-      opticalDensityOfCentralCylinderTable[sliceNumber, 0] = sliceNumber * calibrationVolumeSliceThicknessCm
-      opticalDensityOfCentralCylinderTable[sliceNumber, 1] = meanOpticalDensity
-      opticalDensityOfCentralCylinderTable[sliceNumber, 2] = standardDeviationOpticalDensity
+      meanOpticalAttenuation = totalOpticalAttenuation / totalPixels
+      standardDeviationOpticalAttenuation	= 0
+      for currentOpticalAttenuationValue in xrange(totalPixels):
+        standardDeviationOpticalAttenuation += pow((listOfOpticalDensities[currentOpticalAttenuationValue] - meanOpticalAttenuation), 2)
+      standardDeviationOpticalAttenuation = sqrt(standardDeviationOpticalAttenuation / totalPixels)
+      opticalAttenuationOfCentralCylinderTable[sliceNumber, 0] = sliceNumber * calibrationVolumeSliceThicknessCm
+      opticalAttenuationOfCentralCylinderTable[sliceNumber, 1] = meanOpticalAttenuation
+      opticalAttenuationOfCentralCylinderTable[sliceNumber, 2] = standardDeviationOpticalAttenuation
       # logging.debug('Slice (cm): ' + repr(sliceNumber*calibrationVolumeSliceThicknessCm))
-      # logging.debug('  Mean: ' + repr(meanOpticalDensity) + '  StdDev: ' + repr(standardDeviationOpticalDensity))
+      # logging.debug('  Mean: ' + repr(meanOpticalAttenuation) + '  StdDev: ' + repr(standardDeviationOpticalAttenuation))
       sliceNumber += 1
       z -= 1
 
     qt.QApplication.restoreOverrideCursor()
     logging.info('CALIBRATION data has been successfully parsed with averaging radius {0}mm ({1}px)'.format(centralRadiusMm, centralRadiusPixel))
-    self.calibrationDataArray = opticalDensityOfCentralCylinderTable
+    self.calibrationDataArray = opticalAttenuationOfCentralCylinderTable
     return True
 
   # ---------------------------------------------------------------------------
@@ -412,40 +412,40 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     return True
 
   # ---------------------------------------------------------------------------
-  def createOpticalDensityVsDoseFunction(self, pddRangeMin=-1000, pddRangeMax=1000):
+  def createOpticalAttenuationVsDoseFunction(self, pddRangeMin=-1000, pddRangeMax=1000):
     # Create interpolator for aligned calibration function to allow getting the values for the
     # depths present in the calculated dose function
     interpolator = vtk.vtkPiecewiseFunction()
     calibrationAlignedNumberOfRows = self.calibrationDataAlignedArray.shape[0]
     for calibrationRowIndex in xrange(calibrationAlignedNumberOfRows):
       currentDose = self.calibrationDataAlignedArray[calibrationRowIndex, 0]
-      currentOpticalDensity = self.calibrationDataAlignedArray[calibrationRowIndex, 1]
-      interpolator.AddPoint(currentDose, currentOpticalDensity)
+      currentOpticalAttenuation = self.calibrationDataAlignedArray[calibrationRowIndex, 1]
+      interpolator.AddPoint(currentDose, currentOpticalAttenuation)
     interpolatorRange = interpolator.GetRange()
 
-    # Get the optical density and the dose values from the aligned calibration function and the calculated dose
-    self.opticalDensityVsDoseFunction = numpy.zeros(self.calculatedDose.shape)
+    # Get the optical attenuation and the dose values from the aligned calibration function and the calculated dose
+    self.opticalAttenuationVsDoseFunction = numpy.zeros(self.calculatedDose.shape)
     doseNumberOfRows = self.calculatedDose.shape[0]
     for doseRowIndex in xrange(doseNumberOfRows):
       # Reverse the function so that smallest dose comes first (which decreases with depth)
       currentDepth = self.calculatedDose[doseRowIndex, 0]
       if currentDepth >= interpolatorRange[0] and currentDepth <= interpolatorRange[1] and currentDepth >= pddRangeMin and currentDepth <= pddRangeMax:
-        self.opticalDensityVsDoseFunction[doseNumberOfRows-doseRowIndex-1, 0] = interpolator.GetValue(currentDepth)
-        self.opticalDensityVsDoseFunction[doseNumberOfRows-doseRowIndex-1, 1] = self.calculatedDose[doseRowIndex, 1]
+        self.opticalAttenuationVsDoseFunction[doseNumberOfRows-doseRowIndex-1, 0] = interpolator.GetValue(currentDepth)
+        self.opticalAttenuationVsDoseFunction[doseNumberOfRows-doseRowIndex-1, 1] = self.calculatedDose[doseRowIndex, 1]
       else:
         # If the depth value is out of range then delete the last row (it will never be set, but we need to remove the zeros from the end)
-        self.opticalDensityVsDoseFunction = numpy.delete(self.opticalDensityVsDoseFunction, doseNumberOfRows-doseRowIndex-1, 0)
+        self.opticalAttenuationVsDoseFunction = numpy.delete(self.opticalAttenuationVsDoseFunction, doseNumberOfRows-doseRowIndex-1, 0)
 
   # ---------------------------------------------------------------------------
-  def fitCurveToOpticalDensityVsDoseFunctionArray(self, orderOfFittedPolynomial):
-    # Fit polynomial on the cleaned OD vs dose function array
-    odVsDoseNumberOfRows = self.opticalDensityVsDoseFunction.shape[0]
-    opticalDensityData = numpy.zeros((odVsDoseNumberOfRows))
-    doseData = numpy.zeros((odVsDoseNumberOfRows))
-    for rowIndex in xrange(odVsDoseNumberOfRows):
-      opticalDensityData[rowIndex] = self.opticalDensityVsDoseFunction[rowIndex, 0]
-      doseData[rowIndex] = self.opticalDensityVsDoseFunction[rowIndex, 1]
-    fittingResult = numpy.polyfit(opticalDensityData, doseData, orderOfFittedPolynomial, None, True)
+  def fitCurveToOpticalAttenuationVsDoseFunctionArray(self, orderOfFittedPolynomial):
+    # Fit polynomial on the cleaned OA vs dose function array
+    oaVsDoseNumberOfRows = self.opticalAttenuationVsDoseFunction.shape[0]
+    opticalAttenuationData = numpy.zeros((oaVsDoseNumberOfRows))
+    doseData = numpy.zeros((oaVsDoseNumberOfRows))
+    for rowIndex in xrange(oaVsDoseNumberOfRows):
+      opticalAttenuationData[rowIndex] = self.opticalAttenuationVsDoseFunction[rowIndex, 0]
+      doseData[rowIndex] = self.opticalAttenuationVsDoseFunction[rowIndex, 1]
+    fittingResult = numpy.polyfit(opticalAttenuationData, doseData, orderOfFittedPolynomial, None, True)
     self.calibrationPolynomialCoefficients = fittingResult[0]
     self.fittingResiduals = fittingResult[1]
     logging.info('Coefficients of the fitted polynomial (highest order first): ' + repr(self.calibrationPolynomialCoefficients.tolist()))
@@ -463,17 +463,17 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
 
     # Assemble file name for calibration curve points file
     from time import gmtime, strftime
-    fileName = self.outputDir + '/' + strftime("%Y%m%d_%H%M%S_", gmtime()) + 'ODvsDosePoints.csv'
+    fileName = self.outputDir + '/' + strftime("%Y%m%d_%H%M%S_", gmtime()) + 'oaVsDosePoints.csv'
 
     # Write calibration curve points CSV file
     message = ''
-    if self.opticalDensityVsDoseFunction != None:
-      message = 'Optical density to dose values saved in file\n' + fileName + '\n\n'
+    if self.opticalAttenuationVsDoseFunction != None:
+      message = 'Optical attenuation to dose values saved in file\n' + fileName + '\n\n'
       with open(fileName, 'w') as fp:
         csvWriter = csv.writer(fp, delimiter=',', lineterminator='\n')
-        data = [['OpticalDensity','Dose']]
-        for odVsDosePoint in self.opticalDensityVsDoseFunction:
-          data.append(odVsDosePoint)
+        data = [['OpticalAttenuation','Dose']]
+        for oaVsDosePoint in self.opticalAttenuationVsDoseFunction:
+          data.append(oaVsDosePoint)
         csvWriter.writerows(data)
 
     # Assemble file name for polynomial coefficients
