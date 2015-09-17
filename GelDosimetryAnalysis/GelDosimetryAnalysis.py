@@ -1525,6 +1525,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       self.gammaParameterSetNode.SetUseLinearInterpolation(self.step4_1_useLinearInterpolationCheckBox.isChecked())
       self.gammaParameterSetNode.SetReferenceDoseGy(self.step4_1_referenceDoseCustomValueCGySpinBox.value / 100.0)
       self.gammaParameterSetNode.SetAnalysisThresholdPercent(self.step4_1_analysisThresholdPercentSpinBox.value)
+      self.gammaParameterSetNode.SetDoseThresholdOnReferenceOnly(True)
       self.gammaParameterSetNode.SetMaximumGamma(self.step4_1_maximumGammaSpinBox.value)
 
       # Create progress bar
