@@ -415,6 +415,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # OBI fiducial selector simple markups widget
     self.step2_2_1_obiFiducialList = slicer.qSlicerSimpleMarkupsWidget()
+    self.step2_2_1_obiFiducialList.setMRMLScene(slicer.mrmlScene)
     self.step2_2_1_obiFiducialSelectionLayout.addRow(self.step2_2_1_obiFiducialList)
 
     # Step 2.2.2: Select MEASURED fiducials on MEASURED dose volume
@@ -440,6 +441,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # Measured fiducial selector simple markups widget
     self.step2_2_2_measuredFiducialList = slicer.qSlicerSimpleMarkupsWidget()
+    self.step2_2_2_measuredFiducialList.setMRMLScene(slicer.mrmlScene)
     self.step2_2_2_measuredFiducialSelectionLayout.addRow(self.step2_2_2_measuredFiducialList)
 
     # Step 2.2.3: Perform registration
@@ -1212,7 +1214,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.calibrationCurveChartView.GetRenderWindow().Start()
 
   def onAlignCalibrationCurves(self):
-    if self.logic.pddDataArray == None or self.logic.pddDataArray.size == 0:
+    if self.logic.pddDataArray is None or self.logic.pddDataArray.size == 0:
       slicer.util.errorDisplay('PDD data not loaded!')
       return
 
@@ -1436,7 +1438,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     appLogic.PropagateVolumeSelection() 
 
     # Set window/level options for the calibrated dose
-    if self.logic.opticalAttenuationVsDoseFunction != None:
+    if self.logic.opticalAttenuationVsDoseFunction is not None:
       calibratedVolumeDisplayNode = self.calibratedMeasuredVolumeNode.GetDisplayNode()
       oaVsDoseNumberOfRows = self.logic.opticalAttenuationVsDoseFunction.shape[0]
       minDose = self.logic.opticalAttenuationVsDoseFunction[0, 1]
@@ -1795,7 +1797,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step3_1_xTranslationSpinBox.setValue(1)
     self.step3_1_yScaleSpinBox.setValue(1.162)
     self.step3_1_yTranslationSpinBox.setValue(1.28)
-    return #TODO:####################
+
     # Generate dose information
     self.step3_doseCalibrationCollapsibleButton.setChecked(True)
     self.step3_1_rdfLineEdit.setText('0.989')
@@ -1821,7 +1823,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.onGammaDoseComparison()
 
   def performSelfTestFromSavedScene(self):
-    #TODO: This does not work until segmentations storage is done
+    #TODO: Update saved scene to one with segmentations
     return
     # Set variables. Only this section needs to be changed when testing new dataset
     scenePath = 'c:/Slicer_Data/20140820_GelDosimetry_StructureSetIncluded/2014-08-20-Scene.mrml'
