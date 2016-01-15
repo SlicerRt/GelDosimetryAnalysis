@@ -127,11 +127,11 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     
     # Create or get fiducial nodes
     self.obiMarkupsFiducialNode = slicer.util.getNode(self.obiMarkupsFiducialNodeName)
-    if self.obiMarkupsFiducialNode == None:
+    if self.obiMarkupsFiducialNode is None:
       obiFiducialsNodeId = self.markupsLogic.AddNewFiducialNode(self.obiMarkupsFiducialNodeName)
       self.obiMarkupsFiducialNode = slicer.mrmlScene.GetNodeByID(obiFiducialsNodeId)
     self.measuredMarkupsFiducialNode = slicer.util.getNode(self.measuredMarkupsFiducialNodeName)
-    if self.measuredMarkupsFiducialNode == None:
+    if self.measuredMarkupsFiducialNode is None:
       measuredFiducialsNodeId = self.markupsLogic.AddNewFiducialNode(self.measuredMarkupsFiducialNodeName)
       self.measuredMarkupsFiducialNode = slicer.mrmlScene.GetNodeByID(measuredFiducialsNodeId)
     measuredFiducialsDisplayNode = self.measuredMarkupsFiducialNode.GetDisplayNode()
@@ -1003,7 +1003,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       self.step2_2_1_obiFiducialList.activate()
 
       # Automatically show OBI volume (show nothing if not present)
-      if self.obiVolumeNode != None:
+      if self.obiVolumeNode is not None:
         selectionNode.SetActiveVolumeID(self.obiVolumeNode.GetID())
       else:
         selectionNode.SetActiveVolumeID(None)
@@ -1028,7 +1028,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       self.step2_2_2_measuredFiducialList.activate()
 
       # Automatically show MEASURED volume (show nothing if not present)
-      if self.measuredVolumeNode != None:
+      if self.measuredVolumeNode is not None:
         selectionNode.SetActiveVolumeID(self.measuredVolumeNode.GetID())
       else:
         selectionNode.SetActiveVolumeID(None)
@@ -1062,11 +1062,11 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     for compositeNode in compositeNodes.values():
       compositeNode.SetForegroundOpacity(0.5)
     # Hide structures for sake of speed
-    if self.planStructuresNode != None:
+    if self.planStructuresNode is not None:
       self.planStructuresNode.GetDisplayNode().SetVisibility(0)
     # Hide beam models
     beamModelsParent = slicer.util.getNode('*_BeamModels_SubjectHierarchy')
-    if beamModelsParent != None:
+    if beamModelsParent is not None:
       beamModelsParent.SetDisplayVisibilityForBranch(0)
       
     # Set transforms to slider widgets
@@ -1097,7 +1097,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   def onLoadPddDataRead(self):
     fileName = qt.QFileDialog.getOpenFileName(0, 'Open PDD data file', '', 'CSV with COMMA ( *.csv )')
-    if fileName != None and fileName != '':
+    if fileName is not None and fileName != '':
       success = self.logic.loadPdd(fileName)
       if success == True:
         self.logic.delayDisplay('PDD loaded successfully')
@@ -1108,7 +1108,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     if collapsed == False:
       appLogic = slicer.app.applicationLogic()
       selectionNode = appLogic.GetSelectionNode()
-      if self.measuredVolumeNode != None:
+      if self.measuredVolumeNode is not None:
         selectionNode.SetActiveVolumeID(self.measuredVolumeNode.GetID())
       else:
         selectionNode.SetActiveVolumeID(None)
@@ -1265,7 +1265,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
   def onShowOpticalAttenuationVsDoseCurve(self):
     # Get selection from PDD vs Calibration chart
     selection = self.pddLine.GetSelection()
-    if selection != None and selection.GetNumberOfTuples() > 0:
+    if selection is not None and selection.GetNumberOfTuples() > 0:
       pddRangeMin = self.pddDataTable.GetValue(selection.GetValue(0), 0)
       pddRangeMax = self.pddDataTable.GetValue(selection.GetValue(selection.GetNumberOfTuples()-1), 0)
     else:
@@ -1317,9 +1317,9 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   def onRemoveSelectedPointsFromOpticalAttenuationVsDoseCurve(self):
     outlierSelection = self.oaVsDoseLineInnerPoint.GetSelection()
-    if outlierSelection == None:
+    if outlierSelection is None:
       outlierSelection = self.oaVsDoseLinePoint.GetSelection()
-    if outlierSelection != None and outlierSelection.GetNumberOfTuples() > 0:
+    if outlierSelection is not None and outlierSelection.GetNumberOfTuples() > 0:
       # Get outlier indices in descending order
       outlierIndices = []
       for outlierSelectionIndex in xrange(outlierSelection.GetNumberOfTuples()):
@@ -1335,7 +1335,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       emptySelectionArray = vtk.vtkIdTypeArray()
       self.oaVsDoseLinePoint.SetSelection(emptySelectionArray)
       self.oaVsDoseLineInnerPoint.SetSelection(emptySelectionArray)
-      if hasattr(self, 'polynomialLine') and self.polynomialLine != None:
+      if hasattr(self, 'polynomialLine') and self.polynomialLine is not None:
         self.polynomialLine.SetSelection(emptySelectionArray)
       # Update chart view
       self.oaVsDoseDataTable.Modified()
@@ -1384,7 +1384,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
         y += p[orderIndex] * x ** (maxOrder-orderIndex)
       self.polynomialTable.SetValue(rowIndex, 1, y)
 
-    if hasattr(self, 'polynomialLine') and self.polynomialLine != None:
+    if hasattr(self, 'polynomialLine') and self.polynomialLine is not None:
       self.oaVsDoseChart.RemovePlotInstance(self.polynomialLine)
 
     self.polynomialLine = self.oaVsDoseChart.AddPlot(vtk.vtkChart.LINE)
@@ -1426,7 +1426,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # Perform calibration
     self.calibratedMeasuredVolumeNode = self.logic.calibrate(self.measuredVolumeNode.GetID())
-    if self.calibratedMeasuredVolumeNode != None:
+    if self.calibratedMeasuredVolumeNode is not None:
       self.step3_2_applyCalibrationStatusLabel.setText('Calibration successfully performed')
     else:
       self.step3_2_applyCalibrationStatusLabel.setText('Calibration failed!')
@@ -1454,11 +1454,11 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.refreshDoseComparisonInfoLabel()
     
   def refreshDoseComparisonInfoLabel(self):
-    if self.planDoseVolumeNode == None:
+    if self.planDoseVolumeNode is None:
       self.step4_doseComparisonReferenceVolumeLabel.text = 'Invalid plan dose volume!'
     else:
       self.step4_doseComparisonReferenceVolumeLabel.text = self.planDoseVolumeNode.GetName()
-    if self.calibratedMeasuredVolumeNode == None:
+    if self.calibratedMeasuredVolumeNode is None:
       self.step4_doseComparisonEvaluatedVolumeLabel.text = 'Invalid calibrated gel dosimeter volume!'
     else:
       self.step4_doseComparisonEvaluatedVolumeLabel.text = self.calibratedMeasuredVolumeNode.GetName()
@@ -1466,7 +1466,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
   def onStep4_DoseComparisonSelected(self, collapsed):
     # Initialize mask segmentation selector to select plan structures
     self.step4_maskSegmentationSelector.setCurrentNode(self.planStructuresNode)
-    self.maskSegmentationNode = self.planStructuresNode
+    self.onStep4_MaskSegmentationSelectionChanged(self.planStructuresNode)
     # Turn scalar bar on/off
     if collapsed == False:
       self.sliceAnnotations.scalarBarEnabled = 1
@@ -1478,22 +1478,22 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   def onStep4_MaskSegmentationSelectionChanged(self, node):
     # Hide previously selected mask segmentation
-    if self.maskSegmentationNode != None:
+    if self.maskSegmentationNode is not None:
       self.maskSegmentationNode.GetDisplayNode().SetVisibility(0)
     # Set new mask segmentation
     self.maskSegmentationNode = node
     self.onStep4_MaskSegmentSelectionChanged(self.step4_maskSegmentationSelector.currentSegmentID())
     # Show new mask segmentation
-    if self.maskSegmentationNode != None:
+    if self.maskSegmentationNode is not None:
       self.maskSegmentationNode.GetDisplayNode().SetVisibility(1)
 
   def onStep4_MaskSegmentSelectionChanged(self, segmentID):
-    if self.maskSegmentationNode == None:
+    if self.maskSegmentationNode is None:
       return
     # Set new mask segment
     self.maskSegmentID = segmentID
     # Show new mask segment
-    if self.maskSegmentID != None and self.maskSegmentID != '':
+    if self.maskSegmentID is not None and self.maskSegmentID != '':
       # Hide other segments
       import vtkSegmentationCore
       segmentIDs = vtk.vtkStringArray()
@@ -1513,7 +1513,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       slicer.modules.dosecomparison
       import vtkSlicerDoseComparisonModuleLogic
 
-      if self.step4_1_gammaVolumeSelector.currentNode() == None:
+      if self.step4_1_gammaVolumeSelector.currentNode() is None:
         qt.QMessageBox.warning(None, 'Warning', 'Gamma volume not selected. If there is no suitable output gamma volume, create one.')
         return
       else:
@@ -1525,7 +1525,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       self.gammaParameterSetNode.SetAndObserveReferenceDoseVolumeNode(self.planDoseVolumeNode)
       self.gammaParameterSetNode.SetAndObserveCompareDoseVolumeNode(self.calibratedMeasuredVolumeNode)
       self.gammaParameterSetNode.SetAndObserveMaskSegmentationNode(self.maskSegmentationNode)
-      if self.maskSegmentID != None and self.maskSegmentID != '':
+      if self.maskSegmentID is not None and self.maskSegmentID != '':
         self.gammaParameterSetNode.SetMaskSegmentID(self.maskSegmentID)
       self.gammaParameterSetNode.SetAndObserveGammaVolumeNode(self.gammaVolumeNode)
       self.gammaParameterSetNode.SetDtaDistanceToleranceMm(self.step4_1_dtaDistanceToleranceMmSpinBox.value)
@@ -1600,7 +1600,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       # Center 3D view
       layoutManager = self.layoutWidget.layoutManager()
       threeDWidget = layoutManager.threeDWidget(0)
-      if threeDWidget != None and threeDWidget.threeDView() != None:
+      if threeDWidget is not None and threeDWidget.threeDView() is not None:
         threeDWidget.threeDView().resetFocalPoint()
       
     except Exception, e:
