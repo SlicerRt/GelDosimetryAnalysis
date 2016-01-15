@@ -150,6 +150,8 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # Create slice annotations for scalar bar support
     self.sliceAnnotations = DataProbeLib.SliceAnnotations(self.layoutWidget.layoutManager())
+    self.sliceAnnotations.scalarBarEnabled = 0
+    self.sliceAnnotations.updateSliceViewFromGUI()
 
     # Set up step panels
     self.setup_Step0_LayoutSelection()    
@@ -364,7 +366,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step2_1_obiToPlanCtRegistrationLayout.addRow(' ', None)
 
     # Transform fine-tune controls
-    self.step2_1_transformSlidersInfoLabel = qt.QLabel("Adjust result registration transform if needed:")
+    self.step2_1_transformSlidersInfoLabel = qt.QLabel("If registration result is not satisfactory, a simple re-run of the registration may solve it.\nOtherwise adjust result registration transform if needed:")
     self.step2_1_transformSlidersInfoLabel.wordWrap = True
     self.step2_1_translationSliders = slicer.qMRMLTransformSliders()
     #self.step2_1_translationSliders.CoordinateReference = slicer.qMRMLTransformSliders.LOCAL # This would make the sliders always start form 0 (then min/max would also not be needed)
@@ -1433,8 +1435,8 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Show calibrated volume
     appLogic = slicer.app.applicationLogic()
     selectionNode = appLogic.GetSelectionNode()
-    selectionNode.SetActiveVolumeID(self.calibratedMeasuredVolumeNode.GetID())
-    selectionNode.SetSecondaryVolumeID(self.planDoseVolumeNode.GetID())
+    selectionNode.SetActiveVolumeID(self.planDoseVolumeNode.GetID())
+    selectionNode.SetSecondaryVolumeID(self.calibratedMeasuredVolumeNode.GetID())
     appLogic.PropagateVolumeSelection() 
 
     # Set window/level options for the calibrated dose
@@ -1462,12 +1464,17 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       self.step4_doseComparisonEvaluatedVolumeLabel.text = self.calibratedMeasuredVolumeNode.GetName()
 
   def onStep4_DoseComparisonSelected(self, collapsed):
+    # Initialize mask segmentation selector to select plan structures
+    self.step4_maskSegmentationSelector.setCurrentNode(self.planStructuresNode)
+    self.maskSegmentationNode = self.planStructuresNode
     # Turn scalar bar on/off
     if collapsed == False:
-      self.sliceAnnotations.showColorScalarBar = 1
+      self.sliceAnnotations.scalarBarEnabled = 1
     else:
-      self.sliceAnnotations.showColorScalarBar = 0
+      self.sliceAnnotations.scalarBarEnabled = 0
     self.sliceAnnotations.updateSliceViewFromGUI()
+    # Reset 3D view
+    self.layoutWidget.layoutManager().threeDWidget(0).threeDView().resetFocalPoint()
 
   def onStep4_MaskSegmentationSelectionChanged(self, node):
     # Hide previously selected mask segmentation
@@ -1496,7 +1503,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
         self.maskSegmentationNode.GetDisplayNode().SetSegmentVisibility(currentSegmentID, False)
       # Show only selected segment, make it semi-transparent
       self.maskSegmentationNode.GetDisplayNode().SetSegmentVisibility(self.maskSegmentID, True)
-      self.maskSegmentationNode.GetDisplayNode().SetSegmentPolyDataOpacity(self.maskSegmentID, 0.5)      
+      self.maskSegmentationNode.GetDisplayNode().SetSegmentPolyDataOpacity(self.maskSegmentID, 0.5)
     
   def onUseMaximumDoseRadioButtonToggled(self, toggled):
     self.step4_1_referenceDoseCustomValueCGySpinBox.setEnabled(not toggled)
