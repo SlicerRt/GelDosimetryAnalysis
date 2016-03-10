@@ -1746,7 +1746,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Assign roles
     planCTVolumeName = '47: ARIA RadOnc Images - Verification Plan Phantom'
     planDoseVolumeName = '53: RTDOSE: Eclipse Doses: VMAT XM1 LCV'
-    obiVolumeName = '0: Unknown'
+    obiVolumeName = '0: Unnamed Series'
     structureSetNodeName = '52: RTSTRUCT: CT_1'
     measuredVolumeName = 'lcv01_hr.vff'
     calibrationVolumeName = 'lcv02_hr.vff'
