@@ -1503,7 +1503,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
         self.maskSegmentationNode.GetDisplayNode().SetSegmentVisibility(currentSegmentID, False)
       # Show only selected segment, make it semi-transparent
       self.maskSegmentationNode.GetDisplayNode().SetSegmentVisibility(self.maskSegmentID, True)
-      self.maskSegmentationNode.GetDisplayNode().SetSegmentPolyDataOpacity(self.maskSegmentID, 0.5)
+      self.maskSegmentationNode.GetDisplayNode().SetSegmentOpacity3D(self.maskSegmentID, 0.5)
     
   def onUseMaximumDoseRadioButtonToggled(self, toggled):
     self.step4_1_referenceDoseCustomValueCGySpinBox.setEnabled(not toggled)
@@ -1578,7 +1578,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
         self.maskSegmentationNode.GetDisplayNode().SetVisibility(1)
         if self.maskSegmentID:
           self.maskSegmentationNode.GetDisplayNode().SetSegmentVisibility(self.maskSegmentID, True)
-          self.maskSegmentationNode.GetDisplayNode().SetSegmentPolyDataOpacity(self.maskSegmentID, 0.5)
+          self.maskSegmentationNode.GetDisplayNode().SetSegmentOpacity3D(self.maskSegmentID, 0.5)
 
       # Show gamma slice in 3D view
       layoutManager = self.layoutWidget.layoutManager()
