@@ -1065,9 +1065,11 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     if self.planStructuresNode is not None:
       self.planStructuresNode.GetDisplayNode().SetVisibility(0)
     # Hide beam models
-    beamModelsParent = slicer.util.getNode('*_BeamModels_SubjectHierarchy')
-    if beamModelsParent is not None:
-      beamModelsParent.SetDisplayVisibilityForBranch(0)
+    planNodes = slicer.util.getNodes('vtkMRMLRTPlanNode*')
+    for planNode in planNodes.values():
+      planSh = slicer.vtkMRMLSubjectHierarchyNode.GetAssociatedSubjectHierarchyNode(planNode)
+      if planSh is not None:
+        planSh.SetDisplayVisibilityForBranch(0)
       
     # Set transforms to slider widgets
     self.step2_1_translationSliders.setMRMLTransformNode(obiToPlanTransformNode)
@@ -1550,8 +1552,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       
       # Perform gamma comparison
       qt.QApplication.setOverrideCursor(qt.QCursor(qt.Qt.BusyCursor))
-      doseComparisonLogic.SetAndObserveDoseComparisonNode(self.gammaParameterSetNode)
-      errorMessage = doseComparisonLogic.ComputeGammaDoseDifference()
+      errorMessage = doseComparisonLogic.ComputeGammaDoseDifference(self.gammaParameterSetNode)
       
       self.gammaProgressDialog.hide()
       self.gammaProgressDialog = None
