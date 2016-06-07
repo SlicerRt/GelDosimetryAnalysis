@@ -1497,7 +1497,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Show new mask segment
     if self.maskSegmentID is not None and self.maskSegmentID != '':
       # Hide other segments
-      import vtkSegmentationCore
+      import vtkSegmentationCorePython as vtkSegmentationCore
       segmentIDs = vtk.vtkStringArray()
       self.maskSegmentationNode.GetSegmentation().GetSegmentIDs(segmentIDs)
       for segmentIndex in xrange(0,segmentIDs.GetNumberOfValues()):
@@ -1513,7 +1513,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
   def onGammaDoseComparison(self):
     try:
       slicer.modules.dosecomparison
-      import vtkSlicerDoseComparisonModuleLogic
+      import vtkSlicerSegmentationsModuleLogicPython as vtkSlicerSegmentationsModuleLogic
 
       if self.step4_1_gammaVolumeSelector.currentNode() is None:
         qt.QMessageBox.warning(None, 'Warning', 'Gamma volume not selected. If there is no suitable output gamma volume, create one.')
