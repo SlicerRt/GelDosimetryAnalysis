@@ -518,7 +518,6 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
 
     coefficients = numpy_support.numpy_to_vtk(self.calibrationPolynomialCoefficients)
 
-    import vtkSlicerGelDosimetryAnalysisAlgoModuleLogic
     if slicer.modules.geldosimetryanalysisalgo.logic().ApplyPolynomialFunctionOnVolume(calibratedVolume, coefficients) == False:
       logging.error('Calibration failed!')
       slicer.mrmlScene.RemoveNode(calibratedVolume)

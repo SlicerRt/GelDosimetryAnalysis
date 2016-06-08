@@ -723,8 +723,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step4_doseComparisonCollapsibleButtonLayout.addRow('Calibrated gel volume (evaluated):', self.step4_doseComparisonEvaluatedVolumeLabel)
 
     # Mask segmentation selector
-    from qSlicerSegmentationsModuleWidgetsPythonQt import qMRMLSegmentSelectorWidget
-    self.step4_maskSegmentationSelector = qMRMLSegmentSelectorWidget()
+    self.step4_maskSegmentationSelector = slicer.qMRMLSegmentSelectorWidget()
     self.step4_maskSegmentationSelector.setMRMLScene(slicer.mrmlScene)
     self.step4_maskSegmentationSelector.noneEnabled = True
     self.step4_doseComparisonCollapsibleButtonLayout.addRow("Mask structure: ", self.step4_maskSegmentationSelector)
@@ -1513,7 +1512,6 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
   def onGammaDoseComparison(self):
     try:
       slicer.modules.dosecomparison
-      import vtkSlicerSegmentationsModuleLogicPython as vtkSlicerSegmentationsModuleLogic
 
       if self.step4_1_gammaVolumeSelector.currentNode() is None:
         qt.QMessageBox.warning(None, 'Warning', 'Gamma volume not selected. If there is no suitable output gamma volume, create one.')
@@ -1522,7 +1520,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
         self.gammaVolumeNode = self.step4_1_gammaVolumeSelector.currentNode()
 
       # Set up gamma computation parameters
-      self.gammaParameterSetNode = vtkSlicerDoseComparisonModuleLogic.vtkMRMLDoseComparisonNode()
+      self.gammaParameterSetNode = slicer.vtkMRMLDoseComparisonNode()
       slicer.mrmlScene.AddNode(self.gammaParameterSetNode)
       self.gammaParameterSetNode.SetAndObserveReferenceDoseVolumeNode(self.planDoseVolumeNode)
       self.gammaParameterSetNode.SetAndObserveCompareDoseVolumeNode(self.calibratedMeasuredVolumeNode)
@@ -1540,7 +1538,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       self.gammaParameterSetNode.SetMaximumGamma(self.step4_1_maximumGammaSpinBox.value)
 
       # Create progress bar
-      from vtkSlicerRtCommon import SlicerRtCommon
+      from vtkSlicerRtCommonPython import SlicerRtCommon
       doseComparisonLogic = slicer.modules.dosecomparison.logic()
       self.addObserver(doseComparisonLogic, SlicerRtCommon.ProgressUpdated, self.onGammaProgressUpdated)
       self.gammaProgressDialog = qt.QProgressDialog(self.parent)
