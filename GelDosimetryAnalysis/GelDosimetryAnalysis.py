@@ -1493,16 +1493,16 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       return
     # Set new mask segment
     self.maskSegmentID = segmentID
-    # Show new mask segment
+
+    # Hide all other segments
+    import vtkSegmentationCorePython as vtkSegmentationCore
+    segmentIDs = vtk.vtkStringArray()
+    self.maskSegmentationNode.GetSegmentation().GetSegmentIDs(segmentIDs)
+    for segmentIndex in xrange(0,segmentIDs.GetNumberOfValues()):
+      currentSegmentID = segmentIDs.GetValue(segmentIndex)
+      self.maskSegmentationNode.GetDisplayNode().SetSegmentVisibility(currentSegmentID, False)
+    # Show only selected segment, make it semi-transparent
     if self.maskSegmentID is not None and self.maskSegmentID != '':
-      # Hide other segments
-      import vtkSegmentationCorePython as vtkSegmentationCore
-      segmentIDs = vtk.vtkStringArray()
-      self.maskSegmentationNode.GetSegmentation().GetSegmentIDs(segmentIDs)
-      for segmentIndex in xrange(0,segmentIDs.GetNumberOfValues()):
-        currentSegmentID = segmentIDs.GetValue(segmentIndex)
-        self.maskSegmentationNode.GetDisplayNode().SetSegmentVisibility(currentSegmentID, False)
-      # Show only selected segment, make it semi-transparent
       self.maskSegmentationNode.GetDisplayNode().SetSegmentVisibility(self.maskSegmentID, True)
       self.maskSegmentationNode.GetDisplayNode().SetSegmentOpacity3D(self.maskSegmentID, 0.5)
     
@@ -1527,6 +1527,8 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       self.gammaParameterSetNode.SetAndObserveMaskSegmentationNode(self.maskSegmentationNode)
       if self.maskSegmentID is not None and self.maskSegmentID != '':
         self.gammaParameterSetNode.SetMaskSegmentID(self.maskSegmentID)
+      else:
+        self.gammaParameterSetNode.SetMaskSegmentID(None)
       self.gammaParameterSetNode.SetAndObserveGammaVolumeNode(self.gammaVolumeNode)
       self.gammaParameterSetNode.SetDtaDistanceToleranceMm(self.step4_1_dtaDistanceToleranceMmSpinBox.value)
       self.gammaParameterSetNode.SetDoseDifferenceTolerancePercent(self.step4_1_doseDifferenceTolerancePercentSpinBox.value)

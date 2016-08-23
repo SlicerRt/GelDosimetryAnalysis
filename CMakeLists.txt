@@ -15,7 +15,7 @@ set(EXTENSION_CATEGORY "Radiotherapy")
 set(EXTENSION_CONTRIBUTORS "Csaba Pinter (PerkLab, Queen's University), Jennifer Andrea (PerkLab, Queen's University), Mattea Welch (PerkLab, Queen's University), Kevin Alexander (KGH, Queen's University)")
 set(EXTENSION_DESCRIPTION "Slicelet covering the gel dosimetry analysis workflow used in commissioning new radiation techniques and to validate the accuracy of radiation treatment by enabling visual comparison of the planned dose to the delivered dose, where correspondence between the two dose distributions is achieved using embedded landmarks. Gel dosimetry is based on imaging chemical systems spatially fixed in gelatin, which exhibit a detectable change upon irradiation.")
 set(EXTENSION_ICONURL "http://www.slicer.org/slicerWiki/images/f/f1/GelDosimetry_Logo_128x128.png")
-set(EXTENSION_SCREENSHOTURLS "http://www.slicer.org/slicerWiki/images/8/83/GelDosimetrySlicelet_0.1_LandmarkRegistrationStep.png http://www.slicer.org/slicerWiki/images/6/68/GelDosimetrySlicelet_0.1_CalibrationCurvesAligned.png http://www.slicer.org/slicerWiki/images/5/51/GelDosimetrySlicelet_0.1_OdVsDoseCurve.png")
+set(EXTENSION_SCREENSHOTURLS "https://www.slicer.org/slicerWiki/images/8/80/20150605_Gamma_98percent.png https://www.slicer.org/slicerWiki/images/9/96/GelDosimetry_Step3a_OpticalCtMeasuredDose.png http://www.slicer.org/slicerWiki/images/6/68/GelDosimetrySlicelet_0.1_CalibrationCurvesAligned.png http://www.slicer.org/slicerWiki/images/5/51/GelDosimetrySlicelet_0.1_OdVsDoseCurve.png")
 set(EXTENSION_DEPENDS "SlicerRT")
 
 #-----------------------------------------------------------------------------
