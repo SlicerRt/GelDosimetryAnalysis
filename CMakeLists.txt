@@ -19,7 +19,6 @@ set(EXTENSION_SCREENSHOTURLS "https://www.slicer.org/slicerWiki/images/8/80/2015
 set(EXTENSION_DEPENDS "SlicerRT")
 
 #-----------------------------------------------------------------------------
-find_package(Slicer COMPONENTS ConfigurePrerequisites REQUIRED)
 project(GelDosimetryAnalysis)
 find_package(Slicer REQUIRED)
 include(${Slicer_USE_FILE})
