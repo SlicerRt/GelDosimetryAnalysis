@@ -102,7 +102,9 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.logic = GelDosimetryAnalysisLogic.GelDosimetryAnalysisLogic()
 
     # Set up constants
-    self.obiMarkupsFiducialNodeName = "OBI fiducials"
+    self.obiMarkupsFiducialNode1Name = "OBI fiducials (OBI to PLANCT)"
+    self.planCtMarkupsFiducialNodeName = "PLANCT fiducials"
+    self.obiMarkupsFiducialNode2Name = "OBI fiducials (OBI to MEASURED)"
     self.measuredMarkupsFiducialNodeName = "MEASURED fiducials"
 	
     # Declare member variables (selected at certain steps and then from then on for the workflow)
@@ -115,7 +117,9 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.measuredVolumeNode = None
     self.calibrationVolumeNode = None
 
-    self.obiMarkupsFiducialNode = None
+    self.obiMarkupsFiducialNode1 = None
+    self.planCtMarkupsFiducialNode = None
+    self.obiMarkupsFiducialNode2 = None
     self.measuredMarkupsFiducialNode = None
     self.calibratedMeasuredVolumeNode = None
     self.maskSegmentationNode = None
@@ -125,11 +129,22 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Get markups logic
     self.markupsLogic = slicer.modules.markups.logic()
     
-    # Create or get fiducial nodes
-    self.obiMarkupsFiducialNode = slicer.util.getNode(self.obiMarkupsFiducialNodeName)
-    if self.obiMarkupsFiducialNode is None:
-      obiFiducialsNodeId = self.markupsLogic.AddNewFiducialNode(self.obiMarkupsFiducialNodeName)
-      self.obiMarkupsFiducialNode = slicer.mrmlScene.GetNodeByID(obiFiducialsNodeId)
+    # Create or get fiducial nodes (OBI to PLANCT)
+    self.obiMarkupsFiducialNode1 = slicer.util.getNode(self.obiMarkupsFiducialNode1Name)
+    if self.obiMarkupsFiducialNode1 is None:
+      obiFiducialsNode1Id = self.markupsLogic.AddNewFiducialNode(self.obiMarkupsFiducialNode1Name)
+      self.obiMarkupsFiducialNode1 = slicer.mrmlScene.GetNodeByID(obiFiducialsNode1Id)
+    self.planCtMarkupsFiducialNode = slicer.util.getNode(self.planCtMarkupsFiducialNodeName)
+    if self.planCtMarkupsFiducialNode is None:
+      measuredFiducialsNodeId = self.markupsLogic.AddNewFiducialNode(self.planCtMarkupsFiducialNodeName)
+      self.planCtMarkupsFiducialNode = slicer.mrmlScene.GetNodeByID(measuredFiducialsNodeId)
+    measuredFiducialsDisplayNode = self.planCtMarkupsFiducialNode.GetDisplayNode()
+    measuredFiducialsDisplayNode.SetSelectedColor(0, 0.9, 0.9)
+    # Create or get fiducial nodes (OBI to MEASURED)
+    self.obiMarkupsFiducialNode2 = slicer.util.getNode(self.obiMarkupsFiducialNode2Name)
+    if self.obiMarkupsFiducialNode2 is None:
+      obiFiducialsNode2Id = self.markupsLogic.AddNewFiducialNode(self.obiMarkupsFiducialNode2Name)
+      self.obiMarkupsFiducialNode2 = slicer.mrmlScene.GetNodeByID(obiFiducialsNode2Id)
     self.measuredMarkupsFiducialNode = slicer.util.getNode(self.measuredMarkupsFiducialNodeName)
     if self.measuredMarkupsFiducialNode is None:
       measuredFiducialsNodeId = self.markupsLogic.AddNewFiducialNode(self.measuredMarkupsFiducialNodeName)
@@ -172,12 +187,19 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step0_clinicalModeRadioButton.disconnect('toggled(bool)', self.onClinicalModeSelect)
     self.step0_preclinicalModeRadioButton.disconnect('toggled(bool)', self.onPreclinicalModeSelect)
     self.step1_showDicomBrowserButton.disconnect('clicked()', self.logic.onDicomLoad)
-    self.step2_1_registerObiToPlanCtButton.disconnect('clicked()', self.onObiToPlanCTRegistration)
-    self.step2_1_translationSliders.disconnect('valuesChanged()', self.step2_1_rotationSliders.resetUnactiveSliders())
+    self.step1_loadNonDicomDataButton.disconnect('clicked()', self.onLoadNonDicomData)
+    #self.step1_loadDataCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep1_LoadDataCollapsed) #TODO: Causes crash
+    self.step2_registrationCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep2_RegistrationCollapsed)
+    self.step2_1_registrationTypeAutomaticRadioButton.disconnect('toggled(bool)', self.onAutomaticPlanCtToObiRegistrationToggled)
+    self.step2_1_registerPlanCtToObiButton.disconnect('clicked()', self.onPlanCtToObiAutomaticRegistration)
+    self.step2_1_translationSliders.disconnect('valuesChanged()', self.step2_1_rotationSliders.resetUnactiveSliders)
+    self.step2_1_planCtToObiRegistrationCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep2_1_PlanCtToObiRegistrationSelected)
+    self.step2_1_1_obiFiducialSelectionCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep2_1_1_ObiFiducialCollectionSelected)
+    self.step2_1_2_planCtFiducialSelectionCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep2_1_2_PlanCtFiducialCollectionSelected)
+    self.step2_1_3_registerPlanCtToObiButton.disconnect('clicked()', self.onPlanCtToObiLandmarkRegistration)
     self.step2_2_measuredDoseToObiRegistrationCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep2_2_MeasuredDoseToObiRegistrationSelected)
     self.step2_2_1_obiFiducialSelectionCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep2_2_1_ObiFiducialCollectionSelected)
     self.step2_2_2_measuredFiducialSelectionCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep2_2_2_MeasuredFiducialCollectionSelected)
-    self.step1_loadNonDicomDataButton.disconnect('clicked()', self.onLoadNonDicomData)
     self.step2_2_3_registerMeasuredToObiButton.disconnect('clicked()', self.onMeasuredToObiRegistration)
     self.step3_1_pddLoadDataButton.disconnect('clicked()', self.onLoadPddDataRead)
     self.step3_1_alignCalibrationCurvesButton.disconnect('clicked()', self.onAlignCalibrationCurves)
@@ -214,8 +236,8 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step0_layoutSelectionCollapsibleButtonLayout.setSpacing(4)
 
     self.step0_viewSelectorComboBox = qt.QComboBox(self.step0_layoutSelectionCollapsibleButton)
-    self.step0_viewSelectorComboBox.addItem("Four-up 3D + 3x2D view")
-    self.step0_viewSelectorComboBox.addItem("Conventional 3D + 3x2D view")
+    self.step0_viewSelectorComboBox.addItem("Four-up (3D + 3x2D)")
+    self.step0_viewSelectorComboBox.addItem("Conventional (3D + 3x2D)")
     self.step0_viewSelectorComboBox.addItem("3D-only view")
     self.step0_viewSelectorComboBox.addItem("Axial slice only view")
     self.step0_viewSelectorComboBox.addItem("Double 3D view")
@@ -273,13 +295,13 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_loadDataCollapsibleButtonLayout.addRow(self.step1_AssignDataLabel)
 
     # PLANCT node selector
-    self.planCTSelector = slicer.qMRMLNodeComboBox()
-    self.planCTSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
-    self.planCTSelector.addEnabled = False
-    self.planCTSelector.removeEnabled = False
-    self.planCTSelector.setMRMLScene( slicer.mrmlScene )
-    self.planCTSelector.setToolTip( "Pick the planning CT volume" )
-    self.step1_loadDataCollapsibleButtonLayout.addRow('Planning CT volume: ', self.planCTSelector)
+    self.planCtSelector = slicer.qMRMLNodeComboBox()
+    self.planCtSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
+    self.planCtSelector.addEnabled = False
+    self.planCtSelector.removeEnabled = False
+    self.planCtSelector.setMRMLScene( slicer.mrmlScene )
+    self.planCtSelector.setToolTip( "Pick the planning CT volume" )
+    self.step1_loadDataCollapsibleButtonLayout.addRow('Planning CT volume: ', self.planCtSelector)
 
     # PLANDOSE node selector
     self.planDoseSelector = slicer.qMRMLNodeComboBox()
@@ -342,28 +364,48 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step2_registrationCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
     self.step2_registrationCollapsibleButtonLayout.setSpacing(4)
 
+    # ------------------------------------------
     # Step 2.1: OBI to PLANCT registration panel    
-    self.step2_1_obiToPlanCtRegistrationCollapsibleButton = ctk.ctkCollapsibleButton()
-    self.step2_1_obiToPlanCtRegistrationCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step2_1_obiToPlanCtRegistrationCollapsibleButton.text = "2.1. Register planning CT to OBI"
-    self.step2_registrationCollapsibleButtonLayout.addWidget(self.step2_1_obiToPlanCtRegistrationCollapsibleButton)
-    self.step2_1_obiToPlanCtRegistrationLayout = qt.QFormLayout(self.step2_1_obiToPlanCtRegistrationCollapsibleButton)
-    self.step2_1_obiToPlanCtRegistrationLayout.setContentsMargins(12,4,4,4)
-    self.step2_1_obiToPlanCtRegistrationLayout.setSpacing(4)
+    self.step2_1_planCtToObiRegistrationCollapsibleButton = ctk.ctkCollapsibleButton()
+    self.step2_1_planCtToObiRegistrationCollapsibleButton.setProperty('collapsedHeight', 4)
+    self.step2_1_planCtToObiRegistrationCollapsibleButton.text = "2.1. Register planning CT to OBI"
+    self.step2_registrationCollapsibleButtonLayout.addWidget(self.step2_1_planCtToObiRegistrationCollapsibleButton)
+    self.step2_1_planCtToObiRegistrationLayout = qt.QVBoxLayout(self.step2_1_planCtToObiRegistrationCollapsibleButton)
+    self.step2_1_planCtToObiRegistrationLayout.setContentsMargins(12,4,4,4)
+    self.step2_1_planCtToObiRegistrationLayout.setSpacing(0)
+
+    # Radio button for selecting registration type
+    self.step2_1_registrationTypeLayout = qt.QHBoxLayout(self.step2_1_planCtToObiRegistrationCollapsibleButton)
+    self.step2_1_registrationTypeLabel = qt.QLabel('Registration type:')
+    self.step2_1_registrationTypeAutomaticRadioButton = qt.QRadioButton('Automatic image-based')
+    self.step2_1_registrationTypeLandmarkRadioButton = qt.QRadioButton('Landmark-based')
+    self.step2_1_registrationTypeLayout.addWidget(self.step2_1_registrationTypeLabel)
+    self.step2_1_registrationTypeLayout.addWidget(self.step2_1_registrationTypeAutomaticRadioButton)
+    self.step2_1_registrationTypeLayout.addWidget(self.step2_1_registrationTypeLandmarkRadioButton)
+    self.step2_1_planCtToObiRegistrationLayout.addLayout(self.step2_1_registrationTypeLayout)
+
+    # Add empty row
+    self.step2_1_planCtToObiRegistrationLayout.addWidget(qt.QLabel(' '))
+
+    # AUTOMATIC OBI to PLANCT registration
+    self.step2_1_automaticPlanCtToObiRegistrationFrame = qt.QFrame(self.step2_1_planCtToObiRegistrationCollapsibleButton)
+    self.step2_1_automaticPlanCtToObiRegistrationFrameLayout = qt.QFormLayout(self.step2_1_automaticPlanCtToObiRegistrationFrame)
+    self.step2_1_automaticPlanCtToObiRegistrationFrameLayout.setContentsMargins(0,0,0,0)
+    self.step2_1_automaticPlanCtToObiRegistrationFrameLayout.setSpacing(4)
 
     # Registration label
     self.step2_1_registrationLabel = qt.QLabel("Automatically register the OBI volume to the planning CT.\nIt should take several seconds.")
     self.step2_1_registrationLabel.wordWrap = True
-    self.step2_1_obiToPlanCtRegistrationLayout.addRow(self.step2_1_registrationLabel)
+    self.step2_1_automaticPlanCtToObiRegistrationFrameLayout.addRow(self.step2_1_registrationLabel)
 
     # OBI to PLANCT registration button
-    self.step2_1_registerObiToPlanCtButton = qt.QPushButton("Perform registration")
-    self.step2_1_registerObiToPlanCtButton.toolTip = "Register planning CT volume to OBI volume"
-    self.step2_1_registerObiToPlanCtButton.name = "step2_1_registerObiToPlanCtButton"
-    self.step2_1_obiToPlanCtRegistrationLayout.addRow(self.step2_1_registerObiToPlanCtButton)
+    self.step2_1_registerPlanCtToObiButton = qt.QPushButton("Perform registration")
+    self.step2_1_registerPlanCtToObiButton.toolTip = "Register planning CT volume to OBI volume"
+    self.step2_1_registerPlanCtToObiButton.name = "step2_1_registerPlanCtToObiButton"
+    self.step2_1_automaticPlanCtToObiRegistrationFrameLayout.addRow(self.step2_1_registerPlanCtToObiButton)
 
     # Add empty row
-    self.step2_1_obiToPlanCtRegistrationLayout.addRow(' ', None)
+    self.step2_1_automaticPlanCtToObiRegistrationFrameLayout.addRow(' ', None)
 
     # Transform fine-tune controls
     self.step2_1_transformSlidersInfoLabel = qt.QLabel("If registration result is not satisfactory, a simple re-run of the registration may solve it.\nOtherwise adjust result registration transform if needed:")
@@ -381,10 +423,109 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     rotationGroupBox = slicer.util.findChildren(widget=self.step2_1_rotationSliders, className='ctkCollapsibleGroupBox')[0]
     rotationGroupBox.collapsed  = True # Collapse by default
     # self.step2_1_rotationSliders.setMRMLScene(slicer.mrmlScene) # If scene is set, then mm appears instead of degrees
-    self.step2_1_obiToPlanCtRegistrationLayout.addRow(self.step2_1_transformSlidersInfoLabel)
-    self.step2_1_obiToPlanCtRegistrationLayout.addRow(self.step2_1_translationSliders)
-    self.step2_1_obiToPlanCtRegistrationLayout.addRow(self.step2_1_rotationSliders)
+    self.step2_1_automaticPlanCtToObiRegistrationFrameLayout.addRow(self.step2_1_transformSlidersInfoLabel)
+    self.step2_1_automaticPlanCtToObiRegistrationFrameLayout.addRow(self.step2_1_translationSliders)
+    self.step2_1_automaticPlanCtToObiRegistrationFrameLayout.addRow(self.step2_1_rotationSliders)
 
+    self.step2_1_planCtToObiRegistrationLayout.addWidget(self.step2_1_automaticPlanCtToObiRegistrationFrame)
+
+    # LANDMARK OBI to PLANCT registration
+    self.step2_1_landmarkPlanCtToObiRegistrationFrame = qt.QFrame(self.step2_1_planCtToObiRegistrationCollapsibleButton)
+    self.step2_1_landmarkPlanCtToObiRegistrationFrameLayout = qt.QFormLayout(self.step2_1_landmarkPlanCtToObiRegistrationFrame)
+    self.step2_1_landmarkPlanCtToObiRegistrationFrameLayout.setContentsMargins(0,0,0,0)
+    self.step2_1_landmarkPlanCtToObiRegistrationFrameLayout.setSpacing(4)
+
+    # Step 2.1.1: Select OBI fiducials on OBI volume
+    self.step2_1_1_obiFiducialSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
+    self.step2_1_1_obiFiducialSelectionCollapsibleButton.setProperty('collapsedHeight', 4)
+    self.step2_1_1_obiFiducialSelectionCollapsibleButton.text = "2.1.1 Select OBI fiducial points"
+    self.step2_1_landmarkPlanCtToObiRegistrationFrameLayout.addWidget(self.step2_1_1_obiFiducialSelectionCollapsibleButton)
+    self.step2_1_1_obiFiducialSelectionLayout = qt.QFormLayout(self.step2_1_1_obiFiducialSelectionCollapsibleButton)
+    self.step2_1_1_obiFiducialSelectionLayout.setContentsMargins(12,4,4,4)
+    self.step2_1_1_obiFiducialSelectionLayout.setSpacing(4)
+
+    # Create instructions label
+    self.step2_1_1_instructionsLayout = qt.QHBoxLayout(self.step2_1_1_obiFiducialSelectionCollapsibleButton)
+    self.step2_1_1_obiFiducialSelectionInfoLabel = qt.QLabel("Locate image plane of the OBI fiducials, then click the 'Place fiducials' button (blue arrow with red dot). Next, select the fiducial points in the displayed image plane.")
+    self.step2_1_1_obiFiducialSelectionInfoLabel.wordWrap = True
+    self.step2_1_1_helpLabel = qt.QLabel()
+    self.step2_1_1_helpLabel.pixmap = qt.QPixmap(':Icons/Help.png')
+    self.step2_1_1_helpLabel.maximumWidth = 24
+    self.step2_1_1_helpLabel.toolTip = "Hint: Use Shift key for '3D cursor' navigation."
+    self.step2_1_1_instructionsLayout.addWidget(self.step2_1_1_obiFiducialSelectionInfoLabel)
+    self.step2_1_1_instructionsLayout.addWidget(self.step2_1_1_helpLabel)
+    self.step2_1_1_obiFiducialSelectionLayout.addRow(self.step2_1_1_instructionsLayout)
+
+    # OBI fiducial selector simple markups widget
+    self.step2_1_1_obiFiducialList = slicer.qSlicerSimpleMarkupsWidget()
+    self.step2_1_1_obiFiducialList.setMRMLScene(slicer.mrmlScene)
+    self.step2_1_1_obiFiducialSelectionLayout.addRow(self.step2_1_1_obiFiducialList)
+
+    # Step 2.1.2: Select PLANCT fiducials on PLANCT volume
+    self.step2_1_2_planCtFiducialSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
+    self.step2_1_2_planCtFiducialSelectionCollapsibleButton.setProperty('collapsedHeight', 4)
+    self.step2_1_2_planCtFiducialSelectionCollapsibleButton.text = "2.1.2 Select planning CT fiducial points"
+    self.step2_1_landmarkPlanCtToObiRegistrationFrameLayout.addWidget(self.step2_1_2_planCtFiducialSelectionCollapsibleButton)
+    self.step2_1_2_planCtFiducialSelectionLayout = qt.QFormLayout(self.step2_1_2_planCtFiducialSelectionCollapsibleButton)
+    self.step2_1_2_planCtFiducialSelectionLayout.setContentsMargins(12,4,4,4)
+    self.step2_1_2_planCtFiducialSelectionLayout.setSpacing(4)
+
+    # Create instructions label
+    self.step2_1_2_instructionsLayout = qt.QHBoxLayout(self.step2_1_2_planCtFiducialSelectionCollapsibleButton)
+    self.step2_1_2_planCtFiducialSelectionInfoLabel = qt.QLabel("Select the fiducial points in the planning CT volume in the same order as the OBI fiducials were selected.")
+    self.step2_1_2_planCtFiducialSelectionInfoLabel.wordWrap = True
+    self.step2_1_2_helpLabel = qt.QLabel()
+    self.step2_1_2_helpLabel.pixmap = qt.QPixmap(':Icons/Help.png')
+    self.step2_1_2_helpLabel.maximumWidth = 24
+    self.step2_1_2_helpLabel.toolTip = "Hint: Use Shift key for '3D cursor' navigation.\nHint: If gel dosimeter volume is too dark or low contrast, press left mouse button on the image and drag it to change window/level"
+    self.step2_1_2_instructionsLayout.addWidget(self.step2_1_2_planCtFiducialSelectionInfoLabel)
+    self.step2_1_2_instructionsLayout.addWidget(self.step2_1_2_helpLabel)
+    self.step2_1_2_planCtFiducialSelectionLayout.addRow(self.step2_1_2_instructionsLayout)
+
+    # Measured fiducial selector simple markups widget
+    self.step2_1_2_planCtFiducialList = slicer.qSlicerSimpleMarkupsWidget()
+    self.step2_1_2_planCtFiducialList.setMRMLScene(slicer.mrmlScene)
+    self.step2_1_2_planCtFiducialSelectionLayout.addRow(self.step2_1_2_planCtFiducialList)
+
+    # Step 2.1.3: Perform registration
+    self.step2_1_3_planCtToObiRegistrationCollapsibleButton = ctk.ctkCollapsibleButton()
+    self.step2_1_3_planCtToObiRegistrationCollapsibleButton.setProperty('collapsedHeight', 4)
+    self.step2_1_3_planCtToObiRegistrationCollapsibleButton.text = "2.1.3 Perform registration"
+    self.step2_1_3_planCtToObiRegistrationCollapsibleButtonLayout = qt.QFormLayout(self.step2_1_3_planCtToObiRegistrationCollapsibleButton)
+    self.step2_1_3_planCtToObiRegistrationCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
+    self.step2_1_3_planCtToObiRegistrationCollapsibleButtonLayout.setSpacing(4)
+    self.step2_1_landmarkPlanCtToObiRegistrationFrameLayout.addWidget(self.step2_1_3_planCtToObiRegistrationCollapsibleButton)
+
+    # Registration button - register PLANCT to OBI with fiducial registration
+    self.step2_1_3_registerPlanCtToObiButton = qt.QPushButton("Register planning CT to OBI")
+    self.step2_1_3_registerPlanCtToObiButton.toolTip = "Perform fiducial registration between planning CT volume and OBI"
+    self.step2_1_3_registerPlanCtToObiButton.name = "registerPlanCtToObiButton"
+    self.step2_1_3_planCtToObiRegistrationCollapsibleButtonLayout.addRow(self.step2_1_3_registerPlanCtToObiButton)
+
+    # Fiducial error label
+    self.step2_1_3_planCtToObiFiducialRegistrationErrorLabel = qt.QLabel('[Not yet performed]')
+    self.step2_1_3_planCtToObiRegistrationCollapsibleButtonLayout.addRow('Fiducial registration error: ', self.step2_1_3_planCtToObiFiducialRegistrationErrorLabel)
+
+    # Add empty row
+    self.step2_1_3_planCtToObiRegistrationCollapsibleButtonLayout.addRow(' ', None)
+
+    # Note label about fiducial error
+    self.step2_1_3_NoteLabel = qt.QLabel("Note: Typical registration error is < 3mm")
+    self.step2_1_3_planCtToObiRegistrationCollapsibleButtonLayout.addRow(self.step2_1_3_NoteLabel)
+    
+    # Add substeps in button groups
+    self.step2_1_planCtToObiRegistrationCollapsibleButtonGroup = qt.QButtonGroup()
+    self.step2_1_planCtToObiRegistrationCollapsibleButtonGroup.addButton(self.step2_1_1_obiFiducialSelectionCollapsibleButton)
+    self.step2_1_planCtToObiRegistrationCollapsibleButtonGroup.addButton(self.step2_1_2_planCtFiducialSelectionCollapsibleButton)
+    self.step2_1_planCtToObiRegistrationCollapsibleButtonGroup.addButton(self.step2_1_3_planCtToObiRegistrationCollapsibleButton)
+
+    self.step2_1_planCtToObiRegistrationLayout.addWidget(self.step2_1_landmarkPlanCtToObiRegistrationFrame)
+
+    # Automatic registration by default
+    self.step2_1_registrationTypeAutomaticRadioButton.setChecked(True)
+    self.step2_1_landmarkPlanCtToObiRegistrationFrame.setVisible(False)
+
+    # --------------------------------------------------------
     # Step 2.2: Gel CT scan to cone beam CT registration panel
     self.step2_2_measuredDoseToObiRegistrationCollapsibleButton = ctk.ctkCollapsibleButton()
     self.step2_2_measuredDoseToObiRegistrationCollapsibleButton.setProperty('collapsedHeight', 4)
@@ -450,31 +591,31 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step2_2_3_measuredToObiRegistrationCollapsibleButton = ctk.ctkCollapsibleButton()
     self.step2_2_3_measuredToObiRegistrationCollapsibleButton.setProperty('collapsedHeight', 4)
     self.step2_2_3_measuredToObiRegistrationCollapsibleButton.text = "2.2.3 Perform registration"
-    measuredToObiRegistrationCollapsibleButtonLayout = qt.QFormLayout(self.step2_2_3_measuredToObiRegistrationCollapsibleButton)
-    measuredToObiRegistrationCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
-    measuredToObiRegistrationCollapsibleButtonLayout.setSpacing(4)
+    self.step2_2_3_measuredToObiRegistrationCollapsibleButtonLayout = qt.QFormLayout(self.step2_2_3_measuredToObiRegistrationCollapsibleButton)
+    self.step2_2_3_measuredToObiRegistrationCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
+    self.step2_2_3_measuredToObiRegistrationCollapsibleButtonLayout.setSpacing(4)
     self.step2_2_measuredDoseToObiRegistrationLayout.addWidget(self.step2_2_3_measuredToObiRegistrationCollapsibleButton)
 
     # Registration button - register MEASURED to OBI with fiducial registration
     self.step2_2_3_registerMeasuredToObiButton = qt.QPushButton("Register gel volume to OBI")
     self.step2_2_3_registerMeasuredToObiButton.toolTip = "Perform fiducial registration between measured gel dosimeter volume and OBI"
     self.step2_2_3_registerMeasuredToObiButton.name = "registerMeasuredToObiButton"
-    measuredToObiRegistrationCollapsibleButtonLayout.addRow(self.step2_2_3_registerMeasuredToObiButton)
+    self.step2_2_3_measuredToObiRegistrationCollapsibleButtonLayout.addRow(self.step2_2_3_registerMeasuredToObiButton)
 
     # Fiducial error label
     self.step2_2_3_measuredToObiFiducialRegistrationErrorLabel = qt.QLabel('[Not yet performed]')
-    measuredToObiRegistrationCollapsibleButtonLayout.addRow('Fiducial registration error: ', self.step2_2_3_measuredToObiFiducialRegistrationErrorLabel)
+    self.step2_2_3_measuredToObiRegistrationCollapsibleButtonLayout.addRow('Fiducial registration error: ', self.step2_2_3_measuredToObiFiducialRegistrationErrorLabel)
 
     # Add empty row
-    measuredToObiRegistrationCollapsibleButtonLayout.addRow(' ', None)
+    self.step2_2_3_measuredToObiRegistrationCollapsibleButtonLayout.addRow(' ', None)
 
     # Note label about fiducial error
     self.step2_2_3_NoteLabel = qt.QLabel("Note: Typical registration error is < 3mm")
-    measuredToObiRegistrationCollapsibleButtonLayout.addRow(self.step2_2_3_NoteLabel)
+    self.step2_2_3_measuredToObiRegistrationCollapsibleButtonLayout.addRow(self.step2_2_3_NoteLabel)
     
     # Add substeps in button groups
     self.step2_2_registrationCollapsibleButtonGroup = qt.QButtonGroup()
-    self.step2_2_registrationCollapsibleButtonGroup.addButton(self.step2_1_obiToPlanCtRegistrationCollapsibleButton)
+    self.step2_2_registrationCollapsibleButtonGroup.addButton(self.step2_1_planCtToObiRegistrationCollapsibleButton)
     self.step2_2_registrationCollapsibleButtonGroup.addButton(self.step2_2_measuredDoseToObiRegistrationCollapsibleButton)
 
     self.step2_2_measuredToObiRegistrationCollapsibleButtonGroup = qt.QButtonGroup()
@@ -484,12 +625,19 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # Make sure first panels appear when steps are first opened (done before connections to avoid
     # executing those steps, which are only needed when actually switching there during the workflow)
+    self.step2_1_1_obiFiducialSelectionCollapsibleButton.setProperty('collapsed', False)
     self.step2_2_1_obiFiducialSelectionCollapsibleButton.setProperty('collapsed', False)
-    self.step2_1_obiToPlanCtRegistrationCollapsibleButton.setProperty('collapsed', False)
+    self.step2_1_planCtToObiRegistrationCollapsibleButton.setProperty('collapsed', False)
 
     # Connections
-    self.step2_1_registerObiToPlanCtButton.connect('clicked()', self.onObiToPlanCTRegistration)
+    self.step2_registrationCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep2_RegistrationCollapsed)
+    self.step2_1_registrationTypeAutomaticRadioButton.connect('toggled(bool)', self.onAutomaticPlanCtToObiRegistrationToggled)
+    self.step2_1_registerPlanCtToObiButton.connect('clicked()', self.onPlanCtToObiAutomaticRegistration)
     self.step2_1_translationSliders.connect('valuesChanged()', self.step2_1_rotationSliders.resetUnactiveSliders)
+    self.step2_1_planCtToObiRegistrationCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep2_1_PlanCtToObiRegistrationSelected)
+    self.step2_1_1_obiFiducialSelectionCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep2_1_1_ObiFiducialCollectionSelected)
+    self.step2_1_2_planCtFiducialSelectionCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep2_1_2_PlanCtFiducialCollectionSelected)
+    self.step2_1_3_registerPlanCtToObiButton.connect('clicked()', self.onPlanCtToObiLandmarkRegistration)
     self.step2_2_measuredDoseToObiRegistrationCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep2_2_MeasuredDoseToObiRegistrationSelected)
     self.step2_2_1_obiFiducialSelectionCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep2_2_1_ObiFiducialCollectionSelected)
     self.step2_2_2_measuredFiducialSelectionCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep2_2_2_MeasuredFiducialCollectionSelected)
@@ -973,12 +1121,81 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
   def onStep1_LoadDataCollapsed(self, collapsed):
     # Save selections to member variables when switching away from load data step
     if collapsed == True:
-      self.planCtVolumeNode = self.planCTSelector.currentNode()
+      self.planCtVolumeNode = self.planCtSelector.currentNode()
       self.planDoseVolumeNode = self.planDoseSelector.currentNode()
       self.obiVolumeNode = self.obiSelector.currentNode()
       self.planStructuresNode = self.planStructuresSelector.currentNode()
       self.measuredVolumeNode = self.measuredVolumeSelector.currentNode()
       self.calibrationVolumeNode = self.calibrationVolumeSelector.currentNode()
+
+  def onStep2_RegistrationCollapsed(self, collapsed):
+    # Make sure the functions handling entering the fiducial selection panels are called when entering the outer panel
+    if collapsed == False:
+      if self.step2_1_planCtToObiRegistrationCollapsibleButton.collapsed == False:
+        self.onStep2_1_PlanCtToObiRegistrationSelected(False)
+      elif self.step2_2_measuredDoseToObiRegistrationCollapsibleButton.collapsed == False:
+        self.onStep2_2_MeasuredDoseToObiRegistrationSelected(False)
+
+  def onStep2_1_PlanCtToObiRegistrationSelected(self, collapsed):
+    # Make sure the functions handling entering the fiducial selection panels are called when entering the outer panel
+    if collapsed == False:
+      if self.step2_1_1_obiFiducialSelectionCollapsibleButton.collapsed == False:
+        self.onStep2_1_1_ObiFiducialCollectionSelected(False)
+      elif self.step2_1_2_planCtFiducialSelectionCollapsibleButton.collapsed == False:
+        self.onStep2_1_2_PlanCtFiducialCollectionSelected(False)
+
+  def onStep2_1_1_ObiFiducialCollectionSelected(self, collapsed):
+    appLogic = slicer.app.applicationLogic()
+    selectionNode = appLogic.GetSelectionNode()
+    interactionNode = appLogic.GetInteractionNode()
+
+    if collapsed == False:
+      # Setup visualization for easy review of registration result
+      self.step2_SetupVisualization()
+
+      # Turn on persistent fiducial placement mode
+      interactionNode.SwitchToPersistentPlaceMode()
+
+      # Select OBI fiducials node
+      self.step2_1_1_obiFiducialList.setCurrentNode(self.obiMarkupsFiducialNode1)
+      self.step2_1_1_obiFiducialList.activate()
+
+      # Automatically show OBI volume (show nothing if not present)
+      if self.obiVolumeNode is not None:
+        selectionNode.SetActiveVolumeID(self.obiVolumeNode.GetID())
+      else:
+        selectionNode.SetActiveVolumeID(None)
+        slicer.util.errorDisplay('OBI volume not selected!\nPlease return to first step and make the assignment')
+      selectionNode.SetSecondaryVolumeID(None)
+      appLogic.PropagateVolumeSelection()
+    else:
+      # Turn off fiducial place mode
+      interactionNode.SwitchToViewTransformMode()
+
+  def onStep2_1_2_PlanCtFiducialCollectionSelected(self, collapsed):
+    appLogic = slicer.app.applicationLogic()
+    selectionNode = appLogic.GetSelectionNode()
+    interactionNode = appLogic.GetInteractionNode()
+
+    if collapsed == False:
+      # Turn on persistent fiducial placement mode
+      interactionNode.SwitchToPersistentPlaceMode()
+
+      # Select PLANCT fiducials node
+      self.step2_1_2_planCtFiducialList.setCurrentNode(self.planCtMarkupsFiducialNode)
+      self.step2_1_2_planCtFiducialList.activate()
+
+      # Automatically show PLANCT volume (show nothing if not present)
+      if self.planCtVolumeNode is not None:
+        selectionNode.SetActiveVolumeID(self.planCtVolumeNode.GetID())
+      else:
+        selectionNode.SetActiveVolumeID(None)
+        slicer.util.errorDisplay('Planning CT volume not selected!\nPlease return to first step and make the assignment')
+      selectionNode.SetSecondaryVolumeID(None)
+      appLogic.PropagateVolumeSelection() 
+    else:
+      # Turn off fiducial place mode
+      interactionNode.SwitchToViewTransformMode()
 
   def onStep2_2_MeasuredDoseToObiRegistrationSelected(self, collapsed):
     # Make sure the functions handling entering the fiducial selection panels are called when entering the outer panel
@@ -998,7 +1215,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       interactionNode.SwitchToPersistentPlaceMode()
 
       # Select OBI fiducials node
-      self.step2_2_1_obiFiducialList.setCurrentNode(self.obiMarkupsFiducialNode)
+      self.step2_2_1_obiFiducialList.setCurrentNode(self.obiMarkupsFiducialNode2)
       self.step2_2_1_obiFiducialList.activate()
 
       # Automatically show OBI volume (show nothing if not present)
@@ -1038,24 +1255,20 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       # Turn off fiducial place mode
       interactionNode.SwitchToViewTransformMode()
 
-  def onObiToPlanCTRegistration(self):
-    # Start registration
-    obiVolumeID = self.obiVolumeNode.GetID()
-    planCTVolumeID = self.planCtVolumeNode.GetID()
-    planDoseVolumeID = self.planDoseVolumeNode.GetID()
-    planStructuresID = self.planStructuresNode.GetID()
-    obiToPlanTransformNode = self.logic.registerObiToPlanCt(obiVolumeID, planCTVolumeID, planDoseVolumeID, planStructuresID)
+  def onAutomaticPlanCtToObiRegistrationToggled(self, on):
+    self.step2_1_automaticPlanCtToObiRegistrationFrame.setVisible(on)
+    self.step2_1_landmarkPlanCtToObiRegistrationFrame.setVisible(not on)
 
-    # Show the two volumes for visual evaluation of the registration
-    appLogic = slicer.app.applicationLogic()
-    selectionNode = appLogic.GetSelectionNode()
-    selectionNode.SetActiveVolumeID(planCTVolumeID)
-    selectionNode.SetSecondaryVolumeID(obiVolumeID)
-    appLogic.PropagateVolumeSelection() 
+  def step2_SetupVisualization(self):
     # Set color to the OBI volume
-    obiVolumeDisplayNode = self.obiVolumeNode.GetDisplayNode()
-    colorNode = slicer.util.getNode('Green')
-    obiVolumeDisplayNode.SetAndObserveColorNodeID(colorNode.GetID())
+    if self.obiVolumeNode is not None:
+      obiVolumeDisplayNode = self.obiVolumeNode.GetDisplayNode()
+      colorNode = slicer.util.getNode('Green')
+      obiVolumeDisplayNode.SetAndObserveColorNodeID(colorNode.GetID())
+    else:
+      slicer.util.errorDisplay('OBI volume not selected!\nPlease return to first step and make the assignment')
+      return
+
     # Set transparency to the OBI volume
     compositeNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
     for compositeNode in compositeNodes.values():
@@ -1069,7 +1282,25 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       planSh = slicer.vtkMRMLSubjectHierarchyNode.GetAssociatedSubjectHierarchyNode(planNode)
       if planSh is not None:
         planSh.SetDisplayVisibilityForBranch(0)
-      
+
+  def onPlanCtToObiAutomaticRegistration(self):
+    # Start registration
+    obiVolumeID = self.obiVolumeNode.GetID()
+    planCtVolumeID = self.planCtVolumeNode.GetID()
+    planDoseVolumeID = self.planDoseVolumeNode.GetID()
+    planStructuresID = self.planStructuresNode.GetID()
+    obiToPlanTransformNode = self.logic.registerPlanCtToObiAutomatic(planCtVolumeID, obiVolumeID, planDoseVolumeID, planStructuresID)
+
+    # Show the two volumes for visual evaluation of the registration
+    appLogic = slicer.app.applicationLogic()
+    selectionNode = appLogic.GetSelectionNode()
+    selectionNode.SetActiveVolumeID(planCtVolumeID)
+    selectionNode.SetSecondaryVolumeID(obiVolumeID)
+    appLogic.PropagateVolumeSelection() 
+
+    # Setup visualization for easy review of registration result
+    self.step2_SetupVisualization()
+
     # Set transforms to slider widgets
     self.step2_1_translationSliders.setMRMLTransformNode(obiToPlanTransformNode)
     self.step2_1_rotationSliders.setMRMLTransformNode(obiToPlanTransformNode)
@@ -1079,8 +1310,25 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     for slider in sliders:
       slider.singleStep = 0.5
 
+  def onPlanCtToObiLandmarkRegistration(self):
+    errorRms = self.logic.registerPlanCtToObiLandmark(self.planCtMarkupsFiducialNode.GetID(), self.obiMarkupsFiducialNode1.GetID())
+    
+    # Show registration error on GUI
+    self.step2_1_3_planCtToObiFiducialRegistrationErrorLabel.setText(str(errorRms) + ' mm')
+
+    # Apply transform to PLANCT volume
+    obiToPlanCtTransformNode = slicer.util.getNode(self.logic.obiToPlanTransformName)
+    self.planCtVolumeNode.SetAndObserveTransformNodeID(obiToPlanCtTransformNode.GetID())
+
+    # Show both volumes in the 2D views
+    appLogic = slicer.app.applicationLogic()
+    selectionNode = appLogic.GetSelectionNode()
+    selectionNode.SetActiveVolumeID(self.obiVolumeNode.GetID())
+    selectionNode.SetSecondaryVolumeID(self.planCtVolumeNode.GetID())
+    appLogic.PropagateVolumeSelection() 
+
   def onMeasuredToObiRegistration(self):
-    errorRms = self.logic.registerObiToMeasured(self.obiMarkupsFiducialNode.GetID(), self.measuredMarkupsFiducialNode.GetID())
+    errorRms = self.logic.registerMeasuredToObi(self.measuredMarkupsFiducialNode.GetID(), self.obiMarkupsFiducialNode2.GetID())
     
     # Show registration error on GUI
     self.step2_2_3_measuredToObiFiducialRegistrationErrorLabel.setText(str(errorRms) + ' mm')
@@ -1745,15 +1993,15 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     slicer.util.loadNodeFromFile('d:/devel/_Images/RT/20140123_GelDosimetry_StructureSetIncluded/VFFs/LCV02_HR_calib.vff', 'VffFile', {})
 
     # Assign roles
-    planCTVolumeName = '47: ARIA RadOnc Images - Verification Plan Phantom'
+    planCtVolumeName = '47: ARIA RadOnc Images - Verification Plan Phantom'
     planDoseVolumeName = '53: RTDOSE: Eclipse Doses: VMAT XM1 LCV'
     obiVolumeName = '0: Unnamed Series'
     structureSetNodeName = '52: RTSTRUCT: CT_1'
     measuredVolumeName = 'lcv01_hr.vff'
     calibrationVolumeName = 'lcv02_hr.vff'
 
-    planCTVolume = slicer.util.getNode(planCTVolumeName)
-    self.planCTSelector.setCurrentNode(planCTVolume)
+    planCtVolume = slicer.util.getNode(planCtVolumeName)
+    self.planCtSelector.setCurrentNode(planCtVolume)
     planDoseVolume = slicer.util.getNode(planDoseVolumeName)
     self.planDoseSelector.setCurrentNode(planDoseVolume)
     obiVolume = slicer.util.getNode(obiVolumeName)
@@ -1768,7 +2016,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     ### 2. Register
     self.step2_registrationCollapsibleButton.setChecked(True)
-    self.onObiToPlanCTRegistration()
+    self.onPlanCtToObiAutomaticRegistration()
     slicer.app.processEvents()
 
     # Select fiducials
