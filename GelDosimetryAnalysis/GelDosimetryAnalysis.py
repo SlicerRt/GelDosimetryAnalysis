@@ -1277,11 +1277,12 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     if self.planStructuresNode is not None:
       self.planStructuresNode.GetDisplayNode().SetVisibility(0)
     # Hide beam models
+    shNode = slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
     planNodes = slicer.util.getNodes('vtkMRMLRTPlanNode*')
     for planNode in planNodes.values():
-      planSh = slicer.vtkMRMLSubjectHierarchyNode.GetAssociatedSubjectHierarchyNode(planNode)
-      if planSh is not None:
-        planSh.SetDisplayVisibilityForBranch(0)
+      planSh = shNode.GetItemByDataNode(planNode)
+      if planSh:
+        shNode.SetDisplayVisibilityForBranch(planSh, 0)
 
   def onPlanCtToObiAutomaticRegistration(self):
     # Start registration
