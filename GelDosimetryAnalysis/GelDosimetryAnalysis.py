@@ -387,7 +387,9 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Add empty row
     self.step2_1_planCtToObiRegistrationLayout.addWidget(qt.QLabel(' '))
 
-    # AUTOMATIC OBI to PLANCT registration
+    #
+    # Automatic OBI to PLANCT registration
+    #
     self.step2_1_automaticPlanCtToObiRegistrationFrame = qt.QFrame(self.step2_1_planCtToObiRegistrationCollapsibleButton)
     self.step2_1_automaticPlanCtToObiRegistrationFrameLayout = qt.QFormLayout(self.step2_1_automaticPlanCtToObiRegistrationFrame)
     self.step2_1_automaticPlanCtToObiRegistrationFrameLayout.setContentsMargins(0,0,0,0)
@@ -429,7 +431,9 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     self.step2_1_planCtToObiRegistrationLayout.addWidget(self.step2_1_automaticPlanCtToObiRegistrationFrame)
 
-    # LANDMARK OBI to PLANCT registration
+    #
+    # Landmark OBI to PLANCT registration
+    #
     self.step2_1_landmarkPlanCtToObiRegistrationFrame = qt.QFrame(self.step2_1_planCtToObiRegistrationCollapsibleButton)
     self.step2_1_landmarkPlanCtToObiRegistrationFrameLayout = qt.QFormLayout(self.step2_1_landmarkPlanCtToObiRegistrationFrame)
     self.step2_1_landmarkPlanCtToObiRegistrationFrameLayout.setContentsMargins(0,0,0,0)
@@ -1461,9 +1465,10 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.calibrationCurveChart.SetShowLegend(True)
     self.calibrationCurveChart.SetTitle('PDD vs Calibration data')
     self.calibrationCurveChartView.GetInteractor().Initialize()
-    self.calibrationCurveChartView.GetRenderWindow().SetSize(800,550)
-    self.calibrationCurveChartView.GetRenderWindow().SetWindowName('PDD vs Calibration data chart')
-    self.calibrationCurveChartView.GetRenderWindow().Start()
+    self.calibrationCurveChartRenderWindow = self.calibrationCurveChartView.GetRenderWindow()
+    self.calibrationCurveChartRenderWindow.SetSize(800,550)
+    self.calibrationCurveChartRenderWindow.SetWindowName('PDD vs Calibration data chart')
+    self.calibrationCurveChartRenderWindow.Start()
 
   def onAlignCalibrationCurves(self):
     if self.logic.pddDataArray is None or self.logic.pddDataArray.size == 0:
@@ -1561,9 +1566,10 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.oaVsDoseChart.GetAxis(0).SetTitle('Dose (GY)')
     self.oaVsDoseChart.SetTitle('Optical attenuation vs Dose')
     self.oaVsDoseChartView.GetInteractor().Initialize()
-    self.oaVsDoseChartView.GetRenderWindow().SetSize(800,550)
-    self.oaVsDoseChartView.GetRenderWindow().SetWindowName('Optical attenuation vs Dose chart')
-    self.oaVsDoseChartView.GetRenderWindow().Start()
+    self.oaVsDoseChartRenderWindow = self.oaVsDoseChartView.GetRenderWindow()
+    self.oaVsDoseChartRenderWindow.SetSize(800,550)
+    self.oaVsDoseChartRenderWindow.SetWindowName('Optical attenuation vs Dose chart')
+    self.oaVsDoseChartRenderWindow.Start()
 
   def onRemoveSelectedPointsFromOpticalAttenuationVsDoseCurve(self):
     outlierSelection = self.oaVsDoseLineInnerPoint.GetSelection()
