@@ -97,7 +97,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.collapsibleButtonsGroup.addButton(self.stepT1_lineProfileCollapsibleButton)
 
     self.step0_layoutSelectionCollapsibleButton.setProperty('collapsed', False)
-    
+
     # Create module logic
     self.logic = GelDosimetryAnalysisLogic.GelDosimetryAnalysisLogic()
 
@@ -128,7 +128,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # Get markups logic
     self.markupsLogic = slicer.modules.markups.logic()
-    
+
     # Create or get fiducial nodes (OBI to PLANCT)
     self.obiMarkupsFiducialNode1 = slicer.util.getNode(self.obiMarkupsFiducialNode1Name)
     if self.obiMarkupsFiducialNode1 is None:
@@ -169,7 +169,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.sliceAnnotations.updateSliceViewFromGUI()
 
     # Set up step panels
-    self.setup_Step0_LayoutSelection()    
+    self.setup_Step0_LayoutSelection()
     self.setup_Step1_LoadData()
     self.setup_Step2_Registration()
     self.setup_step3_DoseCalibration()
@@ -180,6 +180,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       self.widget = widgetClass(self.parent)
     self.parent.show()
 
+  #------------------------------------------------------------------------------
   # Disconnect all connections made to the slicelet to enable the garbage collector to destruct the slicelet object on quit
   def disconnect(self):
     self.selfTestButton.disconnect('clicked()', self.onSelfTestButtonClicked)
@@ -224,6 +225,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.stepT1_inputRulerSelector.disconnect("currentNodeChanged(vtkMRMLNode*)", self.onSelectLineProfileParameters)
     self.stepT1_exportLineProfilesToCSV.disconnect('clicked()', self.onExportLineProfiles)
 
+  #------------------------------------------------------------------------------
   def setup_Step0_LayoutSelection(self):
     # Layout selection step
     self.step0_layoutSelectionCollapsibleButton.setProperty('collapsedHeight', 4)
@@ -245,7 +247,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step0_viewSelectorComboBox.addItem("Plot only view")
     self.step0_layoutSelectionCollapsibleButtonLayout.addRow("Layout: ", self.step0_viewSelectorComboBox)
     self.step0_viewSelectorComboBox.connect('activated(int)', self.onViewSelect)
-    
+
     # Mode Selector: Radio-buttons
     self.step0_modeSelectorLayout = qt.QGridLayout()
     self.step0_modeSelectorLabel = qt.QLabel('Select mode: ')
@@ -260,6 +262,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step0_clinicalModeRadioButton.connect('toggled(bool)', self.onClinicalModeSelect)
     self.step0_preclinicalModeRadioButton.connect('toggled(bool)', self.onPreclinicalModeSelect)
 
+  #------------------------------------------------------------------------------
   def setup_Step1_LoadData(self):
     # Step 1: Load data panel
     self.step1_loadDataCollapsibleButton.setProperty('collapsedHeight', 4)
@@ -285,10 +288,10 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_loadNonDicomDataButton.toolTip = "Load optical CT files from VFF, NRRD, etc."
     self.step1_loadNonDicomDataButton.name = "loadNonDicomDataButton"
     self.step1_loadDataCollapsibleButtonLayout.addRow(self.step1_loadNonDicomDataButton)
-    
+
     # Add empty row
     self.step1_loadDataCollapsibleButtonLayout.addRow(' ', None)
-    
+
     # Assign data label
     self.step1_AssignDataLabel = qt.QLabel("Assign loaded data to roles.\nNote: If this selection is changed later then all the following steps need to be performed again")
     self.step1_AssignDataLabel.wordWrap = True
@@ -355,6 +358,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_loadNonDicomDataButton.connect('clicked()', self.onLoadNonDicomData)
     self.step1_loadDataCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep1_LoadDataCollapsed)
 
+  #------------------------------------------------------------------------------
   def setup_Step2_Registration(self):
     # Step 2: Registration step
     self.step2_registrationCollapsibleButton.setProperty('collapsedHeight', 4)
@@ -365,7 +369,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step2_registrationCollapsibleButtonLayout.setSpacing(4)
 
     # ------------------------------------------
-    # Step 2.1: OBI to PLANCT registration panel    
+    # Step 2.1: OBI to PLANCT registration panel
     self.step2_1_planCtToObiRegistrationCollapsibleButton = ctk.ctkCollapsibleButton()
     self.step2_1_planCtToObiRegistrationCollapsibleButton.setProperty('collapsedHeight', 4)
     self.step2_1_planCtToObiRegistrationCollapsibleButton.text = "2.1. Register planning CT to OBI"
@@ -516,7 +520,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Note label about fiducial error
     self.step2_1_3_NoteLabel = qt.QLabel("Note: Typical registration error is < 3mm")
     self.step2_1_3_planCtToObiRegistrationCollapsibleButtonLayout.addRow(self.step2_1_3_NoteLabel)
-    
+
     # Add substeps in button groups
     self.step2_1_planCtToObiRegistrationCollapsibleButtonGroup = qt.QButtonGroup()
     self.step2_1_planCtToObiRegistrationCollapsibleButtonGroup.addButton(self.step2_1_1_obiFiducialSelectionCollapsibleButton)
@@ -616,7 +620,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Note label about fiducial error
     self.step2_2_3_NoteLabel = qt.QLabel("Note: Typical registration error is < 3mm")
     self.step2_2_3_measuredToObiRegistrationCollapsibleButtonLayout.addRow(self.step2_2_3_NoteLabel)
-    
+
     # Add substeps in button groups
     self.step2_2_registrationCollapsibleButtonGroup = qt.QButtonGroup()
     self.step2_2_registrationCollapsibleButtonGroup.addButton(self.step2_1_planCtToObiRegistrationCollapsibleButton)
@@ -647,6 +651,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step2_2_2_measuredFiducialSelectionCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep2_2_2_MeasuredFiducialCollectionSelected)
     self.step2_2_3_registerMeasuredToObiButton.connect('clicked()', self.onMeasuredToObiRegistration)
 
+  #------------------------------------------------------------------------------
   def setup_step3_DoseCalibration(self):
     # Step 3: Calibration step
     self.step3_doseCalibrationCollapsibleButton.setProperty('collapsedHeight', 4)
@@ -655,7 +660,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step3_doseCalibrationCollapsibleButtonLayout = qt.QVBoxLayout(self.step3_doseCalibrationCollapsibleButton)
     self.step3_doseCalibrationCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
     self.step3_doseCalibrationCollapsibleButtonLayout.setSpacing(4)
-    
+
     # Step 3.1: Calibration routine (optional)
     self.step3_1_calibrationRoutineCollapsibleButton = ctk.ctkCollapsibleButton()
     self.step3_1_calibrationRoutineCollapsibleButton.setProperty('collapsedHeight', 4)
@@ -753,7 +758,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step3_1_oaVsDoseCurveControlsLayout.addWidget(self.step3_1_removeSelectedPointsFromOpticalAttenuationVsDoseCurveButton)
     self.step3_1_oaVsDoseCurveControlsLayout.addWidget(self.step3_1_helpLabel)
     self.step3_1_calibrationRoutineLayout.addRow(self.step3_1_oaVsDoseCurveControlsLayout)
-    
+
     # Add empty row
     self.step3_1_calibrationRoutineLayout.addRow(' ', None)
 
@@ -764,7 +769,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step3_1_selectOrderOfPolynomialFitButton.addItem('3')
     self.step3_1_selectOrderOfPolynomialFitButton.addItem('4')
     self.step3_1_calibrationRoutineLayout.addRow('Fit with what order polynomial function:', self.step3_1_selectOrderOfPolynomialFitButton)
-    
+
     self.step3_1_fitPolynomialToOpticalAttenuationVsDoseCurveButton = qt.QPushButton("Fit data and determine calibration function")
     self.step3_1_fitPolynomialToOpticalAttenuationVsDoseCurveButton.toolTip = "Finds the line of best fit based on the data and polynomial order provided"
     self.step3_1_calibrationRoutineLayout.addRow(self.step3_1_fitPolynomialToOpticalAttenuationVsDoseCurveButton)
@@ -821,7 +826,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step3_2_exportCalibrationToCSV = qt.QPushButton("Optional: Export calibration points to a CSV file")
     self.step3_2_exportCalibrationToCSV.toolTip = "Export optical attenuation to dose calibration plot points (if points were removed, those are not exported).\nIf polynomial fitting has been done, export the coefficients as well."
     self.step3_2_applyCalibrationLayout.addRow(self.step3_2_exportCalibrationToCSV)
-    
+
     # Empty row
     self.step3_1_calibrationRoutineLayout.addRow(' ', None)
 
@@ -855,7 +860,8 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step3_1_fitPolynomialToOpticalAttenuationVsDoseCurveButton.connect('clicked()', self.onFitPolynomialToOpticalAttenuationVsDoseCurve)
     self.step3_2_exportCalibrationToCSV.connect('clicked()', self.onExportCalibration)
     self.step3_2_applyCalibrationButton.connect('clicked()', self.onApplyCalibration)
-    
+
+  #------------------------------------------------------------------------------
   def setup_Step4_DoseComparison(self):
     # Step 4: Dose comparison and analysis
     self.step4_doseComparisonCollapsibleButton.setProperty('collapsedHeight', 4)
@@ -934,7 +940,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step4_1_referenceDoseCustomValueCGySpinBox.enabled = False
     self.step4_1_referenceDoseUseCustomValueLayout.addWidget(self.step4_1_referenceDoseUseCustomValueGyRadioButton)
     self.step4_1_referenceDoseUseCustomValueLayout.addWidget(self.step4_1_referenceDoseCustomValueCGySpinBox)
-    self.step4_1_referenceDoseUseCustomValueLayout.addStretch(1) 
+    self.step4_1_referenceDoseUseCustomValueLayout.addStretch(1)
     self.step4_1_referenceDoseLayout.addWidget(self.step4_1_referenceDoseUseMaximumDoseRadioButton)
     self.step4_1_referenceDoseLayout.addLayout(self.step4_1_referenceDoseUseCustomValueLayout)
     self.step4_1_doseDifferenceToleranceLayout.addLayout(self.step4_1_referenceDoseLayout)
@@ -1020,6 +1026,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step4_1_computeGammaButton.connect('clicked()', self.onGammaDoseComparison)
     self.step4_1_showGammaReportButton.connect('clicked()', self.onShowGammaReport)
 
+  #------------------------------------------------------------------------------
   def setup_StepT1_lineProfileCollapsibleButton(self):
     # Step T1: Line profile tool
     self.stepT1_lineProfileCollapsibleButton.setProperty('collapsedHeight', 4)
@@ -1028,7 +1035,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.stepT1_lineProfileCollapsibleButtonLayout = qt.QFormLayout(self.stepT1_lineProfileCollapsibleButton)
     self.stepT1_lineProfileCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
     self.stepT1_lineProfileCollapsibleButtonLayout.setSpacing(4)
-    
+
     # Ruler creator
     self.stepT1_rulerCreationButton = slicer.qSlicerMouseModeToolBar()
     self.stepT1_rulerCreationButton.setApplicationLogic(slicer.app.applicationLogic())
@@ -1103,25 +1110,32 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     elif layoutIndex == 6:
        self.layoutWidget.setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutOneUpQuantitativeView)
 
+  #------------------------------------------------------------------------------
   def onClinicalModeSelect(self, toggled):
     if self.step0_clinicalModeRadioButton.isChecked() == True:
       self.mode = 'Clinical'
-            
+
       # Step 3.1. Label for plot visibility
       self.step3_1_showOpticalAttenuationVsDoseCurveButton.setText("Plot optical attenuation vs dose")
       self.step3_1_showOpticalAttenuationVsDoseCurveButton.toolTip = "Show optical attenuation vs. Dose curve to determine the order of polynomial to fit."
-  
+
+  #------------------------------------------------------------------------------
   def onPreclinicalModeSelect(self, toggled):
     if self.step0_preclinicalModeRadioButton.isChecked() == True:
       self.mode = 'Preclinical'
-            
+
       # Step 3.1. Label for plot visibility
       self.step3_1_showOpticalAttenuationVsDoseCurveButton.setText("Plot R1 vs dose")
       self.step3_1_showOpticalAttenuationVsDoseCurveButton.toolTip = "Show Relaxation Rates vs. Dose curve to determine the order of polynomial to fit."
-    
+
+  #------------------------------------------------------------------------------
   def onLoadNonDicomData(self):
     slicer.util.openAddDataDialog()
 
+  #------------------------------------------------------------------------------
+  # Step 1
+
+  #------------------------------------------------------------------------------
   def onStep1_LoadDataCollapsed(self, collapsed):
     # Save selections to member variables when switching away from load data step
     if collapsed == True:
@@ -1132,6 +1146,10 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       self.measuredVolumeNode = self.measuredVolumeSelector.currentNode()
       self.calibrationVolumeNode = self.calibrationVolumeSelector.currentNode()
 
+  #------------------------------------------------------------------------------
+  # Step 2
+
+  #------------------------------------------------------------------------------
   def onStep2_RegistrationCollapsed(self, collapsed):
     # Make sure the functions handling entering the fiducial selection panels are called when entering the outer panel
     if collapsed == False:
@@ -1140,6 +1158,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       elif self.step2_2_measuredDoseToObiRegistrationCollapsibleButton.collapsed == False:
         self.onStep2_2_MeasuredDoseToObiRegistrationSelected(False)
 
+  #------------------------------------------------------------------------------
   def onStep2_1_PlanCtToObiRegistrationSelected(self, collapsed):
     # Make sure the functions handling entering the fiducial selection panels are called when entering the outer panel
     if collapsed == False:
@@ -1148,6 +1167,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       elif self.step2_1_2_planCtFiducialSelectionCollapsibleButton.collapsed == False:
         self.onStep2_1_2_PlanCtFiducialCollectionSelected(False)
 
+  #------------------------------------------------------------------------------
   def onStep2_1_1_ObiFiducialCollectionSelected(self, collapsed):
     appLogic = slicer.app.applicationLogic()
     selectionNode = appLogic.GetSelectionNode()
@@ -1176,6 +1196,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       # Turn off fiducial place mode
       interactionNode.SwitchToViewTransformMode()
 
+  #------------------------------------------------------------------------------
   def onStep2_1_2_PlanCtFiducialCollectionSelected(self, collapsed):
     appLogic = slicer.app.applicationLogic()
     selectionNode = appLogic.GetSelectionNode()
@@ -1196,11 +1217,12 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
         selectionNode.SetActiveVolumeID(None)
         slicer.util.errorDisplay('Planning CT volume not selected!\nPlease return to first step and make the assignment')
       selectionNode.SetSecondaryVolumeID(None)
-      appLogic.PropagateVolumeSelection() 
+      appLogic.PropagateVolumeSelection()
     else:
       # Turn off fiducial place mode
       interactionNode.SwitchToViewTransformMode()
 
+  #------------------------------------------------------------------------------
   def onStep2_2_MeasuredDoseToObiRegistrationSelected(self, collapsed):
     # Make sure the functions handling entering the fiducial selection panels are called when entering the outer panel
     if collapsed == False:
@@ -1209,6 +1231,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       elif self.step2_2_2_measuredFiducialSelectionCollapsibleButton.collapsed == False:
         self.onStep2_2_2_MeasuredFiducialCollectionSelected(False)
 
+  #------------------------------------------------------------------------------
   def onStep2_2_1_ObiFiducialCollectionSelected(self, collapsed):
     appLogic = slicer.app.applicationLogic()
     selectionNode = appLogic.GetSelectionNode()
@@ -1234,6 +1257,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       # Turn off fiducial place mode
       interactionNode.SwitchToViewTransformMode()
 
+  #------------------------------------------------------------------------------
   def onStep2_2_2_MeasuredFiducialCollectionSelected(self, collapsed):
     appLogic = slicer.app.applicationLogic()
     selectionNode = appLogic.GetSelectionNode()
@@ -1254,15 +1278,17 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
         selectionNode.SetActiveVolumeID(None)
         slicer.util.errorDisplay('Gel dosimeter volume not selected!\nPlease return to first step and make the assignment')
       selectionNode.SetSecondaryVolumeID(None)
-      appLogic.PropagateVolumeSelection() 
+      appLogic.PropagateVolumeSelection()
     else:
       # Turn off fiducial place mode
       interactionNode.SwitchToViewTransformMode()
 
+  #------------------------------------------------------------------------------
   def onAutomaticPlanCtToObiRegistrationToggled(self, on):
     self.step2_1_automaticPlanCtToObiRegistrationFrame.setVisible(on)
     self.step2_1_landmarkPlanCtToObiRegistrationFrame.setVisible(not on)
 
+  #------------------------------------------------------------------------------
   def step2_SetupVisualization(self):
     # Set color to the OBI volume
     if self.obiVolumeNode is not None:
@@ -1288,6 +1314,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       if planSh:
         shNode.SetDisplayVisibilityForBranch(planSh, 0)
 
+  #------------------------------------------------------------------------------
   def onPlanCtToObiAutomaticRegistration(self):
     # Start registration
     obiVolumeID = self.obiVolumeNode.GetID()
@@ -1301,7 +1328,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     selectionNode = appLogic.GetSelectionNode()
     selectionNode.SetActiveVolumeID(planCtVolumeID)
     selectionNode.SetSecondaryVolumeID(obiVolumeID)
-    appLogic.PropagateVolumeSelection() 
+    appLogic.PropagateVolumeSelection()
 
     # Setup visualization for easy review of registration result
     self.step2_SetupVisualization()
@@ -1315,9 +1342,10 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     for slider in sliders:
       slider.singleStep = 0.5
 
+  #------------------------------------------------------------------------------
   def onPlanCtToObiLandmarkRegistration(self):
     errorRms = self.logic.registerPlanCtToObiLandmark(self.planCtMarkupsFiducialNode.GetID(), self.obiMarkupsFiducialNode1.GetID())
-    
+
     # Show registration error on GUI
     self.step2_1_3_planCtToObiFiducialRegistrationErrorLabel.setText(str(errorRms) + ' mm')
 
@@ -1328,13 +1356,14 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Show both volumes in the 2D views
     appLogic = slicer.app.applicationLogic()
     selectionNode = appLogic.GetSelectionNode()
-    selectionNode.SetActiveVolumeID(self.obiVolumeNode.GetID())
-    selectionNode.SetSecondaryVolumeID(self.planCtVolumeNode.GetID())
-    appLogic.PropagateVolumeSelection() 
+    selectionNode.SetActiveVolumeID(self.planCtVolumeNode.GetID())
+    selectionNode.SetSecondaryVolumeID(self.obiVolumeNode.GetID())
+    appLogic.PropagateVolumeSelection()
 
+  #------------------------------------------------------------------------------
   def onMeasuredToObiRegistration(self):
     errorRms = self.logic.registerMeasuredToObi(self.measuredMarkupsFiducialNode.GetID(), self.obiMarkupsFiducialNode2.GetID())
-    
+
     # Show registration error on GUI
     self.step2_2_3_measuredToObiFiducialRegistrationErrorLabel.setText(str(errorRms) + ' mm')
 
@@ -1347,8 +1376,12 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     selectionNode = appLogic.GetSelectionNode()
     selectionNode.SetActiveVolumeID(self.obiVolumeNode.GetID())
     selectionNode.SetSecondaryVolumeID(self.measuredVolumeNode.GetID())
-    appLogic.PropagateVolumeSelection() 
+    appLogic.PropagateVolumeSelection()
 
+  #------------------------------------------------------------------------------
+  # Step 3
+
+  #------------------------------------------------------------------------------
   def onLoadPddDataRead(self):
     fileName = qt.QFileDialog.getOpenFileName(0, 'Open PDD data file', '', 'CSV with COMMA ( *.csv )')
     if fileName is not None and fileName != '':
@@ -1358,6 +1391,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       else:
         slicer.util.errorDisplay('PDD loading failed!')
 
+  #------------------------------------------------------------------------------
   def onStep3_1_CalibrationRoutineSelected(self, collapsed):
     if collapsed == False:
       appLogic = slicer.app.applicationLogic()
@@ -1367,8 +1401,9 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       else:
         selectionNode.SetActiveVolumeID(None)
       selectionNode.SetSecondaryVolumeID(None)
-      appLogic.PropagateVolumeSelection() 
+      appLogic.PropagateVolumeSelection()
 
+  #------------------------------------------------------------------------------
   def parseCalibrationVolume(self):
     radiusOfCentreCircleText = self.step3_1_radiusMmFromCentrePixelLineEdit.text
     radiusOfCentreCircleFloat = 0
@@ -1383,13 +1418,15 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       slicer.util.errorDisplay('Calibration volume parsing failed!')
     return success
 
+  #------------------------------------------------------------------------------
   def createCalibrationCurvesWindow(self):
     # Set up window to be used for displaying data
     self.calibrationCurveChartView = vtk.vtkContextView()
     self.calibrationCurveChartView.GetRenderer().SetBackground(1,1,1)
     self.calibrationCurveChart = vtk.vtkChartXY()
     self.calibrationCurveChartView.GetScene().AddItem(self.calibrationCurveChart)
-    
+
+  #------------------------------------------------------------------------------
   def showCalibrationCurves(self):
     # Create CALIBRATION mean optical attenuation plot
     self.calibrationCurveDataTable = vtk.vtkTable()
@@ -1470,6 +1507,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.calibrationCurveChartRenderWindow.SetWindowName('PDD vs Calibration data chart')
     self.calibrationCurveChartRenderWindow.Start()
 
+  #------------------------------------------------------------------------------
   def onAlignCalibrationCurves(self):
     if self.logic.pddDataArray is None or self.logic.pddDataArray.size == 0:
       slicer.util.errorDisplay('PDD data not loaded!')
@@ -1483,7 +1521,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Align PDD data and "experimental" (CALIBRATION) data. Allow for horizontal shift
     # and vertical scale (max PDD Y value/max CALIBRATION Y value).
     result = self.logic.alignPddToCalibration()
-    
+
     # Set alignment results to manual controls
     self.step3_1_xTranslationSpinBox.blockSignals(True)
     self.step3_1_xTranslationSpinBox.setValue(result[1])
@@ -1499,10 +1537,12 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.createCalibrationCurvesWindow()
     self.showCalibrationCurves()
 
+  #------------------------------------------------------------------------------
   def onAdjustAlignmentValueChanged(self, value):
     self.logic.createAlignedCalibrationArray(self.step3_1_xTranslationSpinBox.value, self.step3_1_yScaleSpinBox.value, self.step3_1_yTranslationSpinBox.value)
     self.showCalibrationCurves()
 
+  #------------------------------------------------------------------------------
   def onComputeDoseFromPdd(self):
     try:
       monitorUnitsFloat = float(self.step3_1_monitorUnitsLineEdit.text)
@@ -1517,6 +1557,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     else:
       slicer.util.errorDisplay('Dose calculation from PDD failed!')
 
+  #------------------------------------------------------------------------------
   def onShowOpticalAttenuationVsDoseCurve(self):
     # Get selection from PDD vs Calibration chart
     selection = self.pddLine.GetSelection()
@@ -1571,6 +1612,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.oaVsDoseChartRenderWindow.SetWindowName('Optical attenuation vs Dose chart')
     self.oaVsDoseChartRenderWindow.Start()
 
+  #------------------------------------------------------------------------------
   def onRemoveSelectedPointsFromOpticalAttenuationVsDoseCurve(self):
     outlierSelection = self.oaVsDoseLineInnerPoint.GetSelection()
     if outlierSelection is None:
@@ -1596,7 +1638,8 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       # Update chart view
       self.oaVsDoseDataTable.Modified()
       self.oaVsDoseChartView.Render()
-    
+
+  #------------------------------------------------------------------------------
   def onFitPolynomialToOpticalAttenuationVsDoseCurve(self):
     orderSelectionComboboxCurrentIndex = self.step3_1_selectOrderOfPolynomialFitButton.currentIndex
     maxOrder = int(self.step3_1_selectOrderOfPolynomialFitButton.itemText(orderSelectionComboboxCurrentIndex))
@@ -1648,6 +1691,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.polynomialLine.SetColor(192, 0, 0, 255)
     self.polynomialLine.SetWidth(2)
 
+  #------------------------------------------------------------------------------
   def setCalibrationFunctionCoefficientsToLogic(self):
     # Determine the number of orders based on the input fields
     maxOrder = 0
@@ -1668,6 +1712,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       except:
         pass
 
+  #------------------------------------------------------------------------------
   def onExportCalibration(self):
     # Set calibration polynomial coefficients from input fields to logic
     self.setCalibrationFunctionCoefficientsToLogic()
@@ -1676,6 +1721,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     result = self.logic.exportCalibrationToCSV()
     qt.QMessageBox.information(None, 'Calibration values exported', result)
 
+  #------------------------------------------------------------------------------
   def onApplyCalibration(self):
     # Set calibration polynomial coefficients from input fields to logic
     self.setCalibrationFunctionCoefficientsToLogic()
@@ -1693,7 +1739,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     selectionNode = appLogic.GetSelectionNode()
     selectionNode.SetActiveVolumeID(self.planDoseVolumeNode.GetID())
     selectionNode.SetSecondaryVolumeID(self.calibratedMeasuredVolumeNode.GetID())
-    appLogic.PropagateVolumeSelection() 
+    appLogic.PropagateVolumeSelection()
 
     # Set window/level options for the calibrated dose
     if self.logic.opticalAttenuationVsDoseFunction is not None:
@@ -1708,7 +1754,11 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # Set calibrated dose to dose comparison step input
     self.refreshDoseComparisonInfoLabel()
-    
+
+  #------------------------------------------------------------------------------
+  # Step 4
+
+  #------------------------------------------------------------------------------
   def refreshDoseComparisonInfoLabel(self):
     if self.planDoseVolumeNode is None:
       self.step4_doseComparisonReferenceVolumeLabel.text = 'Invalid plan dose volume!'
@@ -1719,6 +1769,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     else:
       self.step4_doseComparisonEvaluatedVolumeLabel.text = self.calibratedMeasuredVolumeNode.GetName()
 
+  #------------------------------------------------------------------------------
   def onStep4_DoseComparisonSelected(self, collapsed):
     # Initialize mask segmentation selector to select plan structures
     self.step4_maskSegmentationSelector.setCurrentNode(self.planStructuresNode)
@@ -1732,6 +1783,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Reset 3D view
     self.layoutWidget.layoutManager().threeDWidget(0).threeDView().resetFocalPoint()
 
+  #------------------------------------------------------------------------------
   def onStep4_MaskSegmentationSelectionChanged(self, node):
     # Hide previously selected mask segmentation
     if self.maskSegmentationNode is not None:
@@ -1743,6 +1795,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     if self.maskSegmentationNode is not None:
       self.maskSegmentationNode.GetDisplayNode().SetVisibility(1)
 
+  #------------------------------------------------------------------------------
   def onStep4_MaskSegmentSelectionChanged(self, segmentID):
     if self.maskSegmentationNode is None:
       return
@@ -1760,10 +1813,12 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     if self.maskSegmentID is not None and self.maskSegmentID != '':
       self.maskSegmentationNode.GetDisplayNode().SetSegmentVisibility(self.maskSegmentID, True)
       self.maskSegmentationNode.GetDisplayNode().SetSegmentOpacity3D(self.maskSegmentID, 0.5)
-    
+
+  #------------------------------------------------------------------------------
   def onUseMaximumDoseRadioButtonToggled(self, toggled):
     self.step4_1_referenceDoseCustomValueCGySpinBox.setEnabled(not toggled)
 
+  #------------------------------------------------------------------------------
   def onGammaDoseComparison(self):
     try:
       slicer.modules.dosecomparison
@@ -1804,11 +1859,11 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       self.gammaProgressDialog.labelText = "Computing gamma dose difference..."
       self.gammaProgressDialog.show()
       slicer.app.processEvents()
-      
+
       # Perform gamma comparison
       qt.QApplication.setOverrideCursor(qt.QCursor(qt.Qt.BusyCursor))
       errorMessage = doseComparisonLogic.ComputeGammaDoseDifference(self.gammaParameterSetNode)
-      
+
       self.gammaProgressDialog.hide()
       self.gammaProgressDialog = None
       self.removeObserver(doseComparisonLogic, SlicerRtCommon.ProgressUpdated, self.onGammaProgressUpdated)
@@ -1858,23 +1913,29 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       threeDWidget = layoutManager.threeDWidget(0)
       if threeDWidget is not None and threeDWidget.threeDView() is not None:
         threeDWidget.threeDView().resetFocalPoint()
-      
+
     except Exception, e:
       import traceback
       traceback.print_exc()
       logging.error('Failed to perform gamma dose comparison!')
 
+  #------------------------------------------------------------------------------
   def onGammaProgressUpdated(self, logic, event):
     if self.gammaProgressDialog:
       self.gammaProgressDialog.value = logic.GetProgress() * 100.0
       slicer.app.processEvents()
 
+  #------------------------------------------------------------------------------
   def onShowGammaReport(self):
     if hasattr(self,"gammaReport"):
       qt.QMessageBox.information(None, 'Gamma computation report', self.gammaReport)
     else:
       qt.QMessageBox.information(None, 'Gamma computation report missing', 'No report available!')
-    
+
+  #------------------------------------------------------------------------------
+  # Step T1
+
+  #------------------------------------------------------------------------------
   def onStepT1_LineProfileSelected(self, collapsed):
     appLogic = slicer.app.applicationLogic()
     selectionNode = appLogic.GetSelectionNode()
@@ -1897,6 +1958,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     appLogic = slicer.app.applicationLogic()
     appLogic.PropagateVolumeSelection()
 
+  #------------------------------------------------------------------------------
   def onCreateLineProfileButton(self):
     # Create array nodes for the results
     if not hasattr(self, 'planDoseLineProfileArrayNode'):
@@ -1923,9 +1985,11 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     if self.gammaVolumeNode:
       lineProfileLogic.run(self.gammaVolumeNode, selectedRuler, self.gammaLineProfileArrayNode, numberOfLineSamples)
 
+  #------------------------------------------------------------------------------
   def onSelectLineProfileParameters(self):
     self.stepT1_createLineProfileButton.enabled = self.planDoseVolumeNode and self.measuredVolumeNode and self.stepT1_inputRulerSelector.currentNode()
 
+  #------------------------------------------------------------------------------
   def onExportLineProfiles(self):
     import csv
     import os
@@ -2105,7 +2169,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     xTranslationSpinBoxValue = 1
     yScaleSpinBoxValue = 1.162
     yTranslationSpinBoxValue = 1.28
-    
+
     # Start test
     qt.QApplication.setOverrideCursor(qt.QCursor(qt.Qt.BusyCursor))
 
@@ -2151,7 +2215,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step4_maskSegmentationSelector.setCurrentNodeID(maskSegmentationNodeID)
     self.step4_maskSegmentationSelector.setCurrentSegmentID(maskSegmentID)
     self.onGammaDoseComparison()
-    
+
     qt.QApplication.restoreOverrideCursor()
 
 #
@@ -2160,10 +2224,10 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
 class GelDosimetryAnalysis(ScriptedLoadableModule):
   """Uses ScriptedLoadableModule base class, available at:
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
-  """ 
+  """
 
   def __init__(self, parent):
-    ScriptedLoadableModule.__init__(self, parent) 
+    ScriptedLoadableModule.__init__(self, parent)
     parent.title = "Gel Dosimetry Analysis"
     parent.categories = ["Slicelets"]
     parent.dependencies = ["GelDosimetryAnalysisAlgo", "DicomRtImportExport", "BRAINSFit", "BRAINSResample", "Markups", "DataProbe", "DoseComparison"]
@@ -2184,7 +2248,7 @@ class GelDosimetryAnalysisWidget(ScriptedLoadableModuleWidget):
   """
 
   def setup(self):
-    ScriptedLoadableModuleWidget.setup(self) 
+    ScriptedLoadableModuleWidget.setup(self)
 
     # Show slicelet button
     launchSliceletButton = qt.QPushButton("Show slicelet")
@@ -2194,7 +2258,7 @@ class GelDosimetryAnalysisWidget(ScriptedLoadableModuleWidget):
     launchSliceletButton.connect('clicked()', self.onShowSliceletButtonClicked)
 
     # Add vertical spacer
-    self.layout.addStretch(1) 
+    self.layout.addStretch(1)
 
   def onShowSliceletButtonClicked(self):
     mainFrame = SliceletMainFrame()
@@ -2204,7 +2268,7 @@ class GelDosimetryAnalysisWidget(ScriptedLoadableModuleWidget):
     iconPath = os.path.join(os.path.dirname(slicer.modules.geldosimetryanalysis.path), 'Resources/Icons', self.moduleName+'.png')
     mainFrame.windowIcon = qt.QIcon(iconPath)
     mainFrame.connect('destroyed()', self.onSliceletClosed)
-    
+
     slicelet = GelDosimetryAnalysisSlicelet(mainFrame, self.developerMode)
     mainFrame.setSlicelet(slicelet)
 

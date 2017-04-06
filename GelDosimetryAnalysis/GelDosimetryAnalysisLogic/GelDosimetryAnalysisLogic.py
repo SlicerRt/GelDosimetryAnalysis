@@ -17,7 +17,7 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
   requiring an instance of the Widget.
   Uses ScriptedLoadableModuleLogic base class, available at:
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
-  """ 
+  """
 
   def __init__(self):
     # Define constants
@@ -94,18 +94,18 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
       # The output transform was automatically applied to the moving image (the OBI), undo that
       obiVolumeNode = slicer.mrmlScene.GetNodeByID(obiVolumeID)
       obiVolumeNode.SetAndObserveTransformNodeID(None)
-      
+
       # Apply transform to plan structures
       planStructuresNode = slicer.mrmlScene.GetNodeByID(planStructuresID)
       if planStructuresNode != None:
         planStructuresNode.SetAndObserveTransformNodeID(obiToPlanTransformNode.GetID())
-        
+
       return obiToPlanTransformNode
 
     except Exception, e:
       import traceback
       traceback.print_exc()
-    
+
   # ---------------------------------------------------------------------------
   def registerPlanCtToObiLandmark(self, planCtFiducialListID, obiFiducialListID):
     try:
@@ -113,7 +113,7 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
       parametersFiducial = {}
       parametersFiducial["fixedLandmarks"] = obiFiducialListID
       parametersFiducial["movingLandmarks"] = planCtFiducialListID
-      
+
       # Create linear transform which will store the registration transform
       obiToPlanTransformNode = slicer.util.getNode(self.obiToPlanTransformName)
       if obiToPlanTransformNode == None:
@@ -134,7 +134,7 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
         waitCount += 1
       self.delayDisplay("Register PLANCT to OBI using fiducial registration finished")
       qt.QApplication.restoreOverrideCursor()
-      
+
       # Apply transform to PLANCT fiducials
       planCtFiducialsNode = slicer.mrmlScene.GetNodeByID(planCtFiducialListID)
       planCtFiducialsNode.SetAndObserveTransformNodeID(obiToPlanTransformNode.GetID())
@@ -151,7 +151,7 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
       parametersFiducial = {}
       parametersFiducial["fixedLandmarks"] = obiFiducialListID
       parametersFiducial["movingLandmarks"] = measuredFiducialListID
-      
+
       # Create linear transform which will store the registration transform
       obiToMeasuredTransformNode = slicer.util.getNode(self.obiToMeasuredTransformName)
       if obiToMeasuredTransformNode == None:
@@ -172,7 +172,7 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
         waitCount += 1
       self.delayDisplay("Register MEASURED to OBI using fiducial registration finished")
       qt.QApplication.restoreOverrideCursor()
-      
+
       # Apply transform to MEASURED fiducials
       measuredFiducialsNode = slicer.mrmlScene.GetNodeByID(measuredFiducialListID)
       measuredFiducialsNode.SetAndObserveTransformNodeID(obiToMeasuredTransformNode.GetID())
@@ -221,7 +221,7 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
 
     calibrationVolume = slicer.util.getNode(calibrationVolumeNodeID)
     calibrationVolumeImageData = calibrationVolume.GetImageData()
-    
+
     # Get image properties needed for the calculation
     calibrationVolumeSliceThicknessCm = calibrationVolume.GetSpacing()[2] / 10.0
     if calibrationVolume.GetSpacing()[0] != calibrationVolume.GetSpacing()[1]:
@@ -240,7 +240,7 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     calibrationVolumeImageDataAsScalars = calibrationVolumeImageData.GetPointData().GetScalars()
     numpyImageDataArray = numpy_support.vtk_to_numpy(calibrationVolumeImageDataAsScalars)
     numpyImageDataArray = numpy.reshape(numpyImageDataArray, (calibrationVolumeImageData.GetExtent()[1]+1, calibrationVolumeImageData.GetExtent()[3]+1, calibrationVolumeImageData.GetExtent()[5]+1), 'F')
-    
+
     opticalAttenuationOfCentralCylinderTable = numpy.zeros((numberOfSlices, 3))
     sliceNumber = 0
     z = calibrationVolumeImageData.GetExtent()[5]
@@ -260,7 +260,7 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
             listOfOpticalDensities.append(currentOpticalAttenuation)
             totalOpticalAttenuation = totalOpticalAttenuation + currentOpticalAttenuation
             totalPixels+=1
-      
+
       meanOpticalAttenuation = totalOpticalAttenuation / totalPixels
       standardDeviationOpticalAttenuation	= 0
       for currentOpticalAttenuationValue in xrange(totalPixels):
@@ -351,7 +351,7 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
       else:
         # If the Pdd depth value is out of range then delete the last row (it will never be set, but we need to remove the zeros from the end)
         self.calibrationDataAlignedArray = numpy.delete(self.calibrationDataAlignedArray, self.calibrationDataAlignedArray.shape[0]-1, 0)
-  
+
     # Create aligned array used for display (visual alignment)
     self.calibrationDataAlignedToDisplayArray = numpy.zeros([self.pddDataArray.shape[0], 2])
     interpolator = vtk.vtkPiecewiseFunction()
@@ -401,7 +401,7 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
         # logging.debug('  Deleted first: {0:.2f},{0:.2f}  difference={0:.2f}'.format(arrayToClean[0,0], arrayToClean[0,1], abs(arrayToClean[0,1] - arrayToClean[1,1])))
         arrayToClean = numpy.delete(arrayToClean, 0, 0)
         numberOfFoundOutliers += 1
-      # Remove outliers from the end        
+      # Remove outliers from the end
       numberOfRows = arrayToClean.shape[0]
       while abs(arrayToClean[numberOfRows-1,1] - arrayToClean[numberOfRows-2,1]) > meanDifference * outlierThreshold:
         # logging.debug('  Deleted last: {0:.2f},{0:.2f}  difference={0:.2f}'.format(arrayToClean[numberOfRows-1,0], arrayToClean[numberOfRows-1,1], abs(arrayToClean[numberOfRows-1,1] - arrayToClean[numberOfRows-2,1])))
@@ -531,7 +531,7 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
       if hasattr(self,'fittingResiduals'):
         data.append(['Residuals', self.fittingResiduals[0]])
       csvWriter.writerows(data)
-    
+
     return message
 
   # ---------------------------------------------------------------------------
