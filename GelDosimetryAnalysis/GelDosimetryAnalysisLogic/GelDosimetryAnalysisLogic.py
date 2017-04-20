@@ -46,7 +46,7 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
   # ---------------------------------------------------------------------------
   # Use BRAINS registration to register PlanCT to OBI volume
   # and apply the result to the PlanCT and PlanDose
-  def registerPlanCtToObiAutomatic(self, planCtVolumeID, obiVolumeID, planDoseVolumeID, planStructuresID):
+  def registerPlanCtToObiAutomatic(self, planCtVolumeID, obiVolumeID):
     try:
       qt.QApplication.setOverrideCursor(qt.QCursor(qt.Qt.BusyCursor))
       parametersRigid = {}
@@ -82,23 +82,6 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
 
       # Invert output transform (planToObi) to get the desired obiToPlan transform
       obiToPlanTransformNode.GetMatrixTransformToParent().Invert()
-
-      # Apply transform to plan CT and plan dose
-      planCtVolumeNode = slicer.mrmlScene.GetNodeByID(planCtVolumeID)
-      planCtVolumeNode.SetAndObserveTransformNodeID(obiToPlanTransformNode.GetID())
-      if planCtVolumeID != planDoseVolumeID:
-        planDoseVolumeNode = slicer.mrmlScene.GetNodeByID(planDoseVolumeID)
-        planDoseVolumeNode.SetAndObserveTransformNodeID(obiToPlanTransformNode.GetID())
-      else:
-        logging.warning('The selected nodes are the same for plan CT and plan dose!')
-      # The output transform was automatically applied to the moving image (the OBI), undo that
-      obiVolumeNode = slicer.mrmlScene.GetNodeByID(obiVolumeID)
-      obiVolumeNode.SetAndObserveTransformNodeID(None)
-
-      # Apply transform to plan structures
-      planStructuresNode = slicer.mrmlScene.GetNodeByID(planStructuresID)
-      if planStructuresNode != None:
-        planStructuresNode.SetAndObserveTransformNodeID(obiToPlanTransformNode.GetID())
 
       return obiToPlanTransformNode
 
@@ -139,7 +122,8 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
       planCtFiducialsNode = slicer.mrmlScene.GetNodeByID(planCtFiducialListID)
       planCtFiducialsNode.SetAndObserveTransformNodeID(obiToPlanTransformNode.GetID())
 
-      return cliFiducialRegistrationRigidNode.GetParameterAsString('rms')
+      return [obiToPlanTransformNode, cliFiducialRegistrationRigidNode.GetParameterAsString('rms')]
+
     except Exception, e:
       import traceback
       traceback.print_exc()

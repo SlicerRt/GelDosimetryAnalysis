@@ -102,9 +102,9 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.logic = GelDosimetryAnalysisLogic.GelDosimetryAnalysisLogic()
 
     # Set up constants
-    self.obiMarkupsFiducialNode1Name = "OBI fiducials (OBI to PLANCT)"
+    self.obiMarkupsFiducialNode_WithPlanName = "OBI fiducials (OBI to PLANCT)"
     self.planCtMarkupsFiducialNodeName = "PLANCT fiducials"
-    self.obiMarkupsFiducialNode2Name = "OBI fiducials (OBI to MEASURED)"
+    self.obiMarkupsFiducialNode_WithMeasuredName = "OBI fiducials (OBI to MEASURED)"
     self.measuredMarkupsFiducialNodeName = "MEASURED fiducials"
 	
     # Declare member variables (selected at certain steps and then from then on for the workflow)
@@ -117,9 +117,9 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.measuredVolumeNode = None
     self.calibrationVolumeNode = None
 
-    self.obiMarkupsFiducialNode1 = None
+    self.obiMarkupsFiducialNode_WithPlan = None
     self.planCtMarkupsFiducialNode = None
-    self.obiMarkupsFiducialNode2 = None
+    self.obiMarkupsFiducialNode_WithMeasured = None
     self.measuredMarkupsFiducialNode = None
     self.calibratedMeasuredVolumeNode = None
     self.maskSegmentationNode = None
@@ -130,10 +130,10 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.markupsLogic = slicer.modules.markups.logic()
 
     # Create or get fiducial nodes (OBI to PLANCT)
-    self.obiMarkupsFiducialNode1 = slicer.util.getNode(self.obiMarkupsFiducialNode1Name)
-    if self.obiMarkupsFiducialNode1 is None:
-      obiFiducialsNode1Id = self.markupsLogic.AddNewFiducialNode(self.obiMarkupsFiducialNode1Name)
-      self.obiMarkupsFiducialNode1 = slicer.mrmlScene.GetNodeByID(obiFiducialsNode1Id)
+    self.obiMarkupsFiducialNode_WithPlan = slicer.util.getNode(self.obiMarkupsFiducialNode_WithPlanName)
+    if self.obiMarkupsFiducialNode_WithPlan is None:
+      obiFiducialsNode1Id = self.markupsLogic.AddNewFiducialNode(self.obiMarkupsFiducialNode_WithPlanName)
+      self.obiMarkupsFiducialNode_WithPlan = slicer.mrmlScene.GetNodeByID(obiFiducialsNode1Id)
     self.planCtMarkupsFiducialNode = slicer.util.getNode(self.planCtMarkupsFiducialNodeName)
     if self.planCtMarkupsFiducialNode is None:
       measuredFiducialsNodeId = self.markupsLogic.AddNewFiducialNode(self.planCtMarkupsFiducialNodeName)
@@ -141,10 +141,10 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     measuredFiducialsDisplayNode = self.planCtMarkupsFiducialNode.GetDisplayNode()
     measuredFiducialsDisplayNode.SetSelectedColor(0, 0.9, 0.9)
     # Create or get fiducial nodes (OBI to MEASURED)
-    self.obiMarkupsFiducialNode2 = slicer.util.getNode(self.obiMarkupsFiducialNode2Name)
-    if self.obiMarkupsFiducialNode2 is None:
-      obiFiducialsNode2Id = self.markupsLogic.AddNewFiducialNode(self.obiMarkupsFiducialNode2Name)
-      self.obiMarkupsFiducialNode2 = slicer.mrmlScene.GetNodeByID(obiFiducialsNode2Id)
+    self.obiMarkupsFiducialNode_WithMeasured = slicer.util.getNode(self.obiMarkupsFiducialNode_WithMeasuredName)
+    if self.obiMarkupsFiducialNode_WithMeasured is None:
+      obiFiducialsNode2Id = self.markupsLogic.AddNewFiducialNode(self.obiMarkupsFiducialNode_WithMeasuredName)
+      self.obiMarkupsFiducialNode_WithMeasured = slicer.mrmlScene.GetNodeByID(obiFiducialsNode2Id)
     self.measuredMarkupsFiducialNode = slicer.util.getNode(self.measuredMarkupsFiducialNodeName)
     if self.measuredMarkupsFiducialNode is None:
       measuredFiducialsNodeId = self.markupsLogic.AddNewFiducialNode(self.measuredMarkupsFiducialNodeName)
@@ -1158,6 +1158,9 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       elif self.step2_2_measuredDoseToObiRegistrationCollapsibleButton.collapsed == False:
         self.onStep2_2_MeasuredDoseToObiRegistrationSelected(False)
 
+      # Make sure current registration type is properly set up
+      self.onAutomaticPlanCtToObiRegistrationToggled(self.step2_1_registrationTypeAutomaticRadioButton.checked)
+
   #------------------------------------------------------------------------------
   def onStep2_1_PlanCtToObiRegistrationSelected(self, collapsed):
     # Make sure the functions handling entering the fiducial selection panels are called when entering the outer panel
@@ -1166,6 +1169,17 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
         self.onStep2_1_1_ObiFiducialCollectionSelected(False)
       elif self.step2_1_2_planCtFiducialSelectionCollapsibleButton.collapsed == False:
         self.onStep2_1_2_PlanCtFiducialCollectionSelected(False)
+        
+        # Make sure the fiducials used for this step are visible
+        if self.obiMarkupsFiducialNode_WithPlan and self.obiMarkupsFiducialNode_WithPlan.GetDisplayNode():
+          self.obiMarkupsFiducialNode_WithPlan.GetDisplayNode().SetVisibility(1)
+        if self.planCtMarkupsFiducialNode and self.planCtMarkupsFiducialNode.GetDisplayNode():
+          self.planCtMarkupsFiducialNode.GetDisplayNode().SetVisibility(1)
+        # Hide the fiducials from step 2.2 in case the user switches back
+        if self.obiMarkupsFiducialNode_WithMeasured and self.obiMarkupsFiducialNode_WithMeasured.GetDisplayNode():
+          self.obiMarkupsFiducialNode_WithMeasured.GetDisplayNode().SetVisibility(0)
+        if self.measuredMarkupsFiducialNode and self.measuredMarkupsFiducialNode.GetDisplayNode():
+          self.measuredMarkupsFiducialNode.GetDisplayNode().SetVisibility(0)
 
   #------------------------------------------------------------------------------
   def onStep2_1_1_ObiFiducialCollectionSelected(self, collapsed):
@@ -1181,7 +1195,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       interactionNode.SwitchToPersistentPlaceMode()
 
       # Select OBI fiducials node
-      self.step2_1_1_obiFiducialList.setCurrentNode(self.obiMarkupsFiducialNode1)
+      self.step2_1_1_obiFiducialList.setCurrentNode(self.obiMarkupsFiducialNode_WithPlan)
       self.step2_1_1_obiFiducialList.activate()
 
       # Automatically show OBI volume (show nothing if not present)
@@ -1231,6 +1245,17 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       elif self.step2_2_2_measuredFiducialSelectionCollapsibleButton.collapsed == False:
         self.onStep2_2_2_MeasuredFiducialCollectionSelected(False)
 
+        # Make sure the fiducials used for this step are visible
+        if self.obiMarkupsFiducialNode_WithMeasured and self.obiMarkupsFiducialNode_WithMeasured.GetDisplayNode():
+          self.obiMarkupsFiducialNode_WithMeasured.GetDisplayNode().SetVisibility(1)
+        if self.measuredMarkupsFiducialNode and self.measuredMarkupsFiducialNode.GetDisplayNode():
+          self.measuredMarkupsFiducialNode.GetDisplayNode().SetVisibility(1)
+        # Hide the fiducials from step 2.1 in case landmark mode was used
+        if self.obiMarkupsFiducialNode_WithPlan and self.obiMarkupsFiducialNode_WithPlan.GetDisplayNode():
+          self.obiMarkupsFiducialNode_WithPlan.GetDisplayNode().SetVisibility(0)
+        if self.planCtMarkupsFiducialNode and self.planCtMarkupsFiducialNode.GetDisplayNode():
+          self.planCtMarkupsFiducialNode.GetDisplayNode().SetVisibility(0)
+
   #------------------------------------------------------------------------------
   def onStep2_2_1_ObiFiducialCollectionSelected(self, collapsed):
     appLogic = slicer.app.applicationLogic()
@@ -1242,7 +1267,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       interactionNode.SwitchToPersistentPlaceMode()
 
       # Select OBI fiducials node
-      self.step2_2_1_obiFiducialList.setCurrentNode(self.obiMarkupsFiducialNode2)
+      self.step2_2_1_obiFiducialList.setCurrentNode(self.obiMarkupsFiducialNode_WithMeasured)
       self.step2_2_1_obiFiducialList.activate()
 
       # Automatically show OBI volume (show nothing if not present)
@@ -1284,9 +1309,20 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       interactionNode.SwitchToViewTransformMode()
 
   #------------------------------------------------------------------------------
-  def onAutomaticPlanCtToObiRegistrationToggled(self, on):
-    self.step2_1_automaticPlanCtToObiRegistrationFrame.setVisible(on)
-    self.step2_1_landmarkPlanCtToObiRegistrationFrame.setVisible(not on)
+  def onAutomaticPlanCtToObiRegistrationToggled(self, automaticSelected):
+    self.step2_1_automaticPlanCtToObiRegistrationFrame.setVisible(automaticSelected)
+    self.step2_1_landmarkPlanCtToObiRegistrationFrame.setVisible(not automaticSelected)
+
+    if automaticSelected:
+      # Turn off fiducial place mode
+      appLogic = slicer.app.applicationLogic()
+      selectionNode = appLogic.GetSelectionNode()
+      interactionNode = appLogic.GetInteractionNode()
+      interactionNode.SwitchToViewTransformMode()
+    else:
+      # Make sure landmark mode is set up (fiducial placement mode, shown volumes)
+      self.step2_1_1_obiFiducialSelectionCollapsibleButton.setProperty('collapsed', False)
+      self.onStep2_1_1_ObiFiducialCollectionSelected(False)
 
   #------------------------------------------------------------------------------
   def step2_SetupVisualization(self):
@@ -1303,8 +1339,9 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     compositeNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
     for compositeNode in compositeNodes.values():
       compositeNode.SetForegroundOpacity(0.5)
-    # Hide structures for sake of speed
-    if self.planStructuresNode is not None:
+    # Hide structures for sake of speed, and show only outlines for better dose visibility
+    if self.planStructuresNode and self.planStructuresNode.GetDisplayNode():
+      self.planStructuresNode.GetDisplayNode().SetVisibility2DFill(False)
       self.planStructuresNode.GetDisplayNode().SetVisibility(0)
     # Hide beam models
     shNode = slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
@@ -1320,8 +1357,18 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     obiVolumeID = self.obiVolumeNode.GetID()
     planCtVolumeID = self.planCtVolumeNode.GetID()
     planDoseVolumeID = self.planDoseVolumeNode.GetID()
-    planStructuresID = self.planStructuresNode.GetID()
-    obiToPlanTransformNode = self.logic.registerPlanCtToObiAutomatic(planCtVolumeID, obiVolumeID, planDoseVolumeID, planStructuresID)
+    obiToPlanTransformNode = self.logic.registerPlanCtToObiAutomatic(planCtVolumeID, obiVolumeID)
+    
+    # Apply transform to plan CT and plan dose
+    self.planCtVolumeNode.SetAndObserveTransformNodeID(obiToPlanTransformNode.GetID())
+    if planCtVolumeID != planDoseVolumeID:
+      self.planDoseVolumeNode.SetAndObserveTransformNodeID(obiToPlanTransformNode.GetID())
+    else:
+      logging.warning('The selected nodes are the same for plan CT and plan dose')
+
+    # Apply transform to plan structures
+    if self.planStructuresNode:
+      self.planStructuresNode.SetAndObserveTransformNodeID(obiToPlanTransformNode.GetID())
 
     # Show the two volumes for visual evaluation of the registration
     appLogic = slicer.app.applicationLogic()
@@ -1344,14 +1391,21 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   #------------------------------------------------------------------------------
   def onPlanCtToObiLandmarkRegistration(self):
-    errorRms = self.logic.registerPlanCtToObiLandmark(self.planCtMarkupsFiducialNode.GetID(), self.obiMarkupsFiducialNode1.GetID())
+    obiToPlanTransformNode, errorRms = self.logic.registerPlanCtToObiLandmark(self.planCtMarkupsFiducialNode.GetID(), self.obiMarkupsFiducialNode_WithPlan.GetID())
 
     # Show registration error on GUI
     self.step2_1_3_planCtToObiFiducialRegistrationErrorLabel.setText(str(errorRms) + ' mm')
 
-    # Apply transform to PLANCT volume
-    obiToPlanCtTransformNode = slicer.util.getNode(self.logic.obiToPlanTransformName)
-    self.planCtVolumeNode.SetAndObserveTransformNodeID(obiToPlanCtTransformNode.GetID())
+    # Apply transform to plan CT and plan dose
+    self.planCtVolumeNode.SetAndObserveTransformNodeID(obiToPlanTransformNode.GetID())
+    if self.planCtVolumeNode != self.planDoseVolumeNode:
+      self.planDoseVolumeNode.SetAndObserveTransformNodeID(obiToPlanTransformNode.GetID())
+    else:
+      logging.warning('The selected nodes are the same for plan CT and plan dose')
+
+    # Apply transform to plan structures
+    if self.planStructuresNode:
+      self.planStructuresNode.SetAndObserveTransformNodeID(obiToPlanTransformNode.GetID())
 
     # Show both volumes in the 2D views
     appLogic = slicer.app.applicationLogic()
@@ -1362,7 +1416,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   #------------------------------------------------------------------------------
   def onMeasuredToObiRegistration(self):
-    errorRms = self.logic.registerMeasuredToObi(self.measuredMarkupsFiducialNode.GetID(), self.obiMarkupsFiducialNode2.GetID())
+    errorRms = self.logic.registerMeasuredToObi(self.measuredMarkupsFiducialNode.GetID(), self.obiMarkupsFiducialNode_WithMeasured.GetID())
 
     # Show registration error on GUI
     self.step2_2_3_measuredToObiFiducialRegistrationErrorLabel.setText(str(errorRms) + ' mm')
