@@ -44,6 +44,39 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     slicer.modules.DICOMWidget.enter()
 
   # ---------------------------------------------------------------------------
+  # Calculate window and level for loaded VFF volumes automatically
+  def calculateAutoWindowLevel(self, volume):
+    if not volume:
+      return [0,0]
+
+    imageData = volume.GetImageData()
+
+    accumulateMinMax = vtk.vtkImageAccumulate()
+    accumulateMinMax.SetComponentExtent([0, 65535, 0, 0, 0, 0])
+    accumulateMinMax.SetComponentOrigin([-32768, 0, 0])
+    accumulateMinMax.SetInputData(imageData)
+    accumulateMinMax.Update()
+
+    import math
+    minInt = math.trunc(accumulateMinMax.GetMin()[0])-1
+    maxInt = math.trunc(accumulateMinMax.GetMax()[0])+1
+
+    accumulate = vtk.vtkImageAccumulate()
+    accumulate.SetInputData(imageData)
+    accumulate.SetComponentExtent([0, 999, 0, 0, 0, 0])
+    accumulate.SetComponentOrigin([minInt, 0, 0])
+    spacing = (maxInt-minInt)/1000.0
+    accumulate.SetComponentSpacing([spacing,1.0,1.0])
+
+    bimodal = slicer.vtkImageBimodalAnalysis()
+    bimodal.SetInputConnection(accumulate.GetOutputPort())
+    bimodal.Update()
+    window = minInt + bimodal.GetWindow() * spacing
+    level = minInt + bimodal.GetLevel() * spacing
+
+    return [window, level]
+
+  # ---------------------------------------------------------------------------
   # Use BRAINS registration to register PlanCT to OBI volume
   # and apply the result to the PlanCT and PlanDose
   def registerPlanCtToObiAutomatic(self, planCtVolumeID, obiVolumeID):

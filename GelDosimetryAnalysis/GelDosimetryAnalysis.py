@@ -1137,14 +1137,24 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   #------------------------------------------------------------------------------
   def onStep1_LoadDataCollapsed(self, collapsed):
-    # Save selections to member variables when switching away from load data step
     if collapsed == True:
+      # Save selections to member variables when switching away from load data step
       self.planCtVolumeNode = self.planCtSelector.currentNode()
       self.planDoseVolumeNode = self.planDoseSelector.currentNode()
       self.obiVolumeNode = self.obiSelector.currentNode()
       self.planStructuresNode = self.planStructuresSelector.currentNode()
       self.measuredVolumeNode = self.measuredVolumeSelector.currentNode()
       self.calibrationVolumeNode = self.calibrationVolumeSelector.currentNode()
+
+      # Calculate window/level for VFF volumes (auto-calculation in Slicer cannot handle float volumes)
+      measuredWindow, measuredLevel = self.logic.calculateAutoWindowLevel(self.measuredVolumeNode)
+      if self.measuredVolumeNode and self.measuredVolumeNode.GetDisplayNode():
+        self.measuredVolumeNode.GetDisplayNode().SetAutoWindowLevel(0)
+        self.measuredVolumeNode.GetDisplayNode().SetWindowLevel(measuredWindow, measuredLevel)
+      calibrationWindow, calibrationLevel = self.logic.calculateAutoWindowLevel(self.calibrationVolumeNode)
+      if self.calibrationVolumeNode and self.calibrationVolumeNode.GetDisplayNode():
+        self.calibrationVolumeNode.GetDisplayNode().SetAutoWindowLevel(0)
+        self.calibrationVolumeNode.GetDisplayNode().SetWindowLevel(calibrationWindow, calibrationLevel)
 
   #------------------------------------------------------------------------------
   # Step 2
