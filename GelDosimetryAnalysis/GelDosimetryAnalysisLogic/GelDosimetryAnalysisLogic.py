@@ -71,8 +71,8 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     bimodal = slicer.vtkImageBimodalAnalysis()
     bimodal.SetInputConnection(accumulate.GetOutputPort())
     bimodal.Update()
-    window = minInt + bimodal.GetWindow() * spacing
-    level = minInt + bimodal.GetLevel() * spacing
+    window = bimodal.GetWindow() * spacing
+    level = minInt + (bimodal.GetLevel() - minInt) * spacing
 
     return [window, level]
 
