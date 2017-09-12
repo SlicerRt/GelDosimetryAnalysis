@@ -1,0 +1,24 @@
+Step 4 (calibration):
+
+4/A)
+- Load Percent Depth Dose (PDD a.k.a Wellhoffer) data from CSV spreadsheet.
+- Load experimental calibration volume from VFF (optical CT) file.
+- User choose averaging radius for the calibration volume in mm
+- Parse the calibration volume: get central cylinder of the given radius for each slice of the calibration data, and create output table, in which the following values are provided for each slice: depth (cm), mean optical density on the slice at depth, std.dev. of optical density
+
+4/B)
+- Display calibration curve - A chart appears that displays the mean optical density values calculated during the "parsing" step of substep 4/A). The mean optical density values will be along the y-axis and the depth of that value on the x-axis. 
+- Note: There has been a manual step in the original Matlab implementation: The user inputs the min and max values from the x-axis of the chart that defines the region of interest. The min value will always be slightly less than 2 and the max is selected to be after the largest drop in mean values occurs and before the data starts to oscillate. ie. at the lowest point in the curve. 
+This step has been replaced by automatic ROI selection in the slicelet!
+- Align curves needs to align the experimental data (data calculated during substep A)) with the PDD/Wellhoffer data using a vertical scale and horizontal shift.
+  (PDD = Percent depth dose data. This data is found during commissioning of each linear accelerator. In the file that is provided the second column represents the depth in cm (ie. how far we are from the source of radiation). The first column represents the percentage of the maximum possible radiation dosage found that that depth (ie. If column 2 is 0.5cm and column 1 is 85.65 this means that at a depth of 0.5cm a total of 85.65% of the maximum possible dose is being given.))
+  - Experimental data is now cut down to the region of interest specified during substep 4/B.
+  - Find the "scaling factor" (max of column 1 in PDD divided by max of mean values from experimental data) and scale experimental data. 
+- RDF and Electron Monitor Units are input by the user. These values are standard and known by the user.
+- Compute dose from percent depth dose (generate dose information, calibration of the PDD data). All information about the applied radiation up until this point has been in optical density values. To change the values do dose we must apply this function 
+  dose(x) = (PDD(x) * RDF * Electron Monitor Units) / 10000
+        PDD(x) is a percentage of the max dose at depth x. 
+
+4/C)
+- Optical Density vs. Dose Curve: Display the optical density values and the associated dose values based on the calculation made in the last substep of 4/B. The mean optical density values from parsing of the VFF should be along the X axis and dose values calculated in 4/B should be along along the Y axis. 
+- The desired polynomial is fit using the numpy polyfit. The resulting polynomial is the calibration function that has to be applied to the measured gel volume to acquire actual dose values.
