@@ -21,8 +21,8 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
 
   def __init__(self):
     # Define constants
-    self.obiToPlanTransformName = 'obiToPlanTransform'
-    self.obiToMeasuredTransformName = "obiToMeasuredTransform"
+    self.cbctToPlanTransformName = 'cbctToPlanTransform'
+    self.cbctToMeasuredTransformName = "cbctToMeasuredTransform"
 
     # Declare member variables (mainly for documentation)
     self.pddDataArray = None
@@ -44,13 +44,13 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     slicer.modules.DICOMWidget.enter()
 
   # ---------------------------------------------------------------------------
-  # Use BRAINS registration to register PlanCT to OBI volume
+  # Use BRAINS registration to register PlanCT to CBCT volume
   # and apply the result to the PlanCT and PlanDose
-  def registerPlanCtToObiAutomatic(self, planCtVolumeID, obiVolumeID):
+  def registerPlanCtToCbctAutomatic(self, planCtVolumeID, cbctVolumeID):
     try:
       qt.QApplication.setOverrideCursor(qt.QCursor(qt.Qt.BusyCursor))
       parametersRigid = {}
-      parametersRigid["fixedVolume"] = obiVolumeID
+      parametersRigid["fixedVolume"] = cbctVolumeID
       parametersRigid["movingVolume"] = planCtVolumeID
       parametersRigid["useRigid"] = True
       parametersRigid["initializeTransformMode"] = "useGeometryAlign"
@@ -61,12 +61,12 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
       # parametersRigid["backgroundFillValue"] = -1000.0
 
       # Set output transform
-      obiToPlanTransformNode = slicer.util.getNode(self.obiToPlanTransformName)
-      if obiToPlanTransformNode == None:
-        obiToPlanTransformNode = slicer.vtkMRMLLinearTransformNode()
-        slicer.mrmlScene.AddNode(obiToPlanTransformNode)
-        obiToPlanTransformNode.SetName(self.obiToPlanTransformName)
-      parametersRigid["linearTransform"] = obiToPlanTransformNode.GetID()
+      cbctToPlanTransformNode = slicer.util.getNode(self.cbctToPlanTransformName)
+      if cbctToPlanTransformNode == None:
+        cbctToPlanTransformNode = slicer.vtkMRMLLinearTransformNode()
+        slicer.mrmlScene.AddNode(cbctToPlanTransformNode)
+        cbctToPlanTransformNode.SetName(self.cbctToPlanTransformName)
+      parametersRigid["linearTransform"] = cbctToPlanTransformNode.GetID()
 
       # Runs the brainsfit registration
       brainsFit = slicer.modules.brainsfit
@@ -75,35 +75,35 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
 
       waitCount = 0
       while cliBrainsFitRigidNode.GetStatusString() != 'Completed' and waitCount < 200:
-        self.delayDisplay( "Register PlanCT to OBI using rigid registration... %d" % waitCount )
+        self.delayDisplay( "Register PlanCT to CBCT using rigid registration... %d" % waitCount )
         waitCount += 1
-      self.delayDisplay("Register PlanCT to OBI using rigid registration finished")
+      self.delayDisplay("Register PlanCT to CBCT using rigid registration finished")
       qt.QApplication.restoreOverrideCursor()
 
-      # Invert output transform (planToObi) to get the desired obiToPlan transform
-      obiToPlanTransformNode.GetMatrixTransformToParent().Invert()
+      # Invert output transform (planToCbct) to get the desired cbctToPlan transform
+      cbctToPlanTransformNode.GetMatrixTransformToParent().Invert()
 
-      return obiToPlanTransformNode
+      return cbctToPlanTransformNode
 
     except Exception, e:
       import traceback
       traceback.print_exc()
 
   # ---------------------------------------------------------------------------
-  def registerPlanCtToObiLandmark(self, planCtFiducialListID, obiFiducialListID):
+  def registerPlanCtToCbctLandmark(self, planCtFiducialListID, cbctFiducialListID):
     try:
       qt.QApplication.setOverrideCursor(qt.QCursor(qt.Qt.BusyCursor))
       parametersFiducial = {}
-      parametersFiducial["fixedLandmarks"] = obiFiducialListID
+      parametersFiducial["fixedLandmarks"] = cbctFiducialListID
       parametersFiducial["movingLandmarks"] = planCtFiducialListID
 
       # Create linear transform which will store the registration transform
-      obiToPlanTransformNode = slicer.util.getNode(self.obiToPlanTransformName)
-      if obiToPlanTransformNode == None:
-        obiToPlanTransformNode = slicer.vtkMRMLLinearTransformNode()
-        slicer.mrmlScene.AddNode(obiToPlanTransformNode)
-        obiToPlanTransformNode.SetName(self.obiToPlanTransformName)
-      parametersFiducial["saveTransform"] = obiToPlanTransformNode.GetID()
+      cbctToPlanTransformNode = slicer.util.getNode(self.cbctToPlanTransformName)
+      if cbctToPlanTransformNode == None:
+        cbctToPlanTransformNode = slicer.vtkMRMLLinearTransformNode()
+        slicer.mrmlScene.AddNode(cbctToPlanTransformNode)
+        cbctToPlanTransformNode.SetName(self.cbctToPlanTransformName)
+      parametersFiducial["saveTransform"] = cbctToPlanTransformNode.GetID()
       parametersFiducial["transformType"] = "Rigid"
 
       # Run fiducial registration
@@ -113,36 +113,36 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
 
       waitCount = 0
       while cliFiducialRegistrationRigidNode.GetStatusString() != 'Completed' and waitCount < 200:
-        self.delayDisplay( "Register PLANCT to OBI using fiducial registration... %d" % waitCount )
+        self.delayDisplay( "Register PLANCT to CBCT using fiducial registration... %d" % waitCount )
         waitCount += 1
-      self.delayDisplay("Register PLANCT to OBI using fiducial registration finished")
+      self.delayDisplay("Register PLANCT to CBCT using fiducial registration finished")
       qt.QApplication.restoreOverrideCursor()
 
       # Apply transform to PLANCT fiducials
       planCtFiducialsNode = slicer.mrmlScene.GetNodeByID(planCtFiducialListID)
-      planCtFiducialsNode.SetAndObserveTransformNodeID(obiToPlanTransformNode.GetID())
+      planCtFiducialsNode.SetAndObserveTransformNodeID(cbctToPlanTransformNode.GetID())
 
-      return [obiToPlanTransformNode, cliFiducialRegistrationRigidNode.GetParameterAsString('rms')]
+      return [cbctToPlanTransformNode, cliFiducialRegistrationRigidNode.GetParameterAsString('rms')]
 
     except Exception, e:
       import traceback
       traceback.print_exc()
 
   # ---------------------------------------------------------------------------
-  def registerMeasuredToObi(self, measuredFiducialListID, obiFiducialListID):
+  def registerMeasuredToCbct(self, measuredFiducialListID, cbctFiducialListID):
     try:
       qt.QApplication.setOverrideCursor(qt.QCursor(qt.Qt.BusyCursor))
       parametersFiducial = {}
-      parametersFiducial["fixedLandmarks"] = obiFiducialListID
+      parametersFiducial["fixedLandmarks"] = cbctFiducialListID
       parametersFiducial["movingLandmarks"] = measuredFiducialListID
 
       # Create linear transform which will store the registration transform
-      obiToMeasuredTransformNode = slicer.util.getNode(self.obiToMeasuredTransformName)
-      if obiToMeasuredTransformNode == None:
-        obiToMeasuredTransformNode = slicer.vtkMRMLLinearTransformNode()
-        slicer.mrmlScene.AddNode(obiToMeasuredTransformNode)
-        obiToMeasuredTransformNode.SetName(self.obiToMeasuredTransformName)
-      parametersFiducial["saveTransform"] = obiToMeasuredTransformNode.GetID()
+      cbctToMeasuredTransformNode = slicer.util.getNode(self.cbctToMeasuredTransformName)
+      if cbctToMeasuredTransformNode == None:
+        cbctToMeasuredTransformNode = slicer.vtkMRMLLinearTransformNode()
+        slicer.mrmlScene.AddNode(cbctToMeasuredTransformNode)
+        cbctToMeasuredTransformNode.SetName(self.cbctToMeasuredTransformName)
+      parametersFiducial["saveTransform"] = cbctToMeasuredTransformNode.GetID()
       parametersFiducial["transformType"] = "Rigid"
 
       # Run fiducial registration
@@ -152,14 +152,14 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
 
       waitCount = 0
       while cliFiducialRegistrationRigidNode.GetStatusString() != 'Completed' and waitCount < 200:
-        self.delayDisplay( "Register MEASURED to OBI using fiducial registration... %d" % waitCount )
+        self.delayDisplay( "Register MEASURED to CBCT using fiducial registration... %d" % waitCount )
         waitCount += 1
-      self.delayDisplay("Register MEASURED to OBI using fiducial registration finished")
+      self.delayDisplay("Register MEASURED to CBCT using fiducial registration finished")
       qt.QApplication.restoreOverrideCursor()
 
       # Apply transform to MEASURED fiducials
       measuredFiducialsNode = slicer.mrmlScene.GetNodeByID(measuredFiducialListID)
-      measuredFiducialsNode.SetAndObserveTransformNodeID(obiToMeasuredTransformNode.GetID())
+      measuredFiducialsNode.SetAndObserveTransformNodeID(cbctToMeasuredTransformNode.GetID())
 
       return cliFiducialRegistrationRigidNode.GetParameterAsString('rms')
     except Exception, e:

@@ -1,11 +1,11 @@
 Workflow overview:
 1.  Loading planning image (PLANCT) and a planned dose distribution (PLANDOSE)
-2.  Load an on-board imager cone beam CT scan (OBI)
+2.  Load a cone-beam CT scan (CBCT)
 3.  Register it to PLANCT
-4.  Transform PLANDOSE using result transform (to OBI coordinate frame)
+4.  Transform PLANDOSE using result transform (to CBCT coordinate frame)
 5.  Load 3D optical CT scan of the gel, or a 2D scan of the film. (MEASURED)
-6.  Register MEASURED to OBI using fiducial marks, using rigid transform
-7.  Transform MEASURED using result transform (to OBI coordinate frame)
+6.  Register MEASURED to CBCT using fiducial marks, using rigid transform
+7.  Transform MEASURED using result transform (to CBCT coordinate frame)
 8.  Load Percent Depth Dose data (two-column spreadsheet)
 9.  Load experimental CALIBRATION 3D optical CT scan from VFF file
 10. Get mean optical densities from the central cylinder of the CALIBRATION volume
