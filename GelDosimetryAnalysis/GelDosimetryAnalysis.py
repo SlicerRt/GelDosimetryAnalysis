@@ -73,13 +73,6 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.sliceletPanelLayout.setSpacing(0)
     self.layout.addWidget(self.sliceletPanel,1)
 
-    # For testing only (it is only visible when in developer mode)
-    self.selfTestButton = qt.QPushButton("Run self-test")
-    self.sliceletPanelLayout.addWidget(self.selfTestButton)
-    self.selfTestButton.connect('clicked()', self.onSelfTestButtonClicked)
-    if not developerMode:
-      self.selfTestButton.setVisible(False)
-
     # Initiate and group together all panels
     self.step0_layoutSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
     self.step1_loadDataCollapsibleButton = ctk.ctkCollapsibleButton()
@@ -183,7 +176,6 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
   #------------------------------------------------------------------------------
   # Disconnect all connections made to the slicelet to enable the garbage collector to destruct the slicelet object on quit
   def disconnect(self):
-    self.selfTestButton.disconnect('clicked()', self.onSelfTestButtonClicked)
     self.step0_viewSelectorComboBox.disconnect('activated(int)', self.onViewSelect)
     self.step0_clinicalModeRadioButton.disconnect('toggled(bool)', self.onClinicalModeSelect)
     self.step0_preclinicalModeRadioButton.disconnect('toggled(bool)', self.onPreclinicalModeSelect)
@@ -1389,6 +1381,8 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     for slider in sliders:
       slider.singleStep = 0.5
 
+    return cbctToPlanTransformNode
+
   #------------------------------------------------------------------------------
   def onPlanCtToCbctLandmarkRegistration(self):
     cbctToPlanTransformNode, errorRms = self.logic.registerPlanCtToCbctLandmark(self.planCtMarkupsFiducialNode.GetID(), self.cbctMarkupsFiducialNode_WithPlan.GetID())
@@ -1414,6 +1408,8 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     selectionNode.SetSecondaryVolumeID(self.cbctVolumeNode.GetID())
     appLogic.PropagateVolumeSelection()
 
+    return cbctToPlanTransformNode
+
   #------------------------------------------------------------------------------
   def onMeasuredToCbctRegistration(self):
     errorRms = self.logic.registerMeasuredToCbct(self.measuredMarkupsFiducialNode.GetID(), self.cbctMarkupsFiducialNode_WithMeasured.GetID())
@@ -1431,6 +1427,8 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     selectionNode.SetActiveVolumeID(self.cbctVolumeNode.GetID())
     selectionNode.SetSecondaryVolumeID(self.measuredVolumeNode.GetID())
     appLogic.PropagateVolumeSelection()
+
+    return cbctToMeasuredTransformNode
 
   #------------------------------------------------------------------------------
   # Step 3
@@ -1565,12 +1563,12 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
   def onAlignCalibrationCurves(self):
     if self.logic.pddDataArray is None or self.logic.pddDataArray.size == 0:
       slicer.util.errorDisplay('PDD data not loaded!')
-      return
+      return False
 
     # Parse calibration volume (average optical densities along central cylinder)
     success = self.parseCalibrationVolume()
     if not success:
-      return
+      return False
 
     # Align PDD data and "experimental" (CALIBRATION) data. Allow for horizontal shift
     # and vertical scale (max PDD Y value/max CALIBRATION Y value).
@@ -1591,6 +1589,8 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.createCalibrationCurvesWindow()
     self.showCalibrationCurves()
 
+    return True
+
   #------------------------------------------------------------------------------
   def onAdjustAlignmentValueChanged(self, value):
     self.logic.createAlignedCalibrationArray(self.step3_1_xTranslationSpinBox.value, self.step3_1_yScaleSpinBox.value, self.step3_1_yTranslationSpinBox.value)
@@ -1603,13 +1603,15 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       rdfFloat = float(self.step3_1_rdfLineEdit.text)
     except ValueError:
       slicer.util.errorDisplay('Invalid monitor units or RDF!')
-      return
+      return False
 
     # Calculate dose information: calculatedDose = (PddDose * MonitorUnits * RDF) / 10000
-    if self.logic.computeDoseForMeasuredData(rdfFloat, monitorUnitsFloat) == True:
-      self.logic.delayDisplay('Dose successfully calculated from PDD')
-    else:
+    if self.logic.computeDoseForMeasuredData(rdfFloat, monitorUnitsFloat) == False:
       slicer.util.errorDisplay('Dose calculation from PDD failed!')
+      return False
+
+    self.logic.delayDisplay('Dose successfully calculated from PDD')
+    return True
 
   #------------------------------------------------------------------------------
   def onShowOpticalAttenuationVsDoseCurve(self):
@@ -1786,7 +1788,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       self.step3_2_applyCalibrationStatusLabel.setText('Calibration successfully performed')
     else:
       self.step3_2_applyCalibrationStatusLabel.setText('Calibration failed!')
-      return
+      return False
 
     # Show calibrated volume
     appLogic = slicer.app.applicationLogic()
@@ -1808,6 +1810,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # Set calibrated dose to dose comparison step input
     self.refreshDoseComparisonInfoLabel()
+    return True
 
   #------------------------------------------------------------------------------
   # Step 4
@@ -1879,7 +1882,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
 
       if self.step4_1_gammaVolumeSelector.currentNode() is None:
         qt.QMessageBox.warning(None, 'Warning', 'Gamma volume not selected. If there is no suitable output gamma volume, create one.')
-        return
+        return False
       else:
         self.gammaVolumeNode = self.step4_1_gammaVolumeSelector.currentNode()
 
@@ -1967,6 +1970,8 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       threeDWidget = layoutManager.threeDWidget(0)
       if threeDWidget is not None and threeDWidget.threeDView() is not None:
         threeDWidget.threeDView().resetFocalPoint()
+
+      return True
 
     except Exception, e:
       import traceback
@@ -2086,192 +2091,6 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     message = 'Dose line profiles saved in file\n' + fileName + '\n\n'
     qt.QMessageBox.information(None, 'Line profiles values exported', message)
 
-  #
-  # -------------------------
-  # Testing related functions
-  # -------------------------
-  #
-  def onSelfTestButtonClicked(self):
-    #TODO_ForTesting: Choose the testing method here
-    self.performSelfTestFromScratch()
-    # self.performSelfTestFromSavedScene()
-
-  def performSelfTestFromScratch(self):
-    ### 1. Load test data
-    self.mode = 'Clinical'
-    self.step1_loadDataCollapsibleButton.setChecked(True)
-    planCtSeriesInstanceUid = '1.2.246.352.71.2.1706542068.3448830.20131009141316'
-    cbctSeriesInstanceUid = '1.2.246.352.61.2.5257103442752107062.11507227178299854732'
-    planDoseSeriesInstanceUid = '1.2.246.352.71.2.876365306.7756.20140123124241'
-    structureSetSeriesInstanceUid = '1.2.246.352.71.2.876365306.7755.20140122163851'
-    seriesUIDList = [planCtSeriesInstanceUid, cbctSeriesInstanceUid, planDoseSeriesInstanceUid, structureSetSeriesInstanceUid]
-    dicomWidget = slicer.modules.dicom.widgetRepresentation().self()
-    dicomWidget.detailsPopup.offerLoadables(seriesUIDList, 'SeriesUIDList')
-    dicomWidget.detailsPopup.examineForLoading()
-    dicomWidget.detailsPopup.loadCheckedLoadables()
-
-    slicer.app.processEvents()
-    self.logic.delayDisplay('Wait for the slicelet to catch up', 300)
-
-    # Load non-DICOM data
-    slicer.util.loadNodeFromFile('d:/devel/_Images/RT/20140123_GelDosimetry_StructureSetIncluded/VFFs/LCV01_HR_plan.vff', 'VffFile', {})
-    slicer.util.loadNodeFromFile('d:/devel/_Images/RT/20140123_GelDosimetry_StructureSetIncluded/VFFs/LCV02_HR_calib.vff', 'VffFile', {})
-
-    # Assign roles
-    planCtVolumeName = '47: ARIA RadOnc Images - Verification Plan Phantom'
-    planDoseVolumeName = '53: RTDOSE: Eclipse Doses: VMAT XM1 LCV'
-    cbctVolumeName = '0: Unnamed Series'
-    structureSetNodeName = '52: RTSTRUCT: CT_1'
-    measuredVolumeName = 'lcv01_hr.vff'
-    calibrationVolumeName = 'lcv02_hr.vff'
-
-    planCtVolume = slicer.util.getNode(planCtVolumeName)
-    self.planCtSelector.setCurrentNode(planCtVolume)
-    planDoseVolume = slicer.util.getNode(planDoseVolumeName)
-    self.planDoseSelector.setCurrentNode(planDoseVolume)
-    cbctVolume = slicer.util.getNode(cbctVolumeName)
-    self.cbctSelector.setCurrentNode(cbctVolume)
-    structureSetNode = slicer.util.getNode(structureSetNodeName)
-    self.planStructuresSelector.setCurrentNode(structureSetNode)
-    measuredVolume = slicer.util.getNode(measuredVolumeName)
-    self.measuredVolumeSelector.setCurrentNode(measuredVolume)
-    calibrationVolume = slicer.util.getNode(calibrationVolumeName)
-    self.calibrationVolumeSelector.setCurrentNode(calibrationVolume)
-    slicer.app.processEvents()
-
-    ### 2. Register
-    self.step2_registrationCollapsibleButton.setChecked(True)
-    self.onPlanCtToCbctAutomaticRegistration()
-    slicer.app.processEvents()
-
-    # Select fiducials
-    self.step2_2_measuredDoseToCbctRegistrationCollapsibleButton.setChecked(True)
-    cbctFiducialsNode = slicer.util.getNode(self.cbctMarkupsFiducialNodeName)
-    cbctFiducialsNode.AddFiducial(76.4, 132.1, -44.8)
-    cbctFiducialsNode.AddFiducial(173, 118.4, -44.8)
-    cbctFiducialsNode.AddFiducial(154.9, 163.5, -44.8)
-    cbctFiducialsNode.AddFiducial(77.4, 133.6, 23.9)
-    cbctFiducialsNode.AddFiducial(172.6, 118.9, 23.9)
-    cbctFiducialsNode.AddFiducial(166.5, 151.3, 23.9)
-    self.step2_2_2_measuredFiducialSelectionCollapsibleButton.setChecked(True)
-    measuredFiducialsNode = slicer.util.getNode(self.measuredMarkupsFiducialNodeName)
-    measuredFiducialsNode.AddFiducial(-92.25, -25.9, 26.2)
-    measuredFiducialsNode.AddFiducial(-31.9, -100.8, 26.2)
-    measuredFiducialsNode.AddFiducial(-15, -55.2, 26.2)
-    measuredFiducialsNode.AddFiducial(-92, -26.7, 94)
-    measuredFiducialsNode.AddFiducial(-32.7, -101, 94)
-    measuredFiducialsNode.AddFiducial(-15, -73.6, 94)
-
-    # Perform fiducial registration
-    self.step2_2_3_measuredToCbctRegistrationCollapsibleButton.setChecked(True)
-    self.onMeasuredToCbctRegistration()
-
-    ### 4. Calibration
-    self.step3_doseCalibrationCollapsibleButton.setChecked(True)
-    self.logic.loadPdd('d:/devel/_Images/RT/20140123_GelDosimetry_StructureSetIncluded/12MeV.csv')
-
-    # Parse calibration volume
-    self.step3_1_radiusMmFromCentrePixelLineEdit.setText('5')
-
-    # Align calibration curves
-    self.onAlignCalibrationCurves()
-    self.step3_1_xTranslationSpinBox.setValue(1)
-    self.step3_1_yScaleSpinBox.setValue(1.162)
-    self.step3_1_yTranslationSpinBox.setValue(1.28)
-
-    # Generate dose information
-    self.step3_doseCalibrationCollapsibleButton.setChecked(True)
-    self.step3_1_rdfLineEdit.setText('0.989')
-    self.step3_1_monitorUnitsLineEdit.setText('1850')
-    self.onComputeDoseFromPdd()
-    # Show optical attenuation VS dose curve
-    self.step3_1_calibrationRoutineCollapsibleButton.setChecked(True)
-    self.onShowOpticalAttenuationVsDoseCurve()
-    # Fit polynomial on OA VS dose curve
-    self.onFitPolynomialToOpticalAttenuationVsDoseCurve()
-    # Calibrate
-    self.onApplyCalibration()
-
-    # 5. Dose comparison
-    slicer.app.processEvents()
-    self.logic.delayDisplay('Wait for the slicelet to catch up', 300)
-    self.step4_doseComparisonCollapsibleButton.setChecked(True)
-    self.step4_1_gammaVolumeSelector.addNode()
-    maskSegmentationNodeID = 'vtkMRMLSegmentationNode1'
-    maskSegmentID = 'Jar_crop'
-    self.step4_maskSegmentationSelector.setCurrentNodeID(maskSegmentationNodeID)
-    self.step4_maskSegmentationSelector.setCurrentSegmentID(maskSegmentID)
-    self.onGammaDoseComparison()
-
-  def performSelfTestFromSavedScene(self):
-    #TODO: Update saved scene to one with segmentations
-    return
-    # Set variables. Only this section needs to be changed when testing new dataset
-    scenePath = 'c:/Slicer_Data/20140820_GelDosimetry_StructureSetIncluded/2014-08-20-Scene.mrml'
-    planCtVolumeNodeName = '*ARIA RadOnc Images - Verification Plan Phantom'
-    cbctVolumeNodeName = '0: Unknown'
-    planDoseVolumeNodeName = '53: RTDOSE: Eclipse Doses: '
-    planStructuresNodeName = '52: RTSTRUCT: CT_1'
-    measuredVolumeNodeName = 'lcv01_hr.vff'
-    calibrationVolumeNodeName = 'lcv02_hr.vff'
-    radiusMmFromCentrePixelMm = '5'
-    pddFileName = 'd:/devel/_Images/RT/20140123_GelDosimetry_StructureSetIncluded/12MeV.csv'
-    rdf = '0.989'
-    monitorUnits = '1850'
-    maskSegmentationNodeID = 'vtkMRMLSegmentationNode1'
-    maskSegmentID = 'Jar_crop'
-    xTranslationSpinBoxValue = 1
-    yScaleSpinBoxValue = 1.162
-    yTranslationSpinBoxValue = 1.28
-
-    # Start test
-    qt.QApplication.setOverrideCursor(qt.QCursor(qt.Qt.BusyCursor))
-
-    # Load scene
-    slicer.util.loadScene(scenePath)
-
-    # Set member variables for the loaded scene
-    self.mode = 'Clinical'
-    self.planCtVolumeNode = slicer.util.getNode(planCtVolumeNodeName)
-    self.cbctVolumeNode = slicer.util.getNode(cbctVolumeNodeName)
-    self.planDoseVolumeNode = slicer.util.getNode(planDoseVolumeNodeName)
-    self.planStructuresNode = slicer.util.getNode(planStructuresNodeName)
-    self.planStructuresNode.GetDisplayNode().SetVisibility(0)
-    self.measuredVolumeNode = slicer.util.getNode(measuredVolumeNodeName)
-    self.calibrationVolumeNode = slicer.util.getNode(calibrationVolumeNodeName)
-
-    # Calibration
-    self.logic.loadPdd(pddFileName)
-
-    self.step3_1_radiusMmFromCentrePixelLineEdit.setText(radiusMmFromCentrePixelMm)
-
-    self.onAlignCalibrationCurves()
-    self.step3_1_xTranslationSpinBox.setValue(xTranslationSpinBoxValue)
-    self.step3_1_yScaleSpinBox.setValue(yScaleSpinBoxValue)
-    self.step3_1_yTranslationSpinBox.setValue(yTranslationSpinBoxValue)
-
-    self.step3_1_rdfLineEdit.setText(rdf)
-    self.step3_1_monitorUnitsLineEdit.setText(monitorUnits)
-    self.onComputeDoseFromPdd()
-
-    self.onShowOpticalAttenuationVsDoseCurve()
-    self.onFitPolynomialToOpticalAttenuationVsDoseCurve()
-
-    slicer.app.processEvents()
-    self.onApplyCalibration()
-
-    self.step3_doseCalibrationCollapsibleButton.setChecked(True)
-    self.step3_1_calibrationRoutineCollapsibleButton.setChecked(True)
-
-    # Dose comparison
-    self.step4_doseComparisonCollapsibleButton.setChecked(True)
-    self.step4_1_gammaVolumeSelector.addNode()
-    self.step4_maskSegmentationSelector.setCurrentNodeID(maskSegmentationNodeID)
-    self.step4_maskSegmentationSelector.setCurrentSegmentID(maskSegmentID)
-    self.onGammaDoseComparison()
-
-    qt.QApplication.restoreOverrideCursor()
-
 #
 # GelDosimetryAnalysis
 #
@@ -2284,7 +2103,7 @@ class GelDosimetryAnalysis(ScriptedLoadableModule):
     ScriptedLoadableModule.__init__(self, parent)
     parent.title = "Gel Dosimetry Analysis"
     parent.categories = ["Slicelets"]
-    parent.dependencies = ["GelDosimetryAnalysisAlgo", "DicomRtImportExport", "BRAINSFit", "BRAINSResample", "Markups", "DataProbe", "DoseComparison"]
+    parent.dependencies = ["GelDosimetryAnalysisAlgo", "DicomRtImportExport", "VffFileReader", "DoseComparison", "BRAINSFit", "BRAINSResample", "Markups", "DataProbe"]
     parent.contributors = ["Csaba Pinter (Queen's University), Mattea Welch (Queen's University), Jennifer Andrea (Queen's University), Kevin Alexander (Kingston General Hospital)"] # replace with "Firstname Lastname (Org)"
     parent.helpText = "Slicelet for gel dosimetry analysis"
     parent.acknowledgementText = """
@@ -2305,16 +2124,16 @@ class GelDosimetryAnalysisWidget(ScriptedLoadableModuleWidget):
     ScriptedLoadableModuleWidget.setup(self)
 
     # Show slicelet button
-    launchSliceletButton = qt.QPushButton("Show slicelet")
-    launchSliceletButton.toolTip = "Launch the slicelet"
+    showSliceletButton = qt.QPushButton("Show slicelet")
+    showSliceletButton.toolTip = "Launch the slicelet"
     self.layout.addWidget(qt.QLabel(' '))
-    self.layout.addWidget(launchSliceletButton)
-    launchSliceletButton.connect('clicked()', self.onShowSliceletButtonClicked)
+    self.layout.addWidget(showSliceletButton)
+    showSliceletButton.connect('clicked()', self.launchSlicelet)
 
     # Add vertical spacer
     self.layout.addStretch(1)
 
-  def onShowSliceletButtonClicked(self):
+  def launchSlicelet(self):
     mainFrame = SliceletMainFrame()
     mainFrame.minimumWidth = 1200
     mainFrame.windowTitle = "Gel dosimetry analysis"
@@ -2329,6 +2148,8 @@ class GelDosimetryAnalysisWidget(ScriptedLoadableModuleWidget):
     # Make the slicelet reachable from the Slicer python interactor for testing
     slicer.gelDosimetrySliceletInstance = slicelet
 
+    return slicelet
+
   def onSliceletClosed(self):
     logging.debug('Slicelet closed')
 
@@ -2340,15 +2161,464 @@ class GelDosimetryAnalysisTest(ScriptedLoadableModuleTest):
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
 
-  def setUp(self):
+  #------------------------------------------------------------------------------
+  def test_GelDosimetryAnalysis_FullTest(self):
+    try:
+      # Check for modules
+      self.assertIsNotNone( slicer.modules.geldosimetryanalysisalgo )
+      self.assertIsNotNone( slicer.modules.dicomrtimportexport )
+      self.assertIsNotNone( slicer.modules.vfffilereader )
+      self.assertIsNotNone( slicer.modules.dosecomparison )
+      self.assertIsNotNone( slicer.modules.subjecthierarchy )
+      self.assertIsNotNone( slicer.modules.segmentations )
+      self.assertIsNotNone( slicer.modules.brainsfit )
+      self.assertIsNotNone( slicer.modules.brainsresample )
+      self.assertIsNotNone( slicer.modules.markups )
+      self.assertIsNotNone( slicer.modules.dataprobe )
+
+      self.TestSection_00_SetupPathsAndNames()
+      self.TestSection_01A_OpenTempDatabase()
+      self.TestSection_01B_DownloadData()
+      self.TestSection_01C_ImportStudy()
+      self.TestSection_01D_SelectLoadablesAndLoad()
+      self.TestSection_02_FinalizeDataLoading()
+      self.TestSection_03_Register()
+      self.TestSection_04_Calibrate()
+      self.TestSection_05_CompareDoses()
+      self.TestUtility_ClearDatabase()
+
+    except Exception, e:
+      logging.error('Exception happened! Details:')
+      import traceback
+      traceback.print_exc()
+      pass
+
+  #------------------------------------------------------------------------------
+  def TestSection_00_SetupPathsAndNames(self):
+    gelDosimetryAnalysisDir = slicer.app.temporaryPath + '/GelDosimetryAnalysis'
+    if not os.access(gelDosimetryAnalysisDir, os.F_OK):
+      os.mkdir(gelDosimetryAnalysisDir)
+
+    self.dicomDataDir = gelDosimetryAnalysisDir + '/GelDosimetryAnalysisDicom'
+    if not os.access(self.dicomDataDir, os.F_OK):
+      os.mkdir(self.dicomDataDir)
+
+    self.dicomDatabaseDir = gelDosimetryAnalysisDir + '/CtkDicomDatabase'
+    self.dicomZipFilePath = gelDosimetryAnalysisDir + '/GelDosimetryTestData.zip'
+    self.expectedNumOfFilesInDicomDataDir = 328
+    self.tempDir = gelDosimetryAnalysisDir + '/Temp'
+
+    self.planCtVolumeName = '47: ARIA RadOnc Images - Verification Plan Phantom'
+    self.planDoseVolumeName = '53: RTDOSE: Eclipse Doses: VMAT XM1 LCV'
+    self.cbctVolumeName = '0: Unnamed Series'
+    self.structureSetNodeName = '52: RTSTRUCT: CT_1'
+    self.measuredVolumeName = 'LCV01_HR_plan (lcv01_hr)'
+    self.calibrationVolumeName = 'LCV02_HR_calib (lcv02_hr)'
+    self.maskSegmentID = 'Jar_crop'
+
+    self.slicelet = None
+
+    self.setupPathsAndNamesDone = True
+
+  #------------------------------------------------------------------------------
+  def TestSection_01A_OpenTempDatabase(self):
+    # Open test database and empty it
+    try:
+      if not os.access(self.dicomDatabaseDir, os.F_OK):
+        os.mkdir(self.dicomDatabaseDir)
+
+      if slicer.dicomDatabase:
+        self.originalDatabaseDirectory = os.path.split(slicer.dicomDatabase.databaseFilename)[0]
+      else:
+        self.originalDatabaseDirectory = None
+        settings = qt.QSettings()
+        settings.setValue('DatabaseDirectory', self.dicomDatabaseDir)
+
+      dicomWidget = slicer.modules.dicom.widgetRepresentation().self()
+      dicomWidget.onDatabaseDirectoryChanged(self.dicomDatabaseDir)
+      self.assertTrue( slicer.dicomDatabase.isOpen )
+      slicer.dicomDatabase.initializeDatabase()
+
+    except Exception, e:
+      import traceback
+      traceback.print_exc()
+      self.delayDisplay('Test caused exception!\n' + str(e),self.delayMs*2)
+      raise Exception("Exception occurred, handled, thrown further to workflow level")
+
+  #------------------------------------------------------------------------------
+  def TestSection_01B_DownloadData(self):
+    try:
+      import urllib
+      downloads = (
+          ('http://slicer.kitware.com/midas3/download/item/300651/GelDosimetryTestData.zip', self.dicomZipFilePath),
+          )
+
+      downloaded = 0
+      for url,filePath in downloads:
+        if not os.path.exists(filePath) or os.stat(filePath).st_size == 0:
+          if downloaded == 0:
+            self.delayDisplay('Downloading input data to folder\n' + self.dicomZipFilePath + '.\n\n  It may take a few minutes...',self.delayMs)
+          logging.info('Requesting download from %s...' % (url))
+          urllib.urlretrieve(url, filePath)
+          downloaded += 1
+        else:
+          self.delayDisplay('Input data has been found in folder ' + self.dicomZipFilePath, self.delayMs)
+      if downloaded > 0:
+        self.delayDisplay('Downloading input data finished',self.delayMs)
+
+      numOfFilesInDicomDataDir = len([file for folderList in [files for root, subdirs, files in os.walk(self.dicomDataDir)] for file in folderList])
+      if (numOfFilesInDicomDataDir != self.expectedNumOfFilesInDicomDataDir):
+        slicer.app.applicationLogic().Unzip(self.dicomZipFilePath, self.dicomDataDir)
+        self.delayDisplay("Unzipping done",self.delayMs)
+
+      numOfFilesInDicomDataDirTest = len([file for folderList in [files for root, subdirs, files in os.walk(self.dicomDataDir)] for file in folderList])
+      self.assertEqual( numOfFilesInDicomDataDirTest, self.expectedNumOfFilesInDicomDataDir )
+
+    except Exception, e:
+      import traceback
+      traceback.print_exc()
+      self.delayDisplay('Test caused exception!\n' + str(e),self.delayMs*2)
+      raise Exception("Exception occurred, handled, thrown further to workflow level")
+
+  #------------------------------------------------------------------------------
+  def TestSection_01C_ImportStudy(self):
+    self.delayDisplay("Import Day 1 study",self.delayMs)
+
+    try:
+      slicer.util.selectModule('DICOM')
+
+      # Import study to database
+      dicomWidget = slicer.modules.dicom.widgetRepresentation().self()
+      indexer = ctk.ctkDICOMIndexer()
+      self.assertIsNotNone( indexer )
+
+      indexer.addDirectory( slicer.dicomDatabase, self.dicomDataDir )
+
+      self.assertEqual( len(slicer.dicomDatabase.patients()), 1 )
+      self.assertIsNotNone( slicer.dicomDatabase.patients()[0] )
+
+    except Exception, e:
+      import traceback
+      traceback.print_exc()
+      self.delayDisplay('Test caused exception!\n' + str(e),self.delayMs*2)
+      raise Exception("Exception occurred, handled, thrown further to workflow level")
+
+  #------------------------------------------------------------------------------
+  def TestSection_01D_SelectLoadablesAndLoad(self):
+    self.delayDisplay("Select loadables and load data",self.delayMs)
+
+    try:
+      numOfScalarVolumeNodesBeforeLoad = len( slicer.util.getNodes('vtkMRMLScalarVolumeNode*') )
+      numOfSegmentationNodesBeforeLoad = len( slicer.util.getNodes('vtkMRMLSegmentationNode*') )
+      numOfRtPlanNodesBeforeLoad = len( slicer.util.getNodes('vtkMRMLRTPlanNode*') )
+      numOfRtBeamNodesBeforeLoad = len( slicer.util.getNodes('vtkMRMLRTBeamNode*') )
+      numOfFiducialNodesBeforeLoad = len( slicer.util.getNodes('vtkMRMLMarkupsFiducialNode*') )
+
+      # Choose first patient from the patient list
+      dicomWidget = slicer.modules.dicom.widgetRepresentation().self()
+      self.delayDisplay("Wait for DICOM browser to initialize",self.delayMs)
+      patient = slicer.dicomDatabase.patients()[0]
+      studies = slicer.dicomDatabase.studiesForPatient(patient)
+      series = [slicer.dicomDatabase.seriesForStudy(study) for study in studies]
+      seriesUIDs = [uid for uidList in series for uid in uidList]
+      dicomWidget.detailsPopup.offerLoadables(seriesUIDs, 'SeriesUIDList')
+      dicomWidget.detailsPopup.examineForLoading()
+
+      # Make sure the loadables are good (RT is assigned to 2 out of 4 and they are selected)
+      loadablesByPlugin = dicomWidget.detailsPopup.loadablesByPlugin
+      rtFound = False
+      loadablesForRt = 0
+      for plugin in loadablesByPlugin:
+        if plugin.loadType == 'RT':
+          rtFound = True
+        else:
+          continue
+        for loadable in loadablesByPlugin[plugin]:
+          loadablesForRt += 1
+          self.assertTrue( loadable.selected )
+
+      self.assertTrue( rtFound )
+      self.assertEqual( loadablesForRt, 3 )
+
+      dicomWidget.detailsPopup.loadCheckedLoadables()
+
+      # Verify that the correct number of objects were loaded
+      self.assertEqual( len( slicer.util.getNodes('vtkMRMLScalarVolumeNode*') ), numOfScalarVolumeNodesBeforeLoad + 3 )
+      self.assertEqual( len( slicer.util.getNodes('vtkMRMLSegmentationNode*') ), numOfSegmentationNodesBeforeLoad + 1 )
+      self.assertEqual( len( slicer.util.getNodes('vtkMRMLRTPlanNode*') ), numOfRtPlanNodesBeforeLoad + 1 )
+      self.assertEqual( len( slicer.util.getNodes('vtkMRMLRTBeamNode*') ), numOfRtBeamNodesBeforeLoad + 1 )
+      self.assertEqual( len( slicer.util.getNodes('vtkMRMLMarkupsFiducialNode*') ), numOfFiducialNodesBeforeLoad + 1 )
+
+    except Exception, e:
+      import traceback
+      traceback.print_exc()
+      self.delayDisplay('Test caused exception!\n' + str(e),self.delayMs*2)
+      raise Exception("Exception occurred, handled, thrown further to workflow level")
+
+  #------------------------------------------------------------------------------
+  def TestSection_02_FinalizeDataLoading(self):
+    self.delayDisplay("Perform registration",self.delayMs)
+
+    try:
+      slicer.util.selectModule('GelDosimetryAnalysis')
+      moduleWidget = slicer.modules.geldosimetryanalysis.widgetRepresentation().self()
+      
+      # Show slicelet
+      self.slicelet = moduleWidget.launchSlicelet()
+      self.assertIsNotNone(self.slicelet)
+
+      self.slicelet.mode = 'Clinical'
+      self.slicelet.step1_loadDataCollapsibleButton.setChecked(True)
+
+      # Load non-DICOM data
+      vffFilesDir = self.dicomDataDir + '/VFFs'
+      numOfScalarVolumeNodesBeforeLoad = len( slicer.util.getNodes('vtkMRMLScalarVolumeNode*') )
+      slicer.util.loadNodeFromFile(vffFilesDir + '/LCV01_HR_plan.vff', 'VffFile', {})
+      slicer.util.loadNodeFromFile(vffFilesDir + '/LCV02_HR_calib.vff', 'VffFile', {})
+      # Verify that the VFF files were loaded
+      self.assertEqual( len( slicer.util.getNodes('vtkMRMLScalarVolumeNode*') ), numOfScalarVolumeNodesBeforeLoad + 2 )
+
+      # Assign roles
+      planCtVolume = slicer.util.getNode(self.planCtVolumeName)
+      self.assertIsNotNone(planCtVolume)
+      self.slicelet.planCtSelector.setCurrentNode(planCtVolume)
+
+      planDoseVolume = slicer.util.getNode(self.planDoseVolumeName)
+      self.assertIsNotNone(planDoseVolume)
+      self.slicelet.planDoseSelector.setCurrentNode(planDoseVolume)
+
+      cbctVolume = slicer.util.getNode(self.cbctVolumeName)
+      self.assertIsNotNone(cbctVolume)
+      self.slicelet.cbctSelector.setCurrentNode(cbctVolume)
+
+      structureSetNode = slicer.util.getNode(self.structureSetNodeName)
+      self.assertIsNotNone(structureSetNode)
+      self.slicelet.planStructuresSelector.setCurrentNode(structureSetNode)
+
+      measuredVolume = slicer.util.getNode(self.measuredVolumeName)
+      self.assertIsNotNone(measuredVolume)
+      self.slicelet.measuredVolumeSelector.setCurrentNode(measuredVolume)
+
+      calibrationVolume = slicer.util.getNode(self.calibrationVolumeName)
+      self.assertIsNotNone(calibrationVolume)
+      self.slicelet.calibrationVolumeSelector.setCurrentNode(calibrationVolume)
+
+      slicer.app.processEvents()
+
+    except Exception, e:
+      import traceback
+      traceback.print_exc()
+      self.delayDisplay('Test caused exception!\n' + str(e),self.delayMs*2)
+      raise Exception("Exception occurred, handled, thrown further to workflow level")
+
+  #------------------------------------------------------------------------------
+  def TestSection_03_Register(self):
+    self.delayDisplay("Register PlanCT to CBCT automatically and Measured dose to CBCT using fiducials",self.delayMs)
+
+    try:
+      self.assertIsNotNone(self.slicelet)
+
+      self.slicelet.step2_registrationCollapsibleButton.setChecked(True)
+      cbctToPlanTransformNode = self.slicelet.onPlanCtToCbctAutomaticRegistration()
+      slicer.app.processEvents()
+
+      self.assertIsNotNone(cbctToPlanTransformNode)
+      cbctToPlanTransformMatrix = cbctToPlanTransformNode.GetTransformToParent().GetMatrix()
+      self.assertAlmostEqual(cbctToPlanTransformMatrix.GetElement(0,3), 124.44, 0)
+      self.assertAlmostEqual(cbctToPlanTransformMatrix.GetElement(1,3), 182.36, 0)
+      self.assertAlmostEqual(cbctToPlanTransformMatrix.GetElement(2,3) / 2,  0, -1) # +/- 10 in Z direction
+      self.assertAlmostEqual(cbctToPlanTransformMatrix.GetElement(0,0), 1.0, 1)
+      self.assertAlmostEqual(cbctToPlanTransformMatrix.GetElement(1,1), 1.0, 1)
+      self.assertAlmostEqual(cbctToPlanTransformMatrix.GetElement(2,2), 1.0, 1)
+
+      # Select fiducials
+      self.slicelet.step2_2_measuredDoseToCbctRegistrationCollapsibleButton.setChecked(True)
+      cbctFiducialsNode = slicer.util.getNode(self.slicelet.cbctMarkupsFiducialNode_WithMeasuredName)
+      cbctFiducialsNode.AddFiducial(76.4, 132.1, -44.8)
+      cbctFiducialsNode.AddFiducial(173, 118.4, -44.8)
+      cbctFiducialsNode.AddFiducial(154.9, 163.5, -44.8)
+      cbctFiducialsNode.AddFiducial(77.4, 133.6, 23.9)
+      cbctFiducialsNode.AddFiducial(172.6, 118.9, 23.9)
+      cbctFiducialsNode.AddFiducial(166.5, 151.3, 23.9)
+
+      self.slicelet.step2_2_2_measuredFiducialSelectionCollapsibleButton.setChecked(True)
+      measuredFiducialsNode = slicer.util.getNode(self.slicelet.measuredMarkupsFiducialNodeName)
+      measuredFiducialsNode.AddFiducial(-92.25, -25.9, 26.2)
+      measuredFiducialsNode.AddFiducial(-31.9, -100.8, 26.2)
+      measuredFiducialsNode.AddFiducial(-15, -55.2, 26.2)
+      measuredFiducialsNode.AddFiducial(-92, -26.7, 94)
+      measuredFiducialsNode.AddFiducial(-32.7, -101, 94)
+      measuredFiducialsNode.AddFiducial(-15, -73.6, 94)
+
+      # Perform fiducial registration
+      self.slicelet.step2_2_3_measuredToCbctRegistrationCollapsibleButton.setChecked(True)
+      cbctToMeasuredTransformNode = self.slicelet.onMeasuredToCbctRegistration()
+      self.assertIsNotNone(cbctToMeasuredTransformNode)
+      cbctToMeasuredTransformMatrix = cbctToMeasuredTransformNode.GetTransformToParent().GetMatrix()
+      self.assertAlmostEqual(cbctToMeasuredTransformMatrix.GetElement(0,3), 127.70, 0)
+      self.assertAlmostEqual(cbctToMeasuredTransformMatrix.GetElement(1,3), 213.64, 0)
+      self.assertAlmostEqual(cbctToMeasuredTransformMatrix.GetElement(2,3), -71.98, 0)
+      self.assertAlmostEqual(cbctToMeasuredTransformMatrix.GetElement(0,0), 0.73, 1)
+      self.assertAlmostEqual(cbctToMeasuredTransformMatrix.GetElement(1,1), 0.73, 1)
+      self.assertAlmostEqual(cbctToMeasuredTransformMatrix.GetElement(2,2), 1.00, 1)
+
+    except Exception, e:
+      import traceback
+      traceback.print_exc()
+      self.delayDisplay('Test caused exception!\n' + str(e),self.delayMs*2)
+      raise Exception("Exception occurred, handled, thrown further to workflow level")
+
+  #------------------------------------------------------------------------------
+  def TestSection_04_Calibrate(self):
+    self.delayDisplay("Perform calibration",self.delayMs)
+
+    try:
+      self.assertIsNotNone(self.slicelet)
+
+      # Load PDD
+      self.slicelet.step3_doseCalibrationCollapsibleButton.setChecked(True)
+      pddLoadSuccessful = self.slicelet.logic.loadPdd(self.dicomDataDir + '/12MeV.csv')
+      self.assertTrue(pddLoadSuccessful)
+
+      # Parse calibration volume
+      self.slicelet.step3_1_radiusMmFromCentrePixelLineEdit.setText('5')
+
+      # Align calibration curves
+      alignCalibrationCurvesSuccessful = self.slicelet.onAlignCalibrationCurves()
+      self.assertTrue(alignCalibrationCurvesSuccessful)
+
+      self.slicelet.step3_1_xTranslationSpinBox.setValue(1)
+      self.slicelet.step3_1_yScaleSpinBox.setValue(1.162)
+      self.slicelet.step3_1_yTranslationSpinBox.setValue(1.28)
+
+      # Generate dose information
+      self.slicelet.step3_doseCalibrationCollapsibleButton.setChecked(True)
+      self.slicelet.step3_1_rdfLineEdit.setText('0.989')
+      self.slicelet.step3_1_monitorUnitsLineEdit.setText('1850')
+      computeDoseFromPddSuccessful = self.slicelet.onComputeDoseFromPdd()
+      self.assertTrue(computeDoseFromPddSuccessful)
+
+      # Show optical attenuation VS dose curve
+      self.slicelet.step3_1_calibrationRoutineCollapsibleButton.setChecked(True)
+      self.slicelet.onShowOpticalAttenuationVsDoseCurve()
+
+      # Fit polynomial on OA VS dose curve
+      self.slicelet.onFitPolynomialToOpticalAttenuationVsDoseCurve()
+
+      # Calibrate
+      applyCalibrationSuccessful = self.slicelet.onApplyCalibration()
+      self.assertTrue(applyCalibrationSuccessful)
+
+      # Check calibrated dose volume statistics
+      self.assertIsNotNone(self.slicelet.calibratedMeasuredVolumeNode)
+      imageAccumulate = vtk.vtkImageAccumulate()
+      imageAccumulate.SetInputConnection(self.slicelet.calibratedMeasuredVolumeNode.GetImageDataConnection())
+      imageAccumulate.Update()
+
+      doseMax = imageAccumulate.GetMax()[0]
+      doseMean = imageAccumulate.GetMean()[0]
+      doseStdDev = imageAccumulate.GetStandardDeviation()[0]
+      doseVoxelCount = imageAccumulate.GetVoxelCount()
+      logging.info("Dose volume properties:\n  Max=" + str(doseMax) + ", Mean=" + str(doseMean) + ", StdDev=" + str(doseStdDev) + ", NumberOfVoxels=" + str(doseVoxelCount))
+
+      self.assertAlmostEqual(doseMax, 836.24, 0)
+      self.assertAlmostEqual(doseMean, 3.485419, 2)
+      self.assertAlmostEqual(doseStdDev, 5.691135, 2)
+      self.assertEqual(doseVoxelCount, 16777216)
+
+      slicer.app.processEvents()
+      self.delayDisplay('Wait for the slicelet to catch up', 300)
+
+    except Exception, e:
+      import traceback
+      traceback.print_exc()
+      self.delayDisplay('Test caused exception!\n' + str(e),self.delayMs*2)
+      raise Exception("Exception occurred, handled, thrown further to workflow level")
+
+  #------------------------------------------------------------------------------
+  def TestSection_05_CompareDoses(self):
+    self.delayDisplay("Perform gamma dose comparison",self.delayMs)
+
+    try:
+      self.assertIsNotNone(self.slicelet)
+      self.slicelet.step4_doseComparisonCollapsibleButton.setChecked(True)
+
+      # Create gamma output node
+      numOfScalarVolumeNodesBeforeLoad = len( slicer.util.getNodes('vtkMRMLScalarVolumeNode*') )
+      self.slicelet.step4_1_gammaVolumeSelector.addNode()
+      gammaVolumeNode = self.slicelet.step4_1_gammaVolumeSelector.currentNode()
+      self.assertEqual( len( slicer.util.getNodes('vtkMRMLScalarVolumeNode*') ), numOfScalarVolumeNodesBeforeLoad + 1 )
+      self.assertIsNotNone(gammaVolumeNode)
+
+      # Set gamma mask
+      structureSetNode = slicer.util.getNode(self.structureSetNodeName)
+      self.assertIsNotNone(structureSetNode)
+      self.slicelet.step4_maskSegmentationSelector.setCurrentNodeID(structureSetNode.GetID())
+      self.slicelet.step4_maskSegmentationSelector.setCurrentSegmentID(self.maskSegmentID)
+
+      # Calculate gamma
+      gammaCalculationSuccessful = self.slicelet.onGammaDoseComparison()
+      self.assertTrue(gammaCalculationSuccessful)
+
+      # Check gamma volume statistics
+      imageAccumulate = vtk.vtkImageAccumulate()
+      imageAccumulate.SetInputConnection(gammaVolumeNode.GetImageDataConnection())
+      imageAccumulate.Update()
+
+      gammaMax = imageAccumulate.GetMax()[0]
+      gammaMean = imageAccumulate.GetMean()[0]
+      gammaStdDev = imageAccumulate.GetStandardDeviation()[0]
+      gammaVoxelCount = imageAccumulate.GetVoxelCount()
+      logging.info("Gamma volume properties:\n  Max=" + str(gammaMax) + ", Mean=" + str(gammaMean) + ", StdDev=" + str(gammaStdDev) + ", NumberOfVoxels=" + str(gammaVoxelCount))
+
+      self.assertAlmostEqual(gammaMax, 2.0, 1)
+      self.assertAlmostEqual(gammaMean, 0.025, 1)
+      self.assertAlmostEqual(gammaStdDev, 0.15, 1)
+      self.assertEqual(gammaVoxelCount, 2076255)
+      self.assertIsNotNone(self.slicelet.gammaParameterSetNode)
+      self.assertGreater(self.slicelet.gammaParameterSetNode.GetPassFractionPercent(), 0.6)
+
+    except Exception, e:
+      import traceback
+      traceback.print_exc()
+      self.delayDisplay('Test caused exception!\n' + str(e),self.delayMs*2)
+      raise Exception("Exception occurred, handled, thrown further to workflow level")
+
+  #------------------------------------------------------------------------------
+  # Mandatory functions
+  #------------------------------------------------------------------------------
+  def setUp(self, clearScene=True):
     """ Do whatever is needed to reset the state - typically a scene clear will be enough.
     """
-    slicer.mrmlScene.Clear(0)
+    if clearScene:
+      slicer.mrmlScene.Clear(0)
 
+    self.delayMs = 700
+
+    self.moduleName = "GelDosimetryAnalysis"
+
+  #------------------------------------------------------------------------------
   def runTest(self):
     """Run as few or as many tests as needed here.
     """
     self.setUp()
+
+    self.test_GelDosimetryAnalysis_FullTest()
+
+  #------------------------------------------------------------------------------
+  # Utility functions
+  #------------------------------------------------------------------------------
+  def TestUtility_ClearDatabase(self):
+    self.delayDisplay("Clear database",self.delayMs)
+
+    slicer.dicomDatabase.initializeDatabase()
+    slicer.dicomDatabase.closeDatabase()
+    self.assertFalse( slicer.dicomDatabase.isOpen )
+
+    self.delayDisplay("Restoring original database directory",self.delayMs)
+    if self.originalDatabaseDirectory:
+      dicomWidget = slicer.modules.dicom.widgetRepresentation().self()
+      dicomWidget.onDatabaseDirectoryChanged(self.originalDatabaseDirectory)
 
 #
 # Main

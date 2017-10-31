@@ -41,17 +41,6 @@ vtkSlicerGelDosimetryAnalysisAlgoModuleLogic::~vtkSlicerGelDosimetryAnalysisAlgo
 {
 }
 
-//----------------------------------------------------------------------------
-void vtkSlicerGelDosimetryAnalysisAlgoModuleLogic::PrintSelf(ostream& os, vtkIndent indent)
-{
-  this->Superclass::PrintSelf(os, indent);
-}
-
-//---------------------------------------------------------------------------
-void vtkSlicerGelDosimetryAnalysisAlgoModuleLogic::SetMRMLSceneInternal(vtkMRMLScene * newScene)
-{
-}
-
 //---------------------------------------------------------------------------
 void vtkSlicerGelDosimetryAnalysisAlgoModuleLogic::UpdateFromMRMLScene()
 {

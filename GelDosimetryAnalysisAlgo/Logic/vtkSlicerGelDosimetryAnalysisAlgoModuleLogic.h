@@ -38,7 +38,6 @@ public:
   /// Constructor
   static vtkSlicerGelDosimetryAnalysisAlgoModuleLogic* New();
   vtkTypeMacro(vtkSlicerGelDosimetryAnalysisAlgoModuleLogic, vtkSlicerModuleLogic);
-  void PrintSelf(ostream& os, vtkIndent indent);
 
   /// Apply polynomial function on volume. The input volume's image data will be overwritten
   /// \return Success flag
@@ -48,8 +47,7 @@ protected:
   vtkSlicerGelDosimetryAnalysisAlgoModuleLogic();
   virtual ~vtkSlicerGelDosimetryAnalysisAlgoModuleLogic();
 
-  virtual void SetMRMLSceneInternal(vtkMRMLScene* newScene);
-  virtual void UpdateFromMRMLScene();
+  virtual void UpdateFromMRMLScene() VTK_OVERRIDE;
   
 private:
   vtkSlicerGelDosimetryAnalysisAlgoModuleLogic(const vtkSlicerGelDosimetryAnalysisAlgoModuleLogic&); // Not implemented
