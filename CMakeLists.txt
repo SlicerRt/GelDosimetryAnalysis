@@ -28,4 +28,5 @@ add_subdirectory(GelDosimetryAnalysisAlgo)
 add_subdirectory(GelDosimetryAnalysis)
 
 #-----------------------------------------------------------------------------
+include(${Slicer_EXTENSION_GENERATE_CONFIG})
 include(${Slicer_EXTENSION_CPACK})

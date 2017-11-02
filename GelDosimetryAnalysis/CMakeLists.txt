@@ -45,8 +45,6 @@ if(BUILD_TESTING)
   slicer_add_python_unittest(
     SCRIPT ${MODULE_NAME}.py
     SLICER_ARGS --additional-module-paths
-      ${CMAKE_BINARY_DIR}/${Slicer_QTSCRIPTEDMODULES_LIB_DIR}
-      ${CMAKE_BINARY_DIR}/${Slicer_QTSCRIPTEDMODULES_LIB_DIR}/GelDosimetryAnalysisLogic
       ${GelDosimetryAnalysis_QTLOADABLEMODULES_LIB_DIRS}
       # ${SlicerRT_LIBRARY_PATHS_LAUNCHER_BUILD} # The variable CMAKE_CFG_INTDIR does not contain anything
       ${SlicerRT_QTLOADABLEMODULES_LIB_DIRS}
