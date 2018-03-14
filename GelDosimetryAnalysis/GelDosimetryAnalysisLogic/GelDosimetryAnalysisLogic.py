@@ -61,8 +61,9 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
       # parametersRigid["backgroundFillValue"] = -1000.0
 
       # Set output transform
-      cbctToPlanTransformNode = slicer.util.getNode(self.cbctToPlanTransformName)
-      if cbctToPlanTransformNode == None:
+      try:
+        cbctToPlanTransformNode = slicer.util.getNode(self.cbctToPlanTransformName)
+      except:
         cbctToPlanTransformNode = slicer.vtkMRMLLinearTransformNode()
         slicer.mrmlScene.AddNode(cbctToPlanTransformNode)
         cbctToPlanTransformNode.SetName(self.cbctToPlanTransformName)
@@ -98,8 +99,9 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
       parametersFiducial["movingLandmarks"] = planCtFiducialListID
 
       # Create linear transform which will store the registration transform
-      cbctToPlanTransformNode = slicer.util.getNode(self.cbctToPlanTransformName)
-      if cbctToPlanTransformNode == None:
+      try:
+        cbctToPlanTransformNode = slicer.util.getNode(self.cbctToPlanTransformName)
+      except:
         cbctToPlanTransformNode = slicer.vtkMRMLLinearTransformNode()
         slicer.mrmlScene.AddNode(cbctToPlanTransformNode)
         cbctToPlanTransformNode.SetName(self.cbctToPlanTransformName)
@@ -137,8 +139,9 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
       parametersFiducial["movingLandmarks"] = measuredFiducialListID
 
       # Create linear transform which will store the registration transform
-      cbctToMeasuredTransformNode = slicer.util.getNode(self.cbctToMeasuredTransformName)
-      if cbctToMeasuredTransformNode == None:
+      try:
+        cbctToMeasuredTransformNode = slicer.util.getNode(self.cbctToMeasuredTransformName)
+      except:
         cbctToMeasuredTransformNode = slicer.vtkMRMLLinearTransformNode()
         slicer.mrmlScene.AddNode(cbctToMeasuredTransformNode)
         cbctToMeasuredTransformNode.SetName(self.cbctToMeasuredTransformName)

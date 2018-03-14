@@ -124,23 +124,27 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.markupsLogic = slicer.modules.markups.logic()
 
     # Create or get fiducial nodes (CBCT to PLANCT)
-    self.cbctMarkupsFiducialNode_WithPlan = slicer.util.getNode(self.cbctMarkupsFiducialNode_WithPlanName)
-    if self.cbctMarkupsFiducialNode_WithPlan is None:
+    try:
+      self.cbctMarkupsFiducialNode_WithPlan = slicer.util.getNode(self.cbctMarkupsFiducialNode_WithPlanName)
+    except:
       cbctFiducialsNode1Id = self.markupsLogic.AddNewFiducialNode(self.cbctMarkupsFiducialNode_WithPlanName)
       self.cbctMarkupsFiducialNode_WithPlan = slicer.mrmlScene.GetNodeByID(cbctFiducialsNode1Id)
-    self.planCtMarkupsFiducialNode = slicer.util.getNode(self.planCtMarkupsFiducialNodeName)
-    if self.planCtMarkupsFiducialNode is None:
+    try:
+      self.planCtMarkupsFiducialNode = slicer.util.getNode(self.planCtMarkupsFiducialNodeName)
+    except:
       measuredFiducialsNodeId = self.markupsLogic.AddNewFiducialNode(self.planCtMarkupsFiducialNodeName)
       self.planCtMarkupsFiducialNode = slicer.mrmlScene.GetNodeByID(measuredFiducialsNodeId)
     measuredFiducialsDisplayNode = self.planCtMarkupsFiducialNode.GetDisplayNode()
     measuredFiducialsDisplayNode.SetSelectedColor(0, 0.9, 0.9)
     # Create or get fiducial nodes (CBCT to MEASURED)
-    self.cbctMarkupsFiducialNode_WithMeasured = slicer.util.getNode(self.cbctMarkupsFiducialNode_WithMeasuredName)
-    if self.cbctMarkupsFiducialNode_WithMeasured is None:
+    try:
+      self.cbctMarkupsFiducialNode_WithMeasured = slicer.util.getNode(self.cbctMarkupsFiducialNode_WithMeasuredName)
+    except:
       cbctFiducialsNode2Id = self.markupsLogic.AddNewFiducialNode(self.cbctMarkupsFiducialNode_WithMeasuredName)
       self.cbctMarkupsFiducialNode_WithMeasured = slicer.mrmlScene.GetNodeByID(cbctFiducialsNode2Id)
-    self.measuredMarkupsFiducialNode = slicer.util.getNode(self.measuredMarkupsFiducialNodeName)
-    if self.measuredMarkupsFiducialNode is None:
+    try:
+      self.measuredMarkupsFiducialNode = slicer.util.getNode(self.measuredMarkupsFiducialNodeName)
+    except:
       measuredFiducialsNodeId = self.markupsLogic.AddNewFiducialNode(self.measuredMarkupsFiducialNodeName)
       self.measuredMarkupsFiducialNode = slicer.mrmlScene.GetNodeByID(measuredFiducialsNodeId)
     measuredFiducialsDisplayNode = self.measuredMarkupsFiducialNode.GetDisplayNode()
@@ -182,7 +186,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step0_preclinicalModeRadioButton.disconnect('toggled(bool)', self.onPreclinicalModeSelect)
     self.step1_showDicomBrowserButton.disconnect('clicked()', self.logic.onDicomLoad)
     self.step1_loadNonDicomDataButton.disconnect('clicked()', self.onLoadNonDicomData)
-    #self.step1_loadDataCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep1_LoadDataCollapsed) #TODO: Causes crash
+    self.step1_loadDataCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep1_LoadDataCollapsed)
     self.step2_registrationCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep2_RegistrationCollapsed)
     self.step2_1_registrationTypeAutomaticRadioButton.disconnect('toggled(bool)', self.onAutomaticPlanCtToCbctRegistrationToggled)
     self.step2_1_registerPlanCtToCbctButton.disconnect('clicked()', self.onPlanCtToCbctAutomaticRegistration)
@@ -1908,9 +1912,8 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       self.gammaParameterSetNode.SetMaximumGamma(self.step4_1_maximumGammaSpinBox.value)
 
       # Create progress bar
-      from vtkSlicerRtCommonPython import SlicerRtCommon
       doseComparisonLogic = slicer.modules.dosecomparison.logic()
-      self.addObserver(doseComparisonLogic, SlicerRtCommon.ProgressUpdated, self.onGammaProgressUpdated)
+      self.addObserver(doseComparisonLogic, 62200, self.onGammaProgressUpdated) # Note: Event number defined in SlicerRtCommon.ProgressUpdated, but python wrapping does not work anymore for SlicerRtCommon
       self.gammaProgressDialog = qt.QProgressDialog(self.parent)
       self.gammaProgressDialog.setModal(True)
       self.gammaProgressDialog.setMinimumDuration(150)
@@ -1924,7 +1927,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
 
       self.gammaProgressDialog.hide()
       self.gammaProgressDialog = None
-      self.removeObserver(doseComparisonLogic, SlicerRtCommon.ProgressUpdated, self.onGammaProgressUpdated)
+      self.removeObserver(doseComparisonLogic, 62200, self.onGammaProgressUpdated)
       qt.QApplication.restoreOverrideCursor()
 
       if self.gammaParameterSetNode.GetResultsValid():
@@ -2137,6 +2140,7 @@ class GelDosimetryAnalysisWidget(ScriptedLoadableModuleWidget):
   def launchSlicelet(self):
     mainFrame = SliceletMainFrame()
     mainFrame.minimumWidth = 1200
+    mainFrame.minimumHeight = 720
     mainFrame.windowTitle = "Gel dosimetry analysis"
     mainFrame.setWindowFlags(qt.Qt.WindowCloseButtonHint | qt.Qt.WindowMaximizeButtonHint | qt.Qt.WindowTitleHint)
     iconPath = os.path.join(os.path.dirname(slicer.modules.geldosimetryanalysis.path), 'Resources/Icons', self.moduleName+'.png')
