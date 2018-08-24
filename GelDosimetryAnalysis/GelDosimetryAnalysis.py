@@ -100,7 +100,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.planCtMarkupsFiducialNodeName = "PLANCT fiducials"
     self.cbctMarkupsFiducialNode_WithMeasuredName = "CBCT fiducials (CBCT to MEASURED)"
     self.measuredMarkupsFiducialNodeName = "MEASURED fiducials"
-	
+
     # Declare member variables (selected at certain steps and then from then on for the workflow)
     self.mode = None
 
@@ -1166,7 +1166,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
         self.onStep2_1_1_CbctFiducialCollectionSelected(False)
       elif self.step2_1_2_planCtFiducialSelectionCollapsibleButton.collapsed == False:
         self.onStep2_1_2_PlanCtFiducialCollectionSelected(False)
-        
+
         # Make sure the fiducials used for this step are visible
         if self.cbctMarkupsFiducialNode_WithPlan and self.cbctMarkupsFiducialNode_WithPlan.GetDisplayNode():
           self.cbctMarkupsFiducialNode_WithPlan.GetDisplayNode().SetVisibility(1)
@@ -1355,7 +1355,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     planCtVolumeID = self.planCtVolumeNode.GetID()
     planDoseVolumeID = self.planDoseVolumeNode.GetID()
     cbctToPlanTransformNode = self.logic.registerPlanCtToCbctAutomatic(planCtVolumeID, cbctVolumeID)
-    
+
     # Apply transform to plan CT and plan dose
     self.planCtVolumeNode.SetAndObserveTransformNodeID(cbctToPlanTransformNode.GetID())
     if planCtVolumeID != planDoseVolumeID:
@@ -2254,7 +2254,7 @@ class GelDosimetryAnalysisTest(ScriptedLoadableModuleTest):
     try:
       slicer.util.selectModule('GelDosimetryAnalysis')
       moduleWidget = slicer.modules.geldosimetryanalysis.widgetRepresentation().self()
-      
+
       # Show slicelet
       self.slicelet = moduleWidget.launchSlicelet()
       self.assertIsNotNone(self.slicelet)
@@ -2318,7 +2318,7 @@ class GelDosimetryAnalysisTest(ScriptedLoadableModuleTest):
       cbctToPlanTransformMatrix = cbctToPlanTransformNode.GetTransformToParent().GetMatrix()
       self.assertAlmostEqual(cbctToPlanTransformMatrix.GetElement(0,3), 124.44, 0)
       self.assertAlmostEqual(cbctToPlanTransformMatrix.GetElement(1,3), 182.36, 0)
-      self.assertAlmostEqual(cbctToPlanTransformMatrix.GetElement(2,3) / 2,  0, -1) # +/- 10 in Z direction
+      self.assertAlmostEqual(cbctToPlanTransformMatrix.GetElement(2,3) / 2.4,  0, -1) # +/- 12 in Z direction
       self.assertAlmostEqual(cbctToPlanTransformMatrix.GetElement(0,0), 1.0, 1)
       self.assertAlmostEqual(cbctToPlanTransformMatrix.GetElement(1,1), 1.0, 1)
       self.assertAlmostEqual(cbctToPlanTransformMatrix.GetElement(2,2), 1.0, 1)
