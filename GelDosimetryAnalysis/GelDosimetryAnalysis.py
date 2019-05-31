@@ -28,7 +28,7 @@ class GelDosimetryAnalysisSliceletWidget:
       parent
       self.parent = parent
 
-    except Exception, e:
+    except Exception as e:
       import traceback
       traceback.print_exc()
       logging.error("There is no parent to GelDosimetryAnalysisSliceletWidget!")
@@ -1497,7 +1497,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.calibrationCurveDataTable.AddColumn(calibrationMeanOpticalAttenuationArray)
 
     self.calibrationCurveDataTable.SetNumberOfRows(calibrationNumberOfRows)
-    for rowIndex in xrange(calibrationNumberOfRows):
+    for rowIndex in range(calibrationNumberOfRows):
       self.calibrationCurveDataTable.SetValue(rowIndex, 0, self.logic.calibrationDataArray[rowIndex, 0])
       self.calibrationCurveDataTable.SetValue(rowIndex, 1, self.logic.calibrationDataArray[rowIndex, 1])
       # self.calibrationCurveDataTable.SetValue(rowIndex, 2, self.logic.calibrationDataArray[rowIndex, 2])
@@ -1520,7 +1520,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.pddDataTable.AddColumn(pddValueArray)
 
     self.pddDataTable.SetNumberOfRows(pddNumberOfRows)
-    for pddDepthCounter in xrange(pddNumberOfRows):
+    for pddDepthCounter in range(pddNumberOfRows):
       self.pddDataTable.SetValue(pddDepthCounter, 0, self.logic.pddDataArray[pddDepthCounter, 0])
       self.pddDataTable.SetValue(pddDepthCounter, 1, self.logic.pddDataArray[pddDepthCounter, 1])
 
@@ -1542,7 +1542,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.calibrationDataAlignedTable.AddColumn(calibrationDataAlignedValueArray)
 
     self.calibrationDataAlignedTable.SetNumberOfRows(calibrationDataAlignedNumberOfRows)
-    for calibrationDataAlignedDepthCounter in xrange(calibrationDataAlignedNumberOfRows):
+    for calibrationDataAlignedDepthCounter in range(calibrationDataAlignedNumberOfRows):
       self.calibrationDataAlignedTable.SetValue(calibrationDataAlignedDepthCounter, 0, self.logic.calibrationDataAlignedToDisplayArray[calibrationDataAlignedDepthCounter, 0])
       self.calibrationDataAlignedTable.SetValue(calibrationDataAlignedDepthCounter, 1, self.logic.calibrationDataAlignedToDisplayArray[calibrationDataAlignedDepthCounter, 1])
 
@@ -1650,7 +1650,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.oaVsDoseDataTable.AddColumn(doseArray)
 
     self.oaVsDoseDataTable.SetNumberOfRows(oaVsDoseNumberOfRows)
-    for rowIndex in xrange(oaVsDoseNumberOfRows):
+    for rowIndex in range(oaVsDoseNumberOfRows):
       self.oaVsDoseDataTable.SetValue(rowIndex, 0, self.logic.opticalAttenuationVsDoseFunction[rowIndex, 0])
       self.oaVsDoseDataTable.SetValue(rowIndex, 1, self.logic.opticalAttenuationVsDoseFunction[rowIndex, 1])
 
@@ -1681,7 +1681,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     if outlierSelection is not None and outlierSelection.GetNumberOfTuples() > 0:
       # Get outlier indices in descending order
       outlierIndices = []
-      for outlierSelectionIndex in xrange(outlierSelection.GetNumberOfTuples()):
+      for outlierSelectionIndex in range(outlierSelection.GetNumberOfTuples()):
         outlierIndex = outlierSelection.GetValue(outlierSelectionIndex)
         outlierIndices.append(outlierIndex)
       outlierIndices.sort()
@@ -1708,10 +1708,10 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     p = self.logic.calibrationPolynomialCoefficients
 
     # Clear line edits
-    for order in xrange(5):
+    for order in range(5):
       exec("self.step3_2_calibrationFunctionOrder{0}LineEdit.text = ''".format(order))
     # Show polynomial on GUI (highest order first in the coefficients list)
-    for orderIndex in xrange(maxOrder+1):
+    for orderIndex in range(maxOrder+1):
       order = maxOrder-orderIndex
       exec("self.step3_2_calibrationFunctionOrder{0}LineEdit.text = {1:.6f}".format(order,p[orderIndex]))
     # Show residuals
@@ -1735,12 +1735,12 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     # The displayed polynomial is 4 times as dense as the OA VS dose curve
     polynomialNumberOfRows = oaVsDoseNumberOfRows * 4
     self.polynomialTable.SetNumberOfRows(polynomialNumberOfRows)
-    for rowIndex in xrange(polynomialNumberOfRows):
+    for rowIndex in range(polynomialNumberOfRows):
       x = minPolynomial + (maxPolynomial-minPolynomial)*rowIndex/polynomialNumberOfRows
       self.polynomialTable.SetValue(rowIndex, 0, x)
       y = 0
       # Highest order first in the coefficients list
-      for orderIndex in xrange(maxOrder+1):
+      for orderIndex in range(maxOrder+1):
         y += p[orderIndex] * x ** (maxOrder-orderIndex)
       self.polynomialTable.SetValue(rowIndex, 1, y)
 
@@ -1756,7 +1756,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
   def setCalibrationFunctionCoefficientsToLogic(self):
     # Determine the number of orders based on the input fields
     maxOrder = 0
-    for order in xrange(5):
+    for order in range(5):
       exec("lineEditText = self.step3_2_calibrationFunctionOrder{0}LineEdit.text".format(order))
       try:
         coefficient = float(lineEditText)
@@ -1766,7 +1766,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
         pass
     # Initialize all coefficients to zero in the coefficients list
     self.logic.calibrationPolynomialCoefficients = numpy.zeros(maxOrder+1)
-    for order in xrange(maxOrder+1):
+    for order in range(maxOrder+1):
       exec("lineEditText = self.step3_2_calibrationFunctionOrder{0}LineEdit.text".format(order))
       try:
         self.logic.calibrationPolynomialCoefficients[maxOrder-order] = float(lineEditText)
@@ -1784,8 +1784,9 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   #------------------------------------------------------------------------------
   def onApplyCalibration(self):
-    # Set calibration polynomial coefficients from input fields to logic
-    self.setCalibrationFunctionCoefficientsToLogic()
+    # Set calibration polynomial coefficients from input fields to logic if entered manually
+    if self.logic.calibrationPolynomialCoefficients is None:
+      self.setCalibrationFunctionCoefficientsToLogic()
 
     # Perform calibration
     self.calibratedMeasuredVolumeNode = self.logic.calibrate(self.measuredVolumeNode.GetID())
@@ -1868,7 +1869,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     import vtkSegmentationCorePython as vtkSegmentationCore
     segmentIDs = vtk.vtkStringArray()
     self.maskSegmentationNode.GetSegmentation().GetSegmentIDs(segmentIDs)
-    for segmentIndex in xrange(0,segmentIDs.GetNumberOfValues()):
+    for segmentIndex in range(0,segmentIDs.GetNumberOfValues()):
       currentSegmentID = segmentIDs.GetValue(segmentIndex)
       self.maskSegmentationNode.GetDisplayNode().SetSegmentVisibility(currentSegmentID, False)
     # Show only selected segment, make it semi-transparent
@@ -1977,7 +1978,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
 
       return True
 
-    except Exception, e:
+    except Exception as e:
       import traceback
       traceback.print_exc()
       logging.error('Failed to perform gamma dose comparison!')
@@ -2081,7 +2082,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
         data = [['PlanDose','CalibratedMeasuredDose']]
 
       numOfSamples = planDoseLineProfileArray.GetNumberOfTuples()
-      for index in xrange(numOfSamples):
+      for index in range(numOfSamples):
         planDoseSample = planDoseLineProfileArray.GetTuple(index)[1]
         calibratedDoseSample = calibratedDoseLineProfileArray.GetTuple(index)[1]
         if gammaLineProfileArray:
@@ -2188,7 +2189,7 @@ class GelDosimetryAnalysisTest(ScriptedLoadableModuleTest):
       self.TestSection_04_Calibrate()
       self.TestSection_05_CompareDoses()
 
-    except Exception, e:
+    except Exception as e:
       logging.error('Exception happened! Details:')
       import traceback
       traceback.print_exc()
@@ -2242,7 +2243,7 @@ class GelDosimetryAnalysisTest(ScriptedLoadableModuleTest):
             {}, loadedNodes) as success:
           self.assertTrue(success)
 
-    except Exception, e:
+    except Exception as e:
       import traceback
       traceback.print_exc()
       self.delayDisplay('Test caused exception!\n' + str(e),self.delayMs*2)
@@ -2297,7 +2298,7 @@ class GelDosimetryAnalysisTest(ScriptedLoadableModuleTest):
 
       slicer.app.processEvents()
 
-    except Exception, e:
+    except Exception as e:
       import traceback
       traceback.print_exc()
       self.delayDisplay('Test caused exception!\n' + str(e),self.delayMs*2)
@@ -2354,7 +2355,7 @@ class GelDosimetryAnalysisTest(ScriptedLoadableModuleTest):
       self.assertAlmostEqual(cbctToMeasuredTransformMatrix.GetElement(1,1), 0.73, 1)
       self.assertAlmostEqual(cbctToMeasuredTransformMatrix.GetElement(2,2), 1.00, 1)
 
-    except Exception, e:
+    except Exception as e:
       import traceback
       traceback.print_exc()
       self.delayDisplay('Test caused exception!\n' + str(e),self.delayMs*2)
@@ -2421,7 +2422,7 @@ class GelDosimetryAnalysisTest(ScriptedLoadableModuleTest):
       slicer.app.processEvents()
       self.delayDisplay('Wait for the slicelet to catch up', 300)
 
-    except Exception, e:
+    except Exception as e:
       import traceback
       traceback.print_exc()
       self.delayDisplay('Test caused exception!\n' + str(e),self.delayMs*2)
@@ -2469,7 +2470,7 @@ class GelDosimetryAnalysisTest(ScriptedLoadableModuleTest):
       self.assertIsNotNone(self.slicelet.gammaParameterSetNode)
       self.assertGreater(self.slicelet.gammaParameterSetNode.GetPassFractionPercent(), 0.6)
 
-    except Exception, e:
+    except Exception as e:
       import traceback
       traceback.print_exc()
       self.delayDisplay('Test caused exception!\n' + str(e),self.delayMs*2)

@@ -86,7 +86,7 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
 
       return cbctToPlanTransformNode
 
-    except Exception, e:
+    except Exception as e:
       import traceback
       traceback.print_exc()
 
@@ -126,7 +126,7 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
 
       return [cbctToPlanTransformNode, cliFiducialRegistrationRigidNode.GetParameterAsString('rms')]
 
-    except Exception, e:
+    except Exception as e:
       import traceback
       traceback.print_exc()
 
@@ -165,14 +165,14 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
       measuredFiducialsNode.SetAndObserveTransformNodeID(cbctToMeasuredTransformNode.GetID())
 
       return cliFiducialRegistrationRigidNode.GetParameterAsString('rms')
-    except Exception, e:
+    except Exception as e:
       import traceback
       traceback.print_exc()
 
   # ---------------------------------------------------------------------------
   def loadPdd(self, fileName):
     if fileName == None or fileName == '':
-      logging.error('Empty PDD file name!')
+      logging.error('Empty PDD file name')
       return False
 
     readFile = open(fileName, 'r')
@@ -183,13 +183,13 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     for line in lines:
       firstValue, endOfLine = line.partition(',')[::2]
       if endOfLine == '':
-        print "ERROR: File formatted incorrectly!"
+        logging.error("File formatted incorrectly")
         return False
       valueOne = float(firstValue)
       doseTable[rowCounter, 1] = valueOne
       secondValue, lineEnd = endOfLine.partition('\n')[::2]
       if (secondValue == ''):
-        print "ERROR: Two values are required per line in the file!"
+        logging.error("Two values are required per line in the file")
         return False
       valueTwo = float(secondValue)
       doseTable[rowCounter, 0] = secondValue
@@ -212,7 +212,7 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     # Get image properties needed for the calculation
     calibrationVolumeSliceThicknessCm = calibrationVolume.GetSpacing()[2] / 10.0
     if calibrationVolume.GetSpacing()[0] != calibrationVolume.GetSpacing()[1]:
-      logging.warning('Image data X and Y spacing differ! This is not supported, the mean optical attenuation data may be skewed!')
+      logging.warning('Image data X and Y spacing differ! This is not supported, the mean optical attenuation data may be skewed')
     calibrationVolumeInPlaneSpacing = calibrationVolume.GetSpacing()[0]
 
     centralRadiusPixel = int(numpy.ceil(centralRadiusMm / calibrationVolumeInPlaneSpacing))
@@ -238,8 +238,8 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
       listOfOpticalDensities = []
       meanOpticalAttenuation = 0
 
-      for y in xrange(centerYCoordinate - centralRadiusPixel, centerYCoordinate + centralRadiusPixel):
-        for x in xrange(centerXCoordinate - centralRadiusPixel, centerXCoordinate + centralRadiusPixel):
+      for y in range(floor(centerYCoordinate - centralRadiusPixel + 0.5), ceil(centerYCoordinate + centralRadiusPixel + 0.5)):
+        for x in range(floor(centerXCoordinate - centralRadiusPixel + 0.5), ceil(centerXCoordinate + centralRadiusPixel + 0.5)):
           distanceOfX = abs(x - centerXCoordinate)
           distanceOfY = abs(y - centerYCoordinate)
           if ((distanceOfX + distanceOfY) <= centralRadiusPixel) or ((pow(distanceOfX, 2) + pow(distanceOfY, 2)) <= pow(centralRadiusPixel, 2)):
@@ -250,7 +250,7 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
 
       meanOpticalAttenuation = totalOpticalAttenuation / totalPixels
       standardDeviationOpticalAttenuation	= 0
-      for currentOpticalAttenuationValue in xrange(totalPixels):
+      for currentOpticalAttenuationValue in range(totalPixels):
         standardDeviationOpticalAttenuation += pow((listOfOpticalDensities[currentOpticalAttenuationValue] - meanOpticalAttenuation), 2)
       standardDeviationOpticalAttenuation = sqrt(standardDeviationOpticalAttenuation / totalPixels)
       opticalAttenuationOfCentralCylinderTable[sliceNumber, 0] = sliceNumber * calibrationVolumeSliceThicknessCm
@@ -273,7 +273,7 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
 
     # Check the input arrays
     if self.pddDataArray.size == 0 or self.calibrationDataArray.size == 0:
-      logging.error('Pdd or calibration data is empty!')
+      logging.error('Pdd or calibration data is empty')
       return error
 
     # Discard values of 0 from both ends of the data (it is considered invalid)
@@ -325,13 +325,13 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     self.calibrationDataAlignedArray = numpy.zeros([self.pddDataArray.shape[0], 2])
     interpolator = vtk.vtkPiecewiseFunction()
     self.populateInterpolatorForParameters(interpolator, xTrans, 1, 0)
-    range = interpolator.GetRange()
+    interpolatorRange = interpolator.GetRange()
     sumSquaredDifference = 0.0
     calibrationAlignedRowIndex = -1
     pddNumberOfRows = self.pddDataArray.shape[0]
-    for pddRowIndex in xrange(pddNumberOfRows):
+    for pddRowIndex in range(pddNumberOfRows):
       pddCurrentDepth = self.pddDataArray[pddRowIndex, 0]
-      if pddCurrentDepth >= range[0] and pddCurrentDepth <= range[1]:
+      if pddCurrentDepth >= interpolatorRange[0] and pddCurrentDepth <= interpolatorRange[1]:
         calibrationAlignedRowIndex += 1
         self.calibrationDataAlignedArray[calibrationAlignedRowIndex, 0] = pddCurrentDepth
         self.calibrationDataAlignedArray[calibrationAlignedRowIndex, 1] = interpolator.GetValue(pddCurrentDepth)
@@ -343,13 +343,13 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     self.calibrationDataAlignedToDisplayArray = numpy.zeros([self.pddDataArray.shape[0], 2])
     interpolator = vtk.vtkPiecewiseFunction()
     self.populateInterpolatorForParameters(interpolator, xTrans, yScale, yTrans)
-    range = interpolator.GetRange()
+    interpolatorRange = interpolator.GetRange()
     sumSquaredDifference = 0.0
     calibrationAlignedRowIndex = -1
     pddNumberOfRows = self.pddDataArray.shape[0]
-    for pddRowIndex in xrange(pddNumberOfRows):
+    for pddRowIndex in range(pddNumberOfRows):
       pddCurrentDepth = self.pddDataArray[pddRowIndex, 0]
-      if pddCurrentDepth >= range[0] and pddCurrentDepth <= range[1]:
+      if pddCurrentDepth >= interpolatorRange[0] and pddCurrentDepth <= interpolatorRange[1]:
         calibrationAlignedRowIndex += 1
         self.calibrationDataAlignedToDisplayArray[calibrationAlignedRowIndex, 0] = pddCurrentDepth
         self.calibrationDataAlignedToDisplayArray[calibrationAlignedRowIndex, 1] = interpolator.GetValue(pddCurrentDepth)
@@ -404,7 +404,7 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
   def computeMeanDifferenceOfNeighborsForArray(self, array):
     numberOfValues = array.shape[0]
     sumDifferences = 0
-    for index in xrange(numberOfValues-1):
+    for index in range(numberOfValues-1):
       sumDifferences += abs(array[index, 1] - array[index+1, 1])
     return sumDifferences / (numberOfValues-1)
 
@@ -412,7 +412,7 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
   def findMaxValueInArray(self, array):
     numberOfValues = array.shape[0]
     maximumValue = -1
-    for index in xrange(numberOfValues):
+    for index in range(numberOfValues):
       if array[index, 1] > maximumValue:
         maximumValue = array[index, 1]
     return maximumValue
@@ -420,7 +420,7 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
   # ---------------------------------------------------------------------------
   def populateInterpolatorForParameters(self, interpolator, xTrans, yScale, yTrans):
     calibrationNumberOfRows = self.calibrationDataCleanedArray.shape[0]
-    for calibrationRowIndex in xrange(calibrationNumberOfRows):
+    for calibrationRowIndex in range(calibrationNumberOfRows):
       xTranslated = self.calibrationDataCleanedArray[calibrationRowIndex, 0] + xTrans
       yScaled = self.calibrationDataCleanedArray[calibrationRowIndex, 1] * yScale
       yStretched = yScaled + yTrans
@@ -430,7 +430,7 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
   def computeDoseForMeasuredData(self, rdf, monitorUnits):
     self.calculatedDose = numpy.zeros(self.pddDataArray.shape)
     pddNumberOfRows = self.pddDataArray.shape[0]
-    for pddRowIndex in xrange(pddNumberOfRows):
+    for pddRowIndex in range(pddNumberOfRows):
       self.calculatedDose[pddRowIndex, 0] = self.pddDataArray[pddRowIndex, 0]
       self.calculatedDose[pddRowIndex, 1] = self.pddDataArray[pddRowIndex, 1] * rdf * monitorUnits / 10000.0
     return True
@@ -441,7 +441,7 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     # depths present in the calculated dose function
     interpolator = vtk.vtkPiecewiseFunction()
     calibrationAlignedNumberOfRows = self.calibrationDataAlignedArray.shape[0]
-    for calibrationRowIndex in xrange(calibrationAlignedNumberOfRows):
+    for calibrationRowIndex in range(calibrationAlignedNumberOfRows):
       currentDose = self.calibrationDataAlignedArray[calibrationRowIndex, 0]
       currentOpticalAttenuation = self.calibrationDataAlignedArray[calibrationRowIndex, 1]
       interpolator.AddPoint(currentDose, currentOpticalAttenuation)
@@ -450,7 +450,7 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     # Get the optical attenuation and the dose values from the aligned calibration function and the calculated dose
     self.opticalAttenuationVsDoseFunction = numpy.zeros(self.calculatedDose.shape)
     doseNumberOfRows = self.calculatedDose.shape[0]
-    for doseRowIndex in xrange(doseNumberOfRows):
+    for doseRowIndex in range(doseNumberOfRows):
       # Reverse the function so that smallest dose comes first (which decreases with depth)
       currentDepth = self.calculatedDose[doseRowIndex, 0]
       if currentDepth >= interpolatorRange[0] and currentDepth <= interpolatorRange[1] and currentDepth >= pddRangeMin and currentDepth <= pddRangeMax:
@@ -466,7 +466,7 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     oaVsDoseNumberOfRows = self.opticalAttenuationVsDoseFunction.shape[0]
     opticalAttenuationData = numpy.zeros((oaVsDoseNumberOfRows))
     doseData = numpy.zeros((oaVsDoseNumberOfRows))
-    for rowIndex in xrange(oaVsDoseNumberOfRows):
+    for rowIndex in range(oaVsDoseNumberOfRows):
       opticalAttenuationData[rowIndex] = self.opticalAttenuationVsDoseFunction[rowIndex, 0]
       doseData[rowIndex] = self.opticalAttenuationVsDoseFunction[rowIndex, 1]
     fittingResult = numpy.polyfit(opticalAttenuationData, doseData, orderOfFittedPolynomial, None, True)
@@ -513,7 +513,7 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
       data = [['Order','Coefficient']]
       numOfOrders = len(self.calibrationPolynomialCoefficients)
       # Highest order first in the coefficients list
-      for orderIndex in xrange(numOfOrders):
+      for orderIndex in range(numOfOrders):
         data.append([numOfOrders-orderIndex-1, self.calibrationPolynomialCoefficients[orderIndex]])
       if hasattr(self,'fittingResiduals'):
         data.append(['Residuals', self.fittingResiduals[0]])
@@ -543,7 +543,7 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     coefficients = numpy_support.numpy_to_vtk(self.calibrationPolynomialCoefficients)
 
     if slicer.modules.geldosimetryanalysisalgo.logic().ApplyPolynomialFunctionOnVolume(calibratedVolume, coefficients) == False:
-      logging.error('Calibration failed!')
+      logging.error('Calibration failed')
       slicer.mrmlScene.RemoveNode(calibratedVolume)
       return None
 
@@ -571,7 +571,7 @@ def curveAlignmentCalibrationFunction():
   # Compute similarity between the Pdd and the transformed calibration curve
   pddNumberOfRows = logic.pddDataArray.shape[0]
   sumSquaredDifference = 0.0
-  for pddRowIndex in xrange(pddNumberOfRows):
+  for pddRowIndex in range(pddNumberOfRows):
     pddCurrentDepth = logic.pddDataArray[pddRowIndex, 0]
     pddCurrentDose = logic.pddDataArray[pddRowIndex, 1]
     difference = pddCurrentDose - interpolator.GetValue(pddCurrentDepth)

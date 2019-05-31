@@ -1,2 +1,2 @@
-from GelDosimetryAnalysisLogic import *
-from LineProfileLogic import *
+from .GelDosimetryAnalysisLogic import *
+from .LineProfileLogic import *
