@@ -166,6 +166,9 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.sliceAnnotations.scalarBarEnabled = 0
     self.sliceAnnotations.updateSliceViewFromGUI()
 
+    # Create line profile logic
+    self.lineProfileLogic = GelDosimetryAnalysisLogic.LineProfileLogic()
+
     # Set up step panels
     self.setup_Step0_LayoutSelection()
     self.setup_Step1_LoadData()
@@ -218,6 +221,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step4_1_computeGammaButton.disconnect('clicked()', self.onGammaDoseComparison)
     self.step4_1_showGammaReportButton.disconnect('clicked()', self.onShowGammaReport)
     self.stepT1_lineProfileCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStepT1_LineProfileSelected)
+    self.stepT1_lineProfileLegendVisibilityCheckbox.disconnect('toggled(bool)', self.onLegendVisibilityToggled)
     self.stepT1_createLineProfileButton.disconnect('clicked(bool)', self.onCreateLineProfileButton)
     self.stepT1_inputRulerSelector.disconnect("currentNodeChanged(vtkMRMLNode*)", self.onSelectLineProfileParameters)
     self.stepT1_exportLineProfilesToCSV.disconnect('clicked()', self.onExportLineProfiles)
@@ -1063,6 +1067,11 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.stepT1_lineResolutionMmSliderWidget.setToolTip("Sampling density along the line in mm")
     self.stepT1_lineProfileCollapsibleButtonLayout.addRow("Line resolution (mm): ", self.stepT1_lineResolutionMmSliderWidget)
 
+    # Show/hide legend checkbox
+    self.stepT1_lineProfileLegendVisibilityCheckbox = qt.QCheckBox()
+    self.stepT1_lineProfileLegendVisibilityCheckbox.checked = True
+    self.stepT1_lineProfileCollapsibleButtonLayout.addRow('Show legend: ', self.stepT1_lineProfileLegendVisibilityCheckbox)
+
     # Create line profile button
     self.stepT1_createLineProfileButton = qt.QPushButton("Create line profile")
     self.stepT1_createLineProfileButton.toolTip = "Compute and show line profile"
@@ -1082,6 +1091,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # Connections
     self.stepT1_lineProfileCollapsibleButton.connect('contentsCollapsed(bool)', self.onStepT1_LineProfileSelected)
+    self.stepT1_lineProfileLegendVisibilityCheckbox.connect('toggled(bool)', self.onLegendVisibilityToggled)
     self.stepT1_createLineProfileButton.connect('clicked(bool)', self.onCreateLineProfileButton)
     self.stepT1_inputRulerSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelectLineProfileParameters)
     self.stepT1_exportLineProfilesToCSV.connect('clicked()', self.onExportLineProfiles)
@@ -1103,9 +1113,9 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     elif layoutIndex == 4:
        self.layoutWidget.setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutDual3DView)
     elif layoutIndex == 5:
-       self.layoutWidget.setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutFourUpQuantitativeView)
+       self.layoutWidget.setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutFourUpPlotView)
     elif layoutIndex == 6:
-       self.layoutWidget.setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutOneUpQuantitativeView)
+       self.layoutWidget.setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutOneUpPlotView)
 
   #------------------------------------------------------------------------------
   def onClinicalModeSelect(self, toggled):
@@ -2003,6 +2013,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
   def onStepT1_LineProfileSelected(self, collapsed):
     appLogic = slicer.app.applicationLogic()
     selectionNode = appLogic.GetSelectionNode()
+    interactionNode = appLogic.GetInteractionNode()
 
     # Change to quantitative view on enter, change back on leave
     if collapsed == False:
@@ -2010,6 +2021,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       self.onViewSelect(5)
 
       # Switch to place ruler mode
+      interactionNode.SwitchToSinglePlaceMode()
       selectionNode.SetReferenceActivePlaceNodeClassName("vtkMRMLAnnotationRulerNode")
     else:
       self.onViewSelect(self.currentLayoutIndex)
@@ -2024,30 +2036,49 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   #------------------------------------------------------------------------------
   def onCreateLineProfileButton(self):
-    # Create array nodes for the results
-    if not hasattr(self, 'planDoseLineProfileArrayNode'):
-      self.planDoseLineProfileArrayNode = slicer.vtkMRMLDoubleArrayNode()
-      slicer.mrmlScene.AddNode(self.planDoseLineProfileArrayNode)
-    if not hasattr(self, 'calibratedMeasuredDoseLineProfileArrayNode'):
-      self.calibratedMeasuredDoseLineProfileArrayNode = slicer.vtkMRMLDoubleArrayNode()
-      slicer.mrmlScene.AddNode(self.calibratedMeasuredDoseLineProfileArrayNode)
-    if self.gammaVolumeNode and not hasattr(self, 'gammaLineProfileArrayNode'):
-      self.gammaLineProfileArrayNode = slicer.vtkMRMLDoubleArrayNode()
-      slicer.mrmlScene.AddNode(self.gammaLineProfileArrayNode)
+    # Create table nodes for the results
+    if not hasattr(self, 'lineProfileTableNode'):
+      self.lineProfileTableNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLTableNode")
 
-    lineProfileLogic = GelDosimetryAnalysisLogic.LineProfileLogic()
+    # Set up line profile logic
+    self.lineProfileLogic.outputPlotSeriesNodes = {}
+    self.lineProfileLogic.outputTableNode = self.lineProfileTableNode
+    self.lineProfileLogic.inputRulerNode = self.stepT1_inputRulerSelector.currentNode()
+    self.lineProfileLogic.enableAutoUpdate(True)
+
+    rulerLengthMm = self.lineProfileLogic.computeRulerLength(self.lineProfileLogic.inputRulerNode)
     lineResolutionMm = float(self.stepT1_lineResolutionMmSliderWidget.value)
-    selectedRuler = self.stepT1_inputRulerSelector.currentNode()
-    rulerLengthMm = lineProfileLogic.computeRulerLength(selectedRuler)
-    numberOfLineSamples = int( (rulerLengthMm / lineResolutionMm) + 0.5 )
+    self.lineProfileLogic.lineResolution = int( (rulerLengthMm / lineResolutionMm) + 0.5 )
 
     # Get number of samples based on selected sampling density
+    self.lineProfileLogic.inputVolumeNodes = []
     if self.planDoseVolumeNode:
-      lineProfileLogic.run(self.planDoseVolumeNode, selectedRuler, self.planDoseLineProfileArrayNode, numberOfLineSamples)
+      self.lineProfileLogic.inputVolumeNodes.append(self.planDoseVolumeNode)
+      if not hasattr(self, 'planDosePlotSeriesNode'):
+        self.planDosePlotSeriesNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLPlotSeriesNode")
+      self.lineProfileLogic.outputPlotSeriesNodes[self.planDoseVolumeNode.GetID()] = self.planDosePlotSeriesNode
     if self.calibratedMeasuredVolumeNode:
-      lineProfileLogic.run(self.calibratedMeasuredVolumeNode, selectedRuler, self.calibratedMeasuredDoseLineProfileArrayNode, numberOfLineSamples)
+      self.lineProfileLogic.inputVolumeNodes.append(self.calibratedMeasuredVolumeNode)
+      if not hasattr(self, 'calibratedMeasuredPlotSeriesNode'):
+        self.calibratedMeasuredPlotSeriesNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLPlotSeriesNode")
+      self.lineProfileLogic.outputPlotSeriesNodes[self.calibratedMeasuredVolumeNode.GetID()] = self.calibratedMeasuredPlotSeriesNode
     if self.gammaVolumeNode:
-      lineProfileLogic.run(self.gammaVolumeNode, selectedRuler, self.gammaLineProfileArrayNode, numberOfLineSamples)
+      self.lineProfileLogic.inputVolumeNodes.append(self.gammaVolumeNode)
+      if not hasattr(self, 'gammaPlotSeriesNode'):
+        self.gammaPlotSeriesNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLPlotSeriesNode")
+      self.lineProfileLogic.outputPlotSeriesNodes[self.gammaVolumeNode.GetID()] = self.gammaPlotSeriesNode
+
+    self.lineProfileLogic.update()
+
+  #------------------------------------------------------------------------------
+  def onLegendVisibilityToggled(self, on):
+    if self.lineProfileLogic.plotChartNode is None:
+      message = 'Need to create line profile first'
+      logging.error(message)
+      qt.QMessageBox.critical(None, 'Error', message)
+      return
+
+    self.lineProfileLogic.plotChartNode.SetLegendVisibility(on)
 
   #------------------------------------------------------------------------------
   def onSelectLineProfileParameters(self):
@@ -2055,46 +2086,35 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   #------------------------------------------------------------------------------
   def onExportLineProfiles(self):
-    import csv
     import os
+
+    if not hasattr(self, 'lineProfileTableNode'):
+      message = 'Need to create line profile first'
+      logging.error(message)
+      qt.QMessageBox.critical(None, 'Line profiles values cannot be exported', message)
+      return
 
     self.outputDir = slicer.app.temporaryPath + '/GelDosimetry'
     if not os.access(self.outputDir, os.F_OK):
       os.mkdir(self.outputDir)
-    if not hasattr(self, 'planDoseLineProfileArrayNode') and not hasattr(self, 'calibratedMeasuredDoseLineProfileArrayNode'):
-      return 'Dose line profiles not computed yet!\nClick Create line profile\n'
 
     # Assemble file name for calibration curve points file
     from time import gmtime, strftime
     fileName = self.outputDir + '/' + strftime("%Y%m%d_%H%M%S_", gmtime()) + 'LineProfiles.csv'
 
-    # Write calibration curve points CSV file
-    with open(fileName, 'w') as fp:
-      csvWriter = csv.writer(fp, delimiter=',', lineterminator='\n')
+    storageNode = self.lineProfileTableNode.CreateDefaultStorageNode()
+    storageNode.SetFileName(fileName)
+    success = storageNode.WriteData(self.lineProfileTableNode)
 
-      planDoseLineProfileArray = self.planDoseLineProfileArrayNode.GetArray()
-      calibratedDoseLineProfileArray = self.calibratedMeasuredDoseLineProfileArrayNode.GetArray()
-      gammaLineProfileArray = None
-      if hasattr(self, 'gammaLineProfileArrayNode'):
-        data = [['PlanDose','CalibratedMeasuredDose','Gamma']]
-        gammaLineProfileArray = self.gammaLineProfileArrayNode.GetArray()
-      else:
-        data = [['PlanDose','CalibratedMeasuredDose']]
+    if success == 1:
+      message = 'Dose line profiles saved in file\n' + fileName + '\n\n'
+      qt.QMessageBox.information(None, 'Line profiles values exported', message)
+    else:
+      message = 'Failed to save line profile'
+      logging.error(message)
+      qt.QMessageBox.critical(None, 'Failed to save line profile', message)
 
-      numOfSamples = planDoseLineProfileArray.GetNumberOfTuples()
-      for index in range(numOfSamples):
-        planDoseSample = planDoseLineProfileArray.GetTuple(index)[1]
-        calibratedDoseSample = calibratedDoseLineProfileArray.GetTuple(index)[1]
-        if gammaLineProfileArray:
-          gammaSample = gammaLineProfileArray.GetTuple(index)[1]
-          samples = [planDoseSample, calibratedDoseSample, gammaSample]
-        else:
-          samples = [planDoseSample, calibratedDoseSample]
-        data.append(samples)
-      csvWriter.writerows(data)
 
-    message = 'Dose line profiles saved in file\n' + fileName + '\n\n'
-    qt.QMessageBox.information(None, 'Line profiles values exported', message)
 
 #
 # GelDosimetryAnalysis
