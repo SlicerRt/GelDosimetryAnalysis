@@ -795,20 +795,26 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Dose calibration function input fields
     self.step3_2_calibrationFunctionLayout = qt.QGridLayout(self.step3_1_calibrationRoutineCollapsibleButton)
     self.step3_2_doseLabel = qt.QLabel('Dose (Gy) = ')
+    self.step3_2_calibrationFunctionOrderLineEdits = []
     self.step3_2_calibrationFunctionOrder0LineEdit = qt.QLineEdit()
     self.step3_2_calibrationFunctionOrder0LineEdit.maximumWidth = 64
+    self.step3_2_calibrationFunctionOrderLineEdits.append(self.step3_2_calibrationFunctionOrder0LineEdit)
     self.step3_2_calibrationFunctionOrder0Label = qt.QLabel(' OA<span style=" font-size:8pt; vertical-align:super;">0</span> + ')
     self.step3_2_calibrationFunctionOrder1LineEdit = qt.QLineEdit()
     self.step3_2_calibrationFunctionOrder1LineEdit.maximumWidth = 64
+    self.step3_2_calibrationFunctionOrderLineEdits.append(self.step3_2_calibrationFunctionOrder1LineEdit)
     self.step3_2_calibrationFunctionOrder1Label = qt.QLabel(' OA<span style=" font-size:8pt; vertical-align:super;">1</span> + ')
     self.step3_2_calibrationFunctionOrder2LineEdit = qt.QLineEdit()
     self.step3_2_calibrationFunctionOrder2LineEdit.maximumWidth = 64
+    self.step3_2_calibrationFunctionOrderLineEdits.append(self.step3_2_calibrationFunctionOrder2LineEdit)
     self.step3_2_calibrationFunctionOrder2Label = qt.QLabel(' OA<span style=" font-size:8pt; vertical-align:super;">2</span> + ')
     self.step3_2_calibrationFunctionOrder3LineEdit = qt.QLineEdit()
     self.step3_2_calibrationFunctionOrder3LineEdit.maximumWidth = 64
+    self.step3_2_calibrationFunctionOrderLineEdits.append(self.step3_2_calibrationFunctionOrder3LineEdit)
     self.step3_2_calibrationFunctionOrder3Label = qt.QLabel(' OA<span style=" font-size:8pt; vertical-align:super;">3</span> + ')
     self.step3_2_calibrationFunctionOrder4LineEdit = qt.QLineEdit()
     self.step3_2_calibrationFunctionOrder4LineEdit.maximumWidth = 64
+    self.step3_2_calibrationFunctionOrderLineEdits.append(self.step3_2_calibrationFunctionOrder4LineEdit)
     self.step3_2_calibrationFunctionOrder4Label = qt.QLabel(' OA<span style=" font-size:8pt; vertical-align:super;">4</span>')
     self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_doseLabel,0,0)
     self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_calibrationFunctionOrder0LineEdit,0,1)
@@ -1719,11 +1725,11 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # Clear line edits
     for order in range(5):
-      exec("self.step3_2_calibrationFunctionOrder{0}LineEdit.text = ''".format(order))
+      self.step3_2_calibrationFunctionOrderLineEdits[order].text = ''
     # Show polynomial on GUI (highest order first in the coefficients list)
     for orderIndex in range(maxOrder+1):
       order = maxOrder-orderIndex
-      exec("self.step3_2_calibrationFunctionOrder{0}LineEdit.text = {1:.6f}".format(order,p[orderIndex]))
+      self.step3_2_calibrationFunctionOrderLineEdits[order].text = '{1:.6f}'.format(order,p[orderIndex])
     # Show residuals
     self.step3_1_fitPolynomialResidualsLabel.text = "Residuals of the least-squares fit of the polynomial: {0:.3f}".format(residuals[0])
 
@@ -1767,7 +1773,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Determine the number of orders based on the input fields
     maxOrder = 0
     for order in range(5):
-      exec("lineEditText = self.step3_2_calibrationFunctionOrder{0}LineEdit.text".format(order))
+      lineEditText = self.step3_2_calibrationFunctionOrderLineEdits[order].text
       try:
         coefficient = float(lineEditText)
         if coefficient != 0:
@@ -1777,11 +1783,12 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Initialize all coefficients to zero in the coefficients list
     self.logic.calibrationPolynomialCoefficients = numpy.zeros(maxOrder+1)
     for order in range(maxOrder+1):
-      exec("lineEditText = self.step3_2_calibrationFunctionOrder{0}LineEdit.text".format(order))
+      lineEditText = self.step3_2_calibrationFunctionOrderLineEdits[order].text
       try:
         self.logic.calibrationPolynomialCoefficients[maxOrder-order] = float(lineEditText)
       except:
         pass
+    logging.info('Manual calibration coefficients applied (highest order first): ' + repr(self.logic.calibrationPolynomialCoefficients.tolist()))
 
   #------------------------------------------------------------------------------
   def onExportCalibration(self):
@@ -1821,8 +1828,8 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       maxDose = self.logic.opticalAttenuationVsDoseFunction[oaVsDoseNumberOfRows-1, 1]
       minWindowLevel = minDose - (maxDose-minDose)*0.2
       maxWindowLevel = maxDose + (maxDose-minDose)*0.2
-      calibratedVolumeDisplayNode.AutoWindowLevelOff();
-      calibratedVolumeDisplayNode.SetWindowLevelMinMax(minWindowLevel, maxWindowLevel);
+      calibratedVolumeDisplayNode.AutoWindowLevelOff()
+      calibratedVolumeDisplayNode.SetWindowLevelMinMax(minWindowLevel, maxWindowLevel)
 
     # Set calibrated dose to dose comparison step input
     self.refreshDoseComparisonInfoLabel()
