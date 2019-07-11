@@ -968,11 +968,11 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step4_1_gammaDoseComparisonCollapsibleButtonLayout.addRow(self.step4_1_analysisThresholdLayout)
     self.step4_1_gammaDoseComparisonCollapsibleButtonLayout.addRow(qt.QLabel('                                            or the custom dose value (depending on selection above).'))
 
-    # Use linear interpolation
-    self.step4_1_useLinearInterpolationCheckBox = qt.QCheckBox()
-    self.step4_1_useLinearInterpolationCheckBox.checked = True
-    self.step4_1_useLinearInterpolationCheckBox.setToolTip('Flag determining whether linear interpolation is used when resampling the compare dose volume to reference grid. Nearest neighbour is used if unchecked.')
-    self.step4_1_gammaDoseComparisonCollapsibleButtonLayout.addRow('Use linear interpolation: ', self.step4_1_useLinearInterpolationCheckBox)
+    # Use geometric gamma calculation
+    self.step4_1_useGeometricGammaCalculation = qt.QCheckBox()
+    self.step4_1_useGeometricGammaCalculation.checked = True
+    self.step4_1_useGeometricGammaCalculation.setToolTip('By checking this box, gamma will be calculated according to Ju et al 2008, which finds the point with the minimum gamma value by using the normal vector between the two candidate points.')
+    self.step4_1_gammaDoseComparisonCollapsibleButtonLayout.addRow('Use geometric gamma calculation: ', self.step4_1_useGeometricGammaCalculation)
 
     # Maximum gamma
     self.step4_1_maximumGammaSpinBox = qt.QDoubleSpinBox()
@@ -1923,7 +1923,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       self.gammaParameterSetNode.SetDtaDistanceToleranceMm(self.step4_1_dtaDistanceToleranceMmSpinBox.value)
       self.gammaParameterSetNode.SetDoseDifferenceTolerancePercent(self.step4_1_doseDifferenceTolerancePercentSpinBox.value)
       self.gammaParameterSetNode.SetUseMaximumDose(self.step4_1_referenceDoseUseMaximumDoseRadioButton.isChecked())
-      self.gammaParameterSetNode.SetUseLinearInterpolation(self.step4_1_useLinearInterpolationCheckBox.isChecked())
+      self.gammaParameterSetNode.SetUseGeometricGammaCalculation(self.step4_1_useGeometricGammaCalculation.isChecked())
       self.gammaParameterSetNode.SetReferenceDoseGy(self.step4_1_referenceDoseCustomValueCGySpinBox.value / 100.0)
       self.gammaParameterSetNode.SetAnalysisThresholdPercent(self.step4_1_analysisThresholdPercentSpinBox.value)
       self.gammaParameterSetNode.SetDoseThresholdOnReferenceOnly(True)
