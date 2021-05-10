@@ -47,7 +47,7 @@ protected:
   vtkSlicerGelDosimetryAnalysisAlgoModuleLogic();
   virtual ~vtkSlicerGelDosimetryAnalysisAlgoModuleLogic();
 
-  virtual void UpdateFromMRMLScene() VTK_OVERRIDE;
+  void UpdateFromMRMLScene() override;
   
 private:
   vtkSlicerGelDosimetryAnalysisAlgoModuleLogic(const vtkSlicerGelDosimetryAnalysisAlgoModuleLogic&); // Not implemented
