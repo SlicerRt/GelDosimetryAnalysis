@@ -1052,7 +1052,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # Input ruler selector
     self.stepT1_inputRulerSelector = slicer.qMRMLNodeComboBox()
-    self.stepT1_inputRulerSelector.nodeTypes = ["vtkMRMLAnnotationRulerNode"]
+    self.stepT1_inputRulerSelector.nodeTypes = ["vtkMRMLMarkupsLineNode", "vtkMRMLAnnotationRulerNode"]
     self.stepT1_inputRulerSelector.selectNodeUponCreation = True
     self.stepT1_inputRulerSelector.addEnabled = False
     self.stepT1_inputRulerSelector.removeEnabled = False
@@ -2029,7 +2029,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
 
       # Switch to place ruler mode
       interactionNode.SwitchToSinglePlaceMode()
-      selectionNode.SetReferenceActivePlaceNodeClassName("vtkMRMLAnnotationRulerNode")
+      selectionNode.SetReferenceActivePlaceNodeClassName("vtkMRMLMarkupsLineNode")
     else:
       self.onViewSelect(self.currentLayoutIndex)
 
